@@ -476,7 +476,13 @@ test-hardening-contracts:
 		tests/no-auto-update.test.mjs \
 		tests/radium-product-name.test.mjs \
 		tests/window-controls.test.mjs \
+		tests/app-version.test.mjs \
+		tests/build-version.test.mjs \
 		tests/upstream-backend-resolver.test.mjs
+
+# Every build gets a new version number (tracker D34). VERSION=x.y.z sets one.
+bump-version:
+	node scripts/bump-version.mjs $(if $(VERSION),--to $(VERSION),)
 
 test-coverage-critical:
 	yarn test:coverage
