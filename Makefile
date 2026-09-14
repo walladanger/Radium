@@ -479,7 +479,8 @@ test-hardening-contracts:
 		tests/app-version.test.mjs \
 		tests/build-version.test.mjs \
 		tests/radium-logo.test.mjs \
-		tests/upstream-backend-resolver.test.mjs
+		tests/upstream-backend-resolver.test.mjs \
+		tests/scrollbar-arrows.test.mjs
 
 # Every build gets a new version number (tracker D34). VERSION=x.y.z sets one.
 bump-version:
