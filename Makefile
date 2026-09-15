@@ -479,6 +479,7 @@ test-hardening-contracts:
 		tests/app-version.test.mjs \
 		tests/build-version.test.mjs \
 		tests/radium-logo.test.mjs \
+		tests/models-folder.test.mjs \
 		tests/upstream-backend-resolver.test.mjs \
 		tests/scrollbar-arrows.test.mjs
 
