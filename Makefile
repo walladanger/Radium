@@ -480,6 +480,7 @@ test-hardening-contracts:
 		tests/build-version.test.mjs \
 		tests/radium-logo.test.mjs \
 		tests/models-folder.test.mjs \
+		tests/hover-glow.test.mjs \
 		tests/upstream-backend-resolver.test.mjs \
 		tests/scrollbar-arrows.test.mjs
 
