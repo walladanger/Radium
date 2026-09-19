@@ -185,7 +185,14 @@ libc = "0.2"
 # C library and would make libdbus-1-dev a NEW build requirement for Linux.
 # The zbus backend is pure Rust and this crate already depends on zbus 5
 # below, so this adds no system dependency. Q5 approved either one.
-zbus-secret-service-keyring-store = "1"
+# A crypto feature has to be chosen or secret-service refuses to compile
+# ("Please enable a cryptography feature"), which broke the Linux build.
+# rt-tokio-crypto-rust is the pair that matches this crate: tokio, like the
+# zbus line below, and pure-Rust crypto rather than crypto-openssl, which
+# would link OpenSSL and make it a new system build requirement.
+zbus-secret-service-keyring-store = { version = "1", features = [
+  "rt-tokio-crypto-rust",
+] }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 notify-rust = "4"
 
