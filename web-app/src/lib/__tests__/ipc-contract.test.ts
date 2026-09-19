@@ -24,6 +24,13 @@ const EXPECTED_DESKTOP_ONLY = new Set([
   'chatgpt_models',
   'chatgpt_status',
   'get_local_http',
+  // The built-in media engine: it downloads a stable-diffusion.cpp build and
+  // runs it as a child process on this computer. Desktop only on purpose —
+  // mobile can neither spawn the server nor hold the models (tracker Task 30).
+  'media_engine_install',
+  'media_engine_start',
+  'media_engine_status',
+  'media_engine_stop',
   // Radium Media provider credentials, in the OS credential store. Desktop
   // only on purpose: mobile has no media providers, and shipping a credential
   // surface it does not need would widen the attack surface for nothing.
