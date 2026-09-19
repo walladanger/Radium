@@ -234,8 +234,7 @@ describe('ReplyModelGate', () => {
       undefined,
       '',
       true,
-      false,
-      catalogModel
+      false
     )
     expect(onResolved).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: 'download', branch: 'none' })
