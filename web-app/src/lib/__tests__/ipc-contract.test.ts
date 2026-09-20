@@ -27,6 +27,8 @@ const EXPECTED_DESKTOP_ONLY = new Set([
   // The built-in media engine: it downloads a stable-diffusion.cpp build and
   // runs it as a child process on this computer. Desktop only on purpose —
   // mobile can neither spawn the server nor hold the models (tracker Task 30).
+  // Built-in media engine lifecycle commands. Desktop only on purpose: the
+  // shipped engine and its local process supervision do not exist on mobile.
   'media_engine_install',
   'media_engine_start',
   'media_engine_status',
