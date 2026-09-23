@@ -6,7 +6,7 @@ sed -i 's/ catch (_e) {/ catch {/g' web-app/src/services/media/adapters/a1111.ts
 sed -i 's/ catch (_error) {/ catch {/g' web-app/src/services/media/adapters/a1111.ts
 sed -i 's/async cancel(_handle: MediaJobHandle/async cancel(handle: MediaJobHandle/g' web-app/src/services/media/adapters/a1111.ts
 sed -i '/async cancel/a \        console.debug("Cancel requested for handle", handle)' web-app/src/services/media/adapters/a1111.ts
-sed -i 's/catch {/catch (e) { console.debug(e) }/g' web-app/src/services/media/adapters/a1111.ts
+sed -i 's/catch {/catch (e) { console.debug(e);/g' web-app/src/services/media/adapters/a1111.ts
 
 # falAi.ts fixes
 sed -i 's/ catch (_e) {/ catch (e) { console.debug(e) }/g' web-app/src/services/media/adapters/falAi.ts

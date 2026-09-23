@@ -31,12 +31,12 @@ export function createStabilityAiAdapter(
   descriptor: MediaProviderDescriptor,
   options: StabilityAiAdapterOptions = {}
 ): MediaProviderAdapter {
-  const base = (descriptor.base_url ?? 'https://api.stability.ai/v2beta/stable-image').replace(
-    /\/+$/,
-    ''
-  )
+  const base = (
+    descriptor.base_url ?? 'https://api.stability.ai/v2beta/stable-image'
+  ).replace(/\/+$/, '')
   const transport = options.fetch ?? fetch
   const resolveSecret = options.resolveSecret
+  const completed = new Map<string, MediaJobSnapshot>()
 
   async function authorization(): Promise<Record<string, string>> {
     const settingKey = descriptor.auth?.setting_key
@@ -65,7 +65,7 @@ export function createStabilityAiAdapter(
       const payload = await response.json()
       if (payload && payload.message) message = String(payload.message)
     } catch {
-        // Ignored
+      // Ignored
     }
 
     const retryable = response.status === 429 || response.status >= 500
@@ -102,7 +102,18 @@ export function createStabilityAiAdapter(
 
     async health(signal?: AbortSignal): Promise<MediaProviderHealth> {
       void signal
-      return { state: 'online', service: 'Stability AI' }
+      try {
+        await authorization()
+        return { state: 'online', service: 'Stability AI' }
+      } catch (error) {
+        if (error instanceof StabilityAiError && error.code === 'no_api_key') {
+          return { state: 'unauthorised', detail: error.message }
+        }
+        return {
+          state: 'offline',
+          detail: error instanceof Error ? error.message : String(error),
+        }
+      }
     },
 
     async capabilities(signal?: AbortSignal): Promise<MediaCapabilities> {
@@ -112,27 +123,51 @@ export function createStabilityAiAdapter(
         provider_id: descriptor.id,
         devices: [],
         models: [
-            {
-                id: `${descriptor.id}:core`,
-                local_id: 'core',
-                provider_id: descriptor.id,
-                label: 'Stable Image Core',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+          {
+            id: `${descriptor.id}:core`,
+            local_id: 'core',
+            provider_id: descriptor.id,
+            label: 'Stable Image Core',
+            tasks: [MEDIA_TASK.TEXT_TO_IMAGE],
+            params: {
+              [MEDIA_TASK.TEXT_TO_IMAGE]: [
+                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+                {
+                  id: 'negative_prompt',
+                  type: 'text',
+                  label: 'Negative prompt',
+                },
+              ],
             },
-            {
-                id: `${descriptor.id}:ultra`,
-                local_id: 'ultra',
-                provider_id: descriptor.id,
-                label: 'Stable Image Ultra',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
-            }
+            outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' } },
+            install: { installed: true, installable: false },
+          },
+          {
+            id: `${descriptor.id}:ultra`,
+            local_id: 'ultra',
+            provider_id: descriptor.id,
+            label: 'Stable Image Ultra',
+            tasks: [MEDIA_TASK.TEXT_TO_IMAGE],
+            params: {
+              [MEDIA_TASK.TEXT_TO_IMAGE]: [
+                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+                {
+                  id: 'negative_prompt',
+                  type: 'text',
+                  label: 'Negative prompt',
+                },
+              ],
+            },
+            outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' } },
+            install: { installed: true, installable: false },
+          },
         ],
         tasks: [
           {
             id: MEDIA_TASK.TEXT_TO_IMAGE,
             label_key: `media:task.${MEDIA_TASK.TEXT_TO_IMAGE}`,
             output_media_type: 'image',
-          }
+          },
         ],
         features: {
           cancel: false,
@@ -159,7 +194,8 @@ export function createStabilityAiAdapter(
 
       const formData = new FormData()
       formData.append('prompt', req.params.prompt as string)
-      if (req.params.negative_prompt) formData.append('negative_prompt', req.params.negative_prompt as string)
+      if (req.params.negative_prompt)
+        formData.append('negative_prompt', req.params.negative_prompt as string)
 
       const response = await transport(`${base}/generate/${localId}`, {
         method: 'POST',
@@ -171,24 +207,37 @@ export function createStabilityAiAdapter(
       if (!response.ok) throw await errorFor(response)
       const payload = await response.json()
 
-      const refs: MediaOutputRef[] = [{
+      const refs: MediaOutputRef[] = [
+        {
           kind: 'inline',
           base64: payload.image,
-          mime: 'image/png'
-      }]
+          mime: 'image/png',
+        },
+      ]
 
-      return snapshotOf(
+      const snapshot = snapshotOf(
         { client_job_id: req.client_job_id },
         req.client_job_id,
         'succeeded',
         { outputs: refs, progress: 100 }
       )
+      completed.set(req.client_job_id, snapshot)
+      return snapshot
     },
 
     async poll(handle: MediaJobHandle): Promise<MediaJobSnapshot> {
-      // Synchronous generation returns complete data in submit
-      return snapshotOf(handle, handle.provider_job_id || handle.client_job_id, 'succeeded', { progress: 100 })
+      const snapshot = completed.get(handle.client_job_id)
+      if (
+        !snapshot ||
+        (handle.provider_job_id !== undefined &&
+          handle.provider_job_id !== snapshot.provider_job_id)
+      ) {
+        throw new StabilityAiError(
+          `No generation is in flight for client job "${handle.client_job_id}".`,
+          'unknown_job'
+        )
+      }
+      return snapshot
     },
-
   }
 }

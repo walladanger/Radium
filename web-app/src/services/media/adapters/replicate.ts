@@ -28,19 +28,19 @@ export type ReplicateAdapterOptions = {
 }
 
 type ReplicatePredictionResponse = {
-    id: string
-    model: string
-    version: string
-    input: Record<string, unknown>
-    logs: string
-    error: string | null
-    status: 'starting' | 'processing' | 'succeeded' | 'failed' | 'canceled'
-    created_at: string
-    urls: {
-        get: string
-        cancel: string
-    }
-    output?: string[] | string
+  id: string
+  model: string
+  version: string
+  input: Record<string, unknown>
+  logs: string
+  error: string | null
+  status: 'starting' | 'processing' | 'succeeded' | 'failed' | 'canceled'
+  created_at: string
+  urls: {
+    get: string
+    cancel: string
+  }
+  output?: string[] | string
 }
 
 export function createReplicateAdapter(
@@ -81,7 +81,7 @@ export function createReplicateAdapter(
       const payload = await response.json()
       if (payload && payload.detail) message = String(payload.detail)
     } catch {
-        // Ignored
+      // Ignored
     }
 
     const retryable = response.status === 429 || response.status >= 500
@@ -129,7 +129,10 @@ export function createReplicateAdapter(
           }
         }
         if (!response.ok) {
-          return { state: 'offline', detail: (await errorFor(response)).message }
+          return {
+            state: 'offline',
+            detail: (await errorFor(response)).message,
+          }
         }
         return { state: 'online', service: 'Replicate' }
       } catch (error) {
@@ -150,20 +153,46 @@ export function createReplicateAdapter(
         provider_id: descriptor.id,
         devices: [],
         models: [
-            {
-                id: `${descriptor.id}:black-forest-labs/flux-schnell`,
-                local_id: 'black-forest-labs/flux-schnell',
-                provider_id: descriptor.id,
-                label: 'Flux Schnell (Replicate)',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+          {
+            id: `${descriptor.id}:black-forest-labs/flux-schnell`,
+            local_id: 'black-forest-labs/flux-schnell',
+            provider_id: descriptor.id,
+            label: 'Flux Schnell (Replicate)',
+            tasks: [MEDIA_TASK.TEXT_TO_IMAGE],
+            params: {
+              [MEDIA_TASK.TEXT_TO_IMAGE]: [
+                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+                {
+                  id: 'negative_prompt',
+                  type: 'text',
+                  label: 'Negative prompt',
+                },
+                { id: 'resolution', type: 'string', label: 'Resolution' },
+              ],
             },
-            {
-                id: `${descriptor.id}:tencent/hunyuan-video`,
-                local_id: 'tencent/hunyuan-video',
-                provider_id: descriptor.id,
-                label: 'Hunyuan Video (Replicate)',
-                tasks: [MEDIA_TASK.TEXT_TO_VIDEO], params: { [MEDIA_TASK.TEXT_TO_VIDEO]: [] }, outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: "video" } }, install: { installed: true, installable: false }
-            }
+            outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' } },
+            install: { installed: true, installable: false },
+          },
+          {
+            id: `${descriptor.id}:tencent/hunyuan-video`,
+            local_id: 'tencent/hunyuan-video',
+            provider_id: descriptor.id,
+            label: 'Hunyuan Video (Replicate)',
+            tasks: [MEDIA_TASK.TEXT_TO_VIDEO],
+            params: {
+              [MEDIA_TASK.TEXT_TO_VIDEO]: [
+                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+                {
+                  id: 'negative_prompt',
+                  type: 'text',
+                  label: 'Negative prompt',
+                },
+                { id: 'resolution', type: 'string', label: 'Resolution' },
+              ],
+            },
+            outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: 'video' } },
+            install: { installed: true, installable: false },
+          },
         ],
         tasks: [
           {
@@ -175,7 +204,7 @@ export function createReplicateAdapter(
             id: MEDIA_TASK.TEXT_TO_VIDEO,
             label_key: `media:task.${MEDIA_TASK.TEXT_TO_VIDEO}`,
             output_media_type: 'video',
-          }
+          },
         ],
         features: {
           cancel: true,
@@ -202,21 +231,27 @@ export function createReplicateAdapter(
       }
 
       const input: Record<string, unknown> = {
-          prompt: req.params.prompt,
+        prompt: req.params.prompt,
       }
       if (req.params.resolution) {
-          const [width, height] = (req.params.resolution as string).split('x').map(Number)
-          input.width = width
-          input.height = height
+        const [width, height] = (req.params.resolution as string)
+          .split('x')
+          .map(Number)
+        input.width = width
+        input.height = height
       }
-      if (req.params.negative_prompt) input.negative_prompt = req.params.negative_prompt
+      if (req.params.negative_prompt)
+        input.negative_prompt = req.params.negative_prompt
 
-      const response = await transport(`${base}/models/${localId}/predictions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ input }),
-        signal,
-      })
+      const response = await transport(
+        `${base}/models/${localId}/predictions`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ input }),
+          signal,
+        }
+      )
 
       if (!response.ok) throw await errorFor(response)
 
@@ -231,56 +266,70 @@ export function createReplicateAdapter(
 
     async poll(handle: MediaJobHandle): Promise<MediaJobSnapshot> {
       if (!handle.provider_job_id) {
-          throw new ReplicateError(
-              `No generation is in flight for client job "${handle.client_job_id}".`,
-              'unknown_job'
-            )
+        throw new ReplicateError(
+          `No generation is in flight for client job "${handle.client_job_id}".`,
+          'unknown_job'
+        )
       }
 
-      const response = await transport(`${base}/predictions/${handle.provider_job_id}`, {
-          headers: { ...(await authorization()) }
-      })
+      const response = await transport(
+        `${base}/predictions/${handle.provider_job_id}`,
+        {
+          headers: { ...(await authorization()) },
+        }
+      )
       if (!response.ok) throw await errorFor(response)
 
       const payload = (await response.json()) as ReplicatePredictionResponse
 
       if (payload.status === 'failed') {
-          return snapshotOf(handle, payload.id, 'failed', {
-              error: {
-                  code: 'provider_error',
-                  message: payload.error || 'Generation failed',
-                  retryable: false
-              }
-          })
+        return snapshotOf(handle, payload.id, 'failed', {
+          error: {
+            code: 'provider_error',
+            message: payload.error || 'Generation failed',
+            retryable: false,
+          },
+        })
       }
       if (payload.status === 'canceled') {
-          return snapshotOf(handle, payload.id, 'cancelled')
+        return snapshotOf(handle, payload.id, 'cancelled')
       }
       if (payload.status === 'succeeded') {
-          const out = Array.isArray(payload.output) ? payload.output : [payload.output]
-          const refs: MediaOutputRef[] = out.filter(Boolean).map(url => ({
-              kind: 'url',
-              url: url as string
-          }))
-          return snapshotOf(handle, payload.id, 'succeeded', {
-              progress: 100,
-              outputs: refs
-          })
+        const out = Array.isArray(payload.output)
+          ? payload.output
+          : [payload.output]
+        const refs: MediaOutputRef[] = out.filter(Boolean).map((url) => ({
+          kind: 'url',
+          url: url as string,
+        }))
+        return snapshotOf(handle, payload.id, 'succeeded', {
+          progress: 100,
+          outputs: refs,
+        })
       }
 
-      return snapshotOf(handle, payload.id, payload.status === 'starting' || payload.status === 'processing' ? 'running' : 'queued')
+      return snapshotOf(
+        handle,
+        payload.id,
+        payload.status === 'starting' || payload.status === 'processing'
+          ? 'running'
+          : 'queued'
+      )
     },
 
     async cancel(handle: MediaJobHandle): Promise<void> {
-        if (!handle.provider_job_id) return
-        try {
-            await transport(`${base}/predictions/${handle.provider_job_id}/cancel`, {
-                method: 'POST',
-                headers: { ...(await authorization()) }
-            })
-        } catch {
-            // Ignored
-        }
-    }
+      if (!handle.provider_job_id) return
+      try {
+        await transport(
+          `${base}/predictions/${handle.provider_job_id}/cancel`,
+          {
+            method: 'POST',
+            headers: { ...(await authorization()) },
+          }
+        )
+      } catch {
+        // Ignored
+      }
+    },
   }
 }

@@ -42,7 +42,8 @@ export type A1111AdapterOptions = {
   fetch?: typeof fetch
 }
 
-const isDataUrl = (value: unknown): value is string => typeof value === "string" && value.startsWith("data:");
+const isDataUrl = (value: unknown): value is string =>
+  typeof value === 'string' && value.startsWith('data:')
 
 export function createA1111Adapter(
   descriptor: MediaProviderDescriptor,
@@ -65,7 +66,7 @@ export function createA1111Adapter(
       const payload = await response.json()
       if (payload && payload.detail) message = String(payload.detail)
     } catch {
-        // Ignored
+      // Ignored
     }
 
     const retryable = response.status === 429 || response.status >= 500
@@ -107,7 +108,10 @@ export function createA1111Adapter(
           signal,
         })
         if (!response.ok) {
-          return { state: 'offline', detail: (await errorFor(response)).message }
+          return {
+            state: 'offline',
+            detail: (await errorFor(response)).message,
+          }
         }
         return { state: 'online', service: 'Automatic1111' }
       } catch (error) {
@@ -127,7 +131,7 @@ export function createA1111Adapter(
         })
         if (response.ok) models = await response.json()
       } catch {
-          // Ignored
+        // Ignored
       }
 
       return {
@@ -139,7 +143,16 @@ export function createA1111Adapter(
           local_id: m.model_name,
           provider_id: descriptor.id,
           label: m.title,
-          tasks: [MEDIA_TASK.TEXT_TO_IMAGE, MEDIA_TASK.IMAGE_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [], [MEDIA_TASK.IMAGE_TO_IMAGE]: [] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" }, [MEDIA_TASK.IMAGE_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+          tasks: [MEDIA_TASK.TEXT_TO_IMAGE, MEDIA_TASK.IMAGE_TO_IMAGE],
+          params: {
+            [MEDIA_TASK.TEXT_TO_IMAGE]: [],
+            [MEDIA_TASK.IMAGE_TO_IMAGE]: [],
+          },
+          outputs: {
+            [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' },
+            [MEDIA_TASK.IMAGE_TO_IMAGE]: { media_type: 'image' },
+          },
+          install: { installed: true, installable: false },
         })),
         tasks: [
           {
@@ -151,7 +164,7 @@ export function createA1111Adapter(
             id: MEDIA_TASK.IMAGE_TO_IMAGE,
             label_key: `media:task.${MEDIA_TASK.IMAGE_TO_IMAGE}`,
             output_media_type: 'image',
-          }
+          },
         ],
         features: {
           cancel: true,
@@ -173,71 +186,84 @@ export function createA1111Adapter(
         ? req.model_id.slice(descriptor.id.length + 1)
         : req.model_id
 
+      if (
+        req.task === MEDIA_TASK.IMAGE_TO_IMAGE &&
+        !isDataUrl(req.params.init_image)
+      ) {
+        throw new A1111Error(
+          'Image-to-image generation requires init_image to be a data URL.',
+          'invalid_params'
+        )
+      }
+
       const headers = {
         'content-type': 'application/json',
         ...(await authorization()),
       }
 
-      try {
-        await transport(`${base}/sdapi/v1/options`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ sd_model_checkpoint: localId }),
-            signal,
-        })
-      } catch {
-         // Ignored
-      }
+      const switchResponse = await transport(`${base}/sdapi/v1/options`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ sd_model_checkpoint: localId }),
+        signal,
+      })
+      if (!switchResponse.ok) throw await errorFor(switchResponse)
 
-      const isImg2Img = req.task === MEDIA_TASK.IMAGE_TO_IMAGE && isDataUrl(req.params.init_image)
+      const isImg2Img = req.task === MEDIA_TASK.IMAGE_TO_IMAGE
       const route = isImg2Img ? '/sdapi/v1/img2img' : '/sdapi/v1/txt2img'
 
-      let width, height;
+      let width, height
       if (typeof req.params.resolution === 'string') {
-          [width, height] = req.params.resolution.split('x').map(Number)
+        const resolution = req.params.resolution.split('x').map(Number)
+        width = resolution[0]
+        height = resolution[1]
       }
 
       const body: Record<string, unknown> = {
-          prompt: req.params.prompt,
-          negative_prompt: req.params.negative_prompt,
-          steps: req.params.steps,
-          cfg_scale: req.params.guidance_scale,
-          seed: typeof req.params.seed === 'number' ? req.params.seed : -1,
-          width: width,
-          height: height,
-          batch_size: 1
+        prompt: req.params.prompt,
+        negative_prompt: req.params.negative_prompt,
+        steps: req.params.steps,
+        cfg_scale: req.params.guidance_scale,
+        seed: typeof req.params.seed === 'number' ? req.params.seed : -1,
+        width: width,
+        height: height,
+        batch_size: 1,
       }
 
       if (isImg2Img) {
-          body.init_images = [(req.params.init_image as string).split(',')[1]]
-          if (typeof req.params.strength === 'number') {
-              body.denoising_strength = req.params.strength
-          }
+        body.init_images = [(req.params.init_image as string).split(',')[1]]
+        if (typeof req.params.strength === 'number') {
+          body.denoising_strength = req.params.strength
+        }
       }
 
-      const response = await transport(`${base}${route}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal,
-      })
-
-      if (!response.ok) throw await errorFor(response)
-
       const providerJobId = req.client_job_id
-
       const entry: Pending = { providerJobId, status: 'pending' }
-      void (response.json() as Promise<A1111ImagesResponse>).then(
-        (payload) => {
-          entry.status = 'resolved'
-          entry.payload = payload
-        },
-        (reason: unknown) => {
-          entry.status = 'rejected'
-          entry.reason = reason
-        }
-      )
       pending.set(req.client_job_id, entry)
+
+      void Promise.resolve()
+        .then(() =>
+          transport(`${base}${route}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal,
+          })
+        )
+        .then(async (response) => {
+          if (!response.ok) throw await errorFor(response)
+          return (await response.json()) as A1111ImagesResponse
+        })
+        .then(
+          (payload) => {
+            entry.status = 'resolved'
+            entry.payload = payload
+          },
+          (reason: unknown) => {
+            entry.status = 'rejected'
+            entry.reason = reason
+          }
+        )
 
       return snapshotOf(
         { client_job_id: req.client_job_id },
@@ -257,17 +283,17 @@ export function createA1111Adapter(
       if (entry.settled) return entry.settled
 
       if (entry.status === 'pending') {
-          try {
-            const res = await transport(`${base}/sdapi/v1/progress`)
-            if (res.ok) {
-                const prog = await res.json()
-                return snapshotOf(handle, entry.providerJobId, 'running', {
-                    progress: prog.progress ? Math.round(prog.progress * 100) : null
-                })
-            }
-          } catch {
-              // Ignored
+        try {
+          const res = await transport(`${base}/sdapi/v1/progress`)
+          if (res.ok) {
+            const prog = await res.json()
+            return snapshotOf(handle, entry.providerJobId, 'running', {
+              progress: prog.progress ? Math.round(prog.progress * 100) : null,
+            })
           }
+        } catch {
+          // Ignored
+        }
         return snapshotOf(handle, entry.providerJobId, 'running')
       }
 
@@ -279,18 +305,23 @@ export function createA1111Adapter(
               entry.reason instanceof Error
                 ? entry.reason.message
                 : String(entry.reason),
-            retryable: true,
+            retryable:
+              entry.reason instanceof A1111Error
+                ? entry.reason.retryable
+                : true,
           },
         })
         entry.settled = settled
         return settled
       }
 
-      const refs: MediaOutputRef[] = (entry.payload?.images ?? []).map(b64 => ({
+      const refs: MediaOutputRef[] = (entry.payload?.images ?? []).map(
+        (b64) => ({
           kind: 'inline',
           base64: b64,
-          mime: 'image/png'
-      }))
+          mime: 'image/png',
+        })
+      )
 
       const settled =
         refs.length > 0
@@ -312,12 +343,15 @@ export function createA1111Adapter(
     },
 
     async cancel(handle: MediaJobHandle): Promise<void> {
-        try {
-            await transport(`${base}/sdapi/v1/interrupt`, { method: 'POST' })
-            void handle
-        } catch {
-            // Ignored
-        }
-    }
+      const entry = pending.get(handle.client_job_id)
+      if (!entry || entry.status !== 'pending') return
+
+      const response = await transport(`${base}/sdapi/v1/interrupt`, {
+        method: 'POST',
+      })
+      if (!response.ok) throw await errorFor(response)
+
+      pending.delete(handle.client_job_id)
+    },
   }
 }
