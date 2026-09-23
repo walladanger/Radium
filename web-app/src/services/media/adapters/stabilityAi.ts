@@ -4,11 +4,19 @@ import type {
   MediaJobHandle,
   MediaJobSnapshot,
   MediaOutputRef,
+  MediaParamSpec,
   MediaProviderAdapter,
   MediaProviderDescriptor,
   MediaProviderHealth,
   NormalizedMediaRequest,
 } from '../contract'
+
+// Every Stable Image model takes the same prompt inputs, so the param list
+// lives in one place instead of being repeated per model.
+const PROMPT_NEGATIVE_PARAMS: MediaParamSpec[] = [
+  { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+  { id: 'negative_prompt', type: 'text', label: 'Negative prompt' },
+]
 
 export class StabilityAiError extends Error {
   constructor(
@@ -130,14 +138,7 @@ export function createStabilityAiAdapter(
             label: 'Stable Image Core',
             tasks: [MEDIA_TASK.TEXT_TO_IMAGE],
             params: {
-              [MEDIA_TASK.TEXT_TO_IMAGE]: [
-                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
-                {
-                  id: 'negative_prompt',
-                  type: 'text',
-                  label: 'Negative prompt',
-                },
-              ],
+              [MEDIA_TASK.TEXT_TO_IMAGE]: PROMPT_NEGATIVE_PARAMS,
             },
             outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' } },
             install: { installed: true, installable: false },
@@ -149,14 +150,7 @@ export function createStabilityAiAdapter(
             label: 'Stable Image Ultra',
             tasks: [MEDIA_TASK.TEXT_TO_IMAGE],
             params: {
-              [MEDIA_TASK.TEXT_TO_IMAGE]: [
-                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
-                {
-                  id: 'negative_prompt',
-                  type: 'text',
-                  label: 'Negative prompt',
-                },
-              ],
+              [MEDIA_TASK.TEXT_TO_IMAGE]: PROMPT_NEGATIVE_PARAMS,
             },
             outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' } },
             install: { installed: true, installable: false },

@@ -4,11 +4,20 @@ import type {
   MediaJobHandle,
   MediaJobSnapshot,
   MediaOutputRef,
+  MediaParamSpec,
   MediaProviderAdapter,
   MediaProviderDescriptor,
   MediaProviderHealth,
   NormalizedMediaRequest,
 } from '../contract'
+
+// Shared by the Replicate models that all take the same prompt inputs, so the
+// param list lives in one place instead of being repeated per model.
+const PROMPT_NEGATIVE_RESOLUTION_PARAMS: MediaParamSpec[] = [
+  { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+  { id: 'negative_prompt', type: 'text', label: 'Negative prompt' },
+  { id: 'resolution', type: 'string', label: 'Resolution' },
+]
 
 export class ReplicateError extends Error {
   constructor(
@@ -160,15 +169,7 @@ export function createReplicateAdapter(
             label: 'Flux Schnell (Replicate)',
             tasks: [MEDIA_TASK.TEXT_TO_IMAGE],
             params: {
-              [MEDIA_TASK.TEXT_TO_IMAGE]: [
-                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
-                {
-                  id: 'negative_prompt',
-                  type: 'text',
-                  label: 'Negative prompt',
-                },
-                { id: 'resolution', type: 'string', label: 'Resolution' },
-              ],
+              [MEDIA_TASK.TEXT_TO_IMAGE]: PROMPT_NEGATIVE_RESOLUTION_PARAMS,
             },
             outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' } },
             install: { installed: true, installable: false },
@@ -180,15 +181,7 @@ export function createReplicateAdapter(
             label: 'Hunyuan Video (Replicate)',
             tasks: [MEDIA_TASK.TEXT_TO_VIDEO],
             params: {
-              [MEDIA_TASK.TEXT_TO_VIDEO]: [
-                { id: 'prompt', type: 'text', label: 'Prompt', required: true },
-                {
-                  id: 'negative_prompt',
-                  type: 'text',
-                  label: 'Negative prompt',
-                },
-                { id: 'resolution', type: 'string', label: 'Resolution' },
-              ],
+              [MEDIA_TASK.TEXT_TO_VIDEO]: PROMPT_NEGATIVE_RESOLUTION_PARAMS,
             },
             outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: 'video' } },
             install: { installed: true, installable: false },
