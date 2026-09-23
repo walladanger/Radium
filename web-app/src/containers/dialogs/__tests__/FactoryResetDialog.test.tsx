@@ -1,12 +1,51 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 
 import { FactoryResetDialog } from '@/containers/dialogs/FactoryResetDialog'
 
 const toast = vi.hoisted(() => ({ error: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast }))
+
+vi.mock('@/i18n/react-i18next-compat', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogClose: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    ...props
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+    disabled?: boolean
+    [key: string]: any
+  }) => (
+    <button
+      data-testid="button"
+      onClick={onClick}
+      disabled={disabled}
+      {...props}
+    >
+      {children}
+    </button>
+  ),
+}))
 
 describe('FactoryResetDialog', () => {
   it('shows a loading state while reset is running', async () => {
@@ -30,12 +69,12 @@ describe('FactoryResetDialog', () => {
       await screen.findByRole('button', { name: 'settings:general.reset' })
     )
 
-    const loadingButton = screen.getByRole('button', {
+    const resetButton = screen.getByRole('button', {
       name: 'settings:general.reset',
     })
     expect(onReset).toHaveBeenCalledTimes(1)
-    expect(loadingButton).toBeDisabled()
-    expect(loadingButton).toHaveAttribute('aria-busy', 'true')
+    expect(resetButton).toBeDisabled()
+    expect(resetButton).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: 'settings:general.cancel' })).toBeDisabled()
     expect(screen.getByText('common:loading')).toBeInTheDocument()
     expect(screen.getByText('settings:general.factoryResetTitle')).toBeInTheDocument()
