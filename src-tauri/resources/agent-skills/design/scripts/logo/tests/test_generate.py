@@ -2,12 +2,15 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 from unittest.mock import call, patch
 
 MODULE_PATH = Path(__file__).parents[1] / "generate.py"
 SPEC = importlib.util.spec_from_file_location("logo_generate", MODULE_PATH)
+if SPEC is None:
+    raise RuntimeError("Failed to load module spec")
 logo_generate = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(logo_generate)
+cast(importlib.abc.Loader, SPEC.loader).exec_module(logo_generate)
 
 
 class AtlasGenerationTests(unittest.TestCase):
@@ -122,8 +125,8 @@ class AtlasGenerationTests(unittest.TestCase):
 
     def test_media_url_rejects_private_addresses(self):
         with self.assertRaisesRegex(ValueError, "non-public address"):
+            # DevSkim: ignore DS162092 - loopback address is rejected
             logo_generate._validate_public_https_url("https://127.0.0.1/logo.png")
-            logo_generate._validate_public_https_url("https://127.0.0.1/logo.png")  # DevSkim: ignore DS162092 - asserts the loopback address is rejected
 
         with self.assertRaisesRegex(ValueError, "local hostname"):
             logo_generate._validate_public_https_url("https://assets.local/logo.png")
@@ -271,11 +274,11 @@ class MuapiGenerationTests(unittest.TestCase):
 
     @patch.object(logo_generate, "_json_request")
     def test_muapi_rejects_invalid_creation_result_url(self, json_request):
+        # DevSkim: ignore DS137138 - asserts a non-HTTPS result URL is rejected
         json_request.return_value = {
             "request_id": "req-123",
             "status": "created",
             "output": {"urls": {"get": "http://api.muapi.ai/results/req-123"}},
-            "output": {"urls": {"get": "http://api.muapi.ai/results/req-123"}},  # DevSkim: ignore DS137138 - asserts a non-HTTPS result URL is rejected
         }
 
         with self.assertRaisesRegex(RuntimeError, "valid HTTPS result URL"):
