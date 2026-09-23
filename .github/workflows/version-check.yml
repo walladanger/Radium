@@ -1,0 +1,43 @@
+---
+name: Version Check
+
+# Every test build a user downloads must carry a new version number (tracker
+# D34). windows-test-build.yml enforces the same rule, but only after a
+# ~30-minute build, so a forgotten `make bump-version` surfaced late and kept
+# recurring. This runs check-build-version in seconds on every pull request
+# and push to main, so a missing bump is caught up front and main stays green.
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  version-check:
+    name: Version number is new
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # check-build-version compares against the test-build/v* tags, so it
+          # needs full history and every tag, not the default shallow clone.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: This change carries a new version number
+        run: |
+          git fetch --tags --force origin
+          version=$(node scripts/check-build-version.mjs --prefix test-build/v)
+          echo "Version $version is new."
