@@ -1,5 +1,5 @@
 # dep-npm-next
-status: OPEN
+status: PROPOSED_DISMISSAL
 kind: dependency
 source: dependabot
 severity: critical
@@ -42,5 +42,35 @@ patched_versions: 15.5.24, 15.5.21, 15.5.16, 15.5.15, 15.5.14, 15.5.13, 15.0.8, 
 
 ## Attempts
 <!-- appended by `triage.mjs end` from CURRENT.md - newest last -->
+
+### Attempt 1 | PROPOSE-DISMISS | PROPOSED_DISMISSAL | ITER 0002 | 2026-09-24T12:51:14Z
+#### 1. LOOK
+- `next` is a DIRECT runtime dep in `docs/package.json` (`"next": "^14.1.4"`). `docs/` is a STANDALONE project — NOT in the root yarn workspace (root workspaces = `core`, `web-app` only).
+- `docs/` is a Next.js + nextra 2.x docs website, managed by **bun** (`bun.lock`/`bun.lockb`). bun is NOT installed on this machine.
+- `next.config.mjs`: `output: 'export'` (STATIC export), `images.unoptimized: true` (image optimization DISABLED). `start` = `npx serve@latest out` (serves static `out/`). Netlify static hosting (`_headers`, `_redirects`).
+- All 22 alerts are server-side Next.js features: image-optimization RCE (GHSA-2xp9-vwfh-vxw4, GHSA-p293-qw3h-jr36), SSRF in server actions/rewrites/WebSocket, DoS in server actions/server components, middleware/proxy bypass, HTTP request smuggling, cache poisoning, App-Router CSP-nonce XSS.
+- Patched versions are all `>= 15.5.x`; every 14.x is vulnerable. The only fix is a major bump 14 -> 15.5.24+, which forces nextra 2->3, @next/third-parties 14->15, eslint-config-next 14->15, and likely react 18->19.
+
+#### 2. ANALYZE
+- Root cause: `next` 14.x has known server-side vulnerabilities (RCE, SSRF, DoS, XSS).
+- Reachability: NOT reachable in this deployment. The docs site is a static export (`output: 'export'`) with image optimization disabled (`images.unoptimized: true`), served as static files. Every flagged vulnerability is a server-side feature (image-optimization endpoint, server actions, middleware, rewrites, WebSocket, server cache) that does not run in a static export. The docs site is also a standalone project, not part of the shipped Radium app.
+- The only real fix is a full breaking migration (next 14->15 + nextra 2->3 + react 18->19) that I cannot verify here (bun not installed; no way to run the docs build). A DEP-BUMP-DIRECT would be an unverifiable, high-risk change.
+- Strategy: PROPOSE-DISMISS (reason `not_used`) — the vulnerable server-side Next.js features are not used in this static-export docs site.
+
+#### 3. FIX
+- Strategy: PROPOSE-DISMISS (reason: not_used). No code change — the vulnerable code paths are not used in this deployment.
+- No files changed. No lockfile touched.
+
+#### 4. VERIFY
+- No code change to verify. Justification is the deployment config, which I read directly:
+  - `next.config.mjs`: `output: 'export'` (static), `images.unoptimized: true` (image optimization off).
+  - `docs/package.json`: `start` = `npx serve@latest out` (static file server); `docs/` not in root workspace.
+- RESULT: PROPOSED_DISMISSAL
+
+#### 5. NEXT TIME
+- A human should confirm the docs site is deployed ONLY as a static export (Netlify static hosting) and never run as a `next start` server. If it is ever served as a Next.js server, bump `next` to >= 15.5.24 (with the accompanying nextra 3 / react 19 migration) instead of dismissing.
+- If the team prefers a fix over a dismissal, the concrete first step is: install bun, then in `docs/` bump `next` to `^15.5.24`, `nextra`/`nextra-theme-docs` to `^3`, `@next/third-parties` to `^15`, `eslint-config-next` to `^15`, `react`/`react-dom` to `^19`, then `bun install` and `bun run build` to verify.
+
+dismiss_reason: not_used
 
 ## Refresh log
