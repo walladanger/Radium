@@ -1,2 +1,3 @@
 
 ## SYNC 2026-09-24T12:26:25Z | 196 dependabot + 611 code-scanning open alerts
+- ITER 0001 | 2026-09-24T12:45:06Z | dep-npm-tar | attempt 1 | DEP-LOCK-REFRESH -> VERIFIED_LOCAL (status VERIFIED_LOCAL) | - Root cause: the lockfile resolved the transitive `tar@^7.4.3` (via cacache/node-gyp/pacote) to 7.4.3, which is inside the vulnerable 7.x range. The range `...
