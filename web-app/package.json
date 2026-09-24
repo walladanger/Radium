@@ -105,7 +105,7 @@
     "unified": "11.0.5",
     "unist-util-visit": "^5.0.0",
     "use-stick-to-bottom": "^1.1.6",
-    "uuid": "14.0.1",
+    "uuid": "14.0.2",
     "vaul": "^1.1.2",
     "vfile": "^6.0.3",
     "zod": "^4.1.13",
@@ -150,6 +150,6 @@
     "vite": "8.3.0",
     "vite-plugin-node-polyfills": "0.23.0",
     "vite-plugin-pwa": "1.0.3",
-    "vitest": "3.2.6"
+    "vitest": "5.0.1"
   }
 }
