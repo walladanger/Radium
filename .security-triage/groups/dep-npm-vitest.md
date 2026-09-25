@@ -1,5 +1,5 @@
 # dep-npm-vitest
-status: OPEN
+status: IN_PROGRESS
 kind: dependency
 source: dependabot
 severity: critical
