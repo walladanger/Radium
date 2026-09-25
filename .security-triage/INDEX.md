@@ -1,17 +1,18 @@
 # Security triage index (generated - do not edit)
 
-repo: walladanger/Radium | branch: main | alerts fetched: 2026-09-24T12:26:24Z | iterations run: 2
+repo: walladanger/Radium | branch: main | alerts fetched: 2026-09-24T12:26:24Z | iterations run: 3
 open alerts: 807 (dependabot 196, code scanning 611) in 286 groups
 
 | status | groups |
 |---|---|
-| OPEN | 284 |
+| IN_PROGRESS | 1 |
+| OPEN | 283 |
 | VERIFIED_LOCAL | 1 |
 | PROPOSED_DISMISSAL | 1 |
 
 | # | group | status | sev | open/total | attempts | last attempt |
 |---|---|---|---|---|---|---|
-| 1 | [dep-npm-vitest](groups/dep-npm-vitest.md) | OPEN | critical | 15/15 | 0 | - |
+| 1 | [dep-npm-vitest](groups/dep-npm-vitest.md) | IN_PROGRESS | critical | 15/15 | 0 | - |
 | 2 | [dep-npm-seroval](groups/dep-npm-seroval.md) | OPEN | critical | 6/6 | 0 | - |
 | 3 | [dep-npm-form-data](groups/dep-npm-form-data.md) | OPEN | critical | 2/2 | 0 | - |
 | 4 | [dep-npm-shell-quote](groups/dep-npm-shell-quote.md) | OPEN | critical | 2/2 | 0 | - |
