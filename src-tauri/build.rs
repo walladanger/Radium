@@ -62,6 +62,7 @@ fn embed_windows_test_manifest() {
 }
 
 #[cfg(all(windows, feature = "test-tauri"))]
+#[allow(dead_code)]
 fn build_tauri() {
     let attributes = tauri_build::Attributes::new()
         .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest());
@@ -69,11 +70,14 @@ fn build_tauri() {
 }
 
 #[cfg(not(all(windows, feature = "test-tauri")))]
+#[allow(dead_code)]
 fn build_tauri() {
     tauri_build::build();
 }
 
 fn main() {
+    println!("cargo::rustc-check-cfg=cfg(desktop)");
+    println!("cargo::rustc-check-cfg=cfg(mobile)");
     load_dotenv();
 
     #[cfg(all(windows, feature = "test-tauri"))]
