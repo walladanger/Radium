@@ -1,2 +1,29 @@
-- name: Run Gemini CLI
-  uses: google-github-actions/run-gemini-cli@v0.1.22
+# Runs the Gemini CLI (google-github-actions/run-gemini-cli) on demand.
+#
+# The action authenticates with either a Gemini API key or a Google Cloud
+# service account / workload identity provider. Supply the matching secret
+# (e.g. GEMINI_API_KEY) when dispatching; without one the run will fail.
+#
+# Triggered manually (workflow_dispatch) so it does not run on every push or
+# pull request and block the code-quality gate.
+
+name: Gemini CLI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-gemini-cli:
+    name: Run Gemini CLI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
+
+      - name: Run Gemini CLI
+        uses: google-github-actions/run-gemini-cli@v0.1.22
