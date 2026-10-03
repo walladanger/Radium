@@ -193,6 +193,33 @@ dependency. The authoritative validator at runtime is the Rust host, Phase 2.
 **Done when:** a panel folder dropped into the panels directory is listed,
 served and rendered, and every hostile path case is refused with a log line.
 
+**Status: done (2026-10-03),** minus the IPC commands, which moved to Phase 3.
+Step 16's commands are only reachable once the bridge and the install flow
+exist, and `panels_request` *is* the bridge, so splitting them across two
+phases would have meant wiring app state twice. The core is root-agnostic —
+`PanelRegistry::load(root)` takes a path — so Phase 3 wires it to
+`app_data_dir()/panels` without touching any of this.
+
+Shipped `src-tauri/src/core/panels/`: `manifest.rs` (the runtime authority,
+collecting every validation failure rather than stopping at the first so an
+author sees all three mistakes at once), `registry.rs` (one folder per panel,
+broken ones reported rather than hidden), `resolve.rs` (the only place a
+panel's files are read, so the only place path escapes have to be right),
+`protocol.rs` (the `panel://` scheme and `PANEL_CSP`), and `mod.rs` wiring it
+to the app. Registered in `lib.rs` beside the `artifact` scheme, with `panel:`
+and `http://panel.localhost` added to the main window's `frame-src` and
+`child-src`.
+
+Fourteen tests, weighted towards the security boundary: `..` refused outright
+rather than clamped, a symlink out of the folder refused by containment, a
+symlinked `panel.json` marking the panel broken instead of being followed,
+unknown panels and refused paths both answering without saying which so a
+probe learns nothing, and the CSP asserted to carry `connect-src 'none'` and
+*not* `unsafe-eval`. The manifest cases run against the same fixtures as
+`tests/panel-contract.test.mjs`, with a count assertion on the fixture
+directory, so the Rust validator and the JSON schema cannot drift apart
+without one of the two suites failing.
+
 ## Phase 3 — The bridge and the permission model
 
 The decision that is expensive to reverse. Build it once, here.

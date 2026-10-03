@@ -60,6 +60,10 @@ pub fn run() {
 
     let mut app_builder = builder
         .register_uri_scheme_protocol("artifact", core::artifact::handle_artifact_request)
+        // Custom panels: third-party folders rendered in a sandboxed iframe.
+        // Same mechanism as `artifact` above, opposite policy — the response
+        // CSP forbids the network entirely. See core::panels.
+        .register_uri_scheme_protocol("panel", core::panels::handle_panel_request)
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
