@@ -446,6 +446,54 @@ case for each so the dash is not simply what it always prints.
 34. Run the repository's focused frontend checks while iterating, then
     `make verify` for the final branch state.
 
+**Status: done (2026-10-03).**
+
+`tests/panel-sandbox.test.mjs` holds the guard, in `test-hardening-contracts`
+beside `tests/panel-contract.test.mjs`. Nine assertions over the three
+properties step 32 names, and the guard was checked by *breaking* each one
+rather than by reading it: adding `allow-same-origin` to the iframe, widening
+`connect-src` to `https:`, and adding `storage.get` to `ALWAYS_ALLOWED` each
+turn it red (four failures across the three edits), and all nine pass again
+once reverted. A guard nobody has seen fail is a guard that proves nothing.
+
+What it pins, beyond the three headline properties:
+
+- the sandbox token list is `allow-scripts` **and nothing else** — not merely
+  the absence of `allow-same-origin`, because `allow-popups` and
+  `allow-top-navigation` would let a panel leave its tile;
+- `allow-same-origin` appears nowhere in the panel layer at all, comments
+  included, on either side of the bridge;
+- `script-src` and `style-src` admit no remote or `data:` code, so "no
+  network" cannot be defeated by loading a script instead of fetching;
+- the frame invokes exactly one command, `panels_request` — asserted as set
+  equality, so a second command added later fails rather than passing
+  unnoticed;
+- `ALWAYS_ALLOWED` is exactly those four lifecycle methods, with the reason
+  spelled out in the failure message;
+- the app CSP admits `panel:` as a frame but **not** to `connect-src` or
+  `script-src`, so the host page cannot read a panel's files itself;
+- the scheme is registered once, by `core::panels::handle_panel_request`.
+
+Step 33 is `docs/panels/README.md` plus `examples/panels/mcp-tool-browser/`.
+The CDC README was not portable as written: its permission table is CDC's
+surface (`usage.read`, `logs.read`, `chat.send`, `plugins.*`), none of which
+exists in contract v1, and shipping it would have told authors to declare
+permissions Radium refuses on install. So the docs describe the contract that
+is actually frozen, and the example is a new panel that exercises it —
+`panel.tools()`, `panel.callTool()`, `panel.get`/`set`, `onTheme` and
+`ready()`, with `permission_denied` handled as the actionable error it is.
+
+Both are held to the schema by two new tests in `tests/panel-contract.test.mjs`:
+
+- the example validates against the frozen schema, its `id` equals its folder
+  name, and every SDK call it makes is covered by a permission it declares;
+- the permission table in the docs and the core permissions in
+  `panel.schema.json` must be *equal*, not merely overlapping. Documenting a
+  permission the host would reject is the worse of the two failures, so the
+  check runs in both directions. First written as "is each permission
+  mentioned somewhere", which passed while the table was mutated — the
+  tightened version fails on an added row and on a renamed one alike.
+
 ## Phase 7 — Optional, later: bring CDC onto the frozen contract
 
 35. Retrofit CDC's host to contract v1 — mostly the scheme rename and schema

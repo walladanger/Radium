@@ -151,6 +151,79 @@ test('the conformance panel satisfies the schema', () => {
   }
 })
 
+test('the example panel shipped for authors satisfies the schema', () => {
+  // The example is what people copy. If it drifts out of the contract, every
+  // panel written from it starts broken, so it is validated like a fixture.
+  const dir = path.join(repoRoot, 'examples/panels/mcp-tool-browser')
+  const manifest = JSON.parse(read(path.join(dir, 'panel.json')))
+  assert.deepEqual(validate(manifest), [])
+  assert.equal(manifest.id, 'mcp-tool-browser', 'the id must equal the folder name')
+
+  const page = read(path.join(dir, manifest.entry))
+  // It has to actually demonstrate the SDK, not merely load it.
+  for (const probe of ['/panel-sdk.js', '/panel-theme.css', 'panel.ready()', 'panel.onTheme(']) {
+    assert.ok(page.includes(probe), `the example panel must still show ${probe}`)
+  }
+  // And everything it calls must be covered by what it declares.
+  const declared = new Set(manifest.permissions)
+  const needs = [
+    ['panel.tools()', 'mcp.read'],
+    ['panel.callTool(', 'mcp.call'],
+    ['panel.get(', 'storage'],
+    ['panel.set(', 'storage'],
+  ]
+  for (const [callSite, permission] of needs) {
+    if (!page.includes(callSite)) continue
+    assert.ok(
+      declared.has(permission),
+      `the example calls ${callSite} without declaring "${permission}"`
+    )
+  }
+  // A panel reaching MCP must name its servers; the example is the place an
+  // author first sees that.
+  assert.ok(
+    Array.isArray(manifest.mcpServers) && manifest.mcpServers.length > 0,
+    'the example asks for MCP permissions but names no server'
+  )
+})
+
+test('the author docs list exactly the core permissions the schema allows', () => {
+  // A permission table that has drifted from the schema is worse than none:
+  // an author follows it and their panel is refused on install. So this is an
+  // equality check in both directions, not a "mentioned somewhere" check —
+  // a documented permission the host would reject is the worse of the two.
+  const docs = read(path.join(repoRoot, 'docs/panels/README.md'))
+  const core = schema.properties.permissions.items.anyOf
+    .flatMap((branch) => branch.enum ?? [])
+    .sort()
+  assert.ok(core.length > 0, 'the schema no longer enumerates core permissions')
+
+  const table = docs.match(/\n\| Permission \| Grants \|\n[\s\S]*?\n\n/)
+  assert.ok(table, 'docs/panels/README.md no longer has a permission table')
+  const documented = [...table[0].matchAll(/^\| `([^`]+)` \|/gm)]
+    .map((row) => row[1])
+    .sort()
+  assert.deepEqual(
+    documented,
+    core,
+    'the permission table in docs/panels/README.md and the core permissions ' +
+      'in panel.schema.json have diverged'
+  )
+
+  // The frozen always-allowed methods are documented as needing nothing, so
+  // nobody declares a permission for them.
+  for (const method of ['host.info', 'panel.theme', 'panel.ready', 'panel.resize']) {
+    assert.ok(
+      docs.includes(method),
+      `docs/panels/README.md does not mention ${method}`
+    )
+    assert.ok(
+      !documented.includes(method),
+      `docs/panels/README.md lists ${method} as a permission; it needs none`
+    )
+  }
+})
+
 test('every invalid manifest is rejected, and for its own reason', () => {
   const expected = {
     'missing-contract.json': 'missing required property "contract"',
