@@ -1,9 +1,10 @@
 # Runs the Gemini CLI (google-github-actions/run-gemini-cli) on demand.
 #
-# The action authenticates with either a Gemini API key or a Google Cloud
-# service account / workload identity provider. Set the matching repository
-# secret (e.g. GEMINI_API_KEY) before dispatching; without one the run will
-# fail.
+# Authenticates with a Gemini API key: set the repository secret
+# GEMINI_API_KEY before dispatching, or the run fails. The action also supports
+# a Google Cloud service account / workload identity provider, which this
+# workflow does not wire up; that needs a google-github-actions/auth step and
+# `permissions: id-token: write`.
 #
 # Triggered manually (workflow_dispatch) so it does not run on every push or
 # pull request and block the code-quality gate.
@@ -36,8 +37,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
 
       - name: Run Gemini CLI
-        uses: google-github-actions/run-gemini-cli@v0.1.22
+        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          prompt: ${{ github.event.inputs.prompt }}
-          gemini_model: ${{ github.event.inputs.model }}
+          prompt: ${{ inputs.prompt }}
+          gemini_model: ${{ inputs.model }}
