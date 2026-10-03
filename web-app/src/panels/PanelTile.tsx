@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { IconX } from '@tabler/icons-react'
 
 /**
  * One panel's frame on the board: a header strip and the panel's own content
@@ -17,9 +18,11 @@ import type { ReactNode } from 'react'
 export function PanelTile({
   title,
   children,
+  onClose,
 }: {
   title: string
   children: ReactNode
+  onClose?: () => void
 }) {
   return (
     <div className="flex size-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
@@ -31,6 +34,16 @@ export function PanelTile({
         <span className="min-w-0 flex-1 truncate text-xs font-semibold">
           {title}
         </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={`Close ${title}`}
+            className="cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <IconX className="size-3.5" />
+          </button>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
     </div>

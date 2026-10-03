@@ -21,9 +21,11 @@ export type PanelDescriptor = {
   /** Shown in the tile header and the add-panel list. */
   name: string
   kind: PanelKind
-  /**
-   * Rendered for `kind: 'builtin'`. Custom panels have no component — the
-   * iframe host takes their manifest instead (Phase 4).
-   */
+  /** Rendered for `kind: 'builtin'` — trusted code, in-process. */
   component?: ComponentType
+  /**
+   * Present for `kind: 'custom'`. The iframe host takes this instead of a
+   * component: a custom panel is someone else's code and never runs here.
+   */
+  manifest?: import('./registry').PanelManifest
 }

@@ -332,6 +332,35 @@ paths, with a test that asserts the panel survives.
 **Done when:** CDC's example panel, unmodified apart from the contract rename,
 installs and runs inside Radium.
 
+**Status: done (2026-10-03).** `web-app/src/panels/` now holds `registry.ts`
+(built-ins discovered with `import.meta.glob`, merged with what `panels_list`
+reports, one source of truth), `PanelFrame.tsx` (the sandboxed iframe host),
+`PanelBoard.tsx`, `useBoard.ts`, a local `Chip`, and the first discovered
+built-in at `builtin/panels.tsx` — the panel manager, as a panel, which is
+also where a user can read the permissions a custom panel asked for after the
+fact. `WorkspaceShell` gained the Add panel, Install and Reset controls Phase 0
+deliberately left out until there was something behind them.
+
+Two corrections to this plan's own instructions:
+
+- **Step 26 said to persist the board through the app's settings store rather
+  than localStorage.** That was carried over from CDC, whose board lived in
+  app settings. This repo keeps per-device UI state in zustand with `persist`
+  — the resizable pane sizes beside it already go to localStorage via
+  `useDefaultLayout` — so the board follows the convention already here.
+- **There is no shared `Badge` component** in this repo, which the first draft
+  assumed from CDC. Panels carry a small local `Chip` instead of adding one to
+  the design system for three call sites.
+
+`PanelFrame` trusts only its own frame's `contentWindow`: without that check
+any other frame on the page could speak for the panel. Nothing in it decides
+what a panel may do — it relays to `panels_request` and the bridge decides.
+
+Running the whole `verify-fast` chain rather than just lint, typecheck and the
+panel tests caught `web-app/src/lib/__tests__/ipc-contract.test.ts`, which
+pins exactly which IPC handlers are desktop-only. The five panel commands are,
+so they are now named there with the reason.
+
 ## Phase 5 — Radium's own built-in panels
 
 Rebuilt natively on Radium's data. CDC's built-ins are not ported — its
