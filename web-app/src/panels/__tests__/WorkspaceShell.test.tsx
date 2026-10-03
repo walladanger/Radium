@@ -23,11 +23,17 @@ vi.mock('@tauri-apps/api/core', () => ({
   }),
 }))
 
-vi.mock('@/hooks/useServiceHub', () => ({
-  useServiceHub: () => ({
+// The eager built-in glob pulls every panel module into this test, and those
+// modules reach the app's stores, which import both accessors. The mock has to
+// carry both or the import itself fails.
+vi.mock('@/hooks/useServiceHub', () => {
+  const hub = () => ({
     dialog: () => ({ open: async () => picked.path }),
-  }),
-}))
+    mcp: () => ({ getMCPServerStatuses: async () => [] }),
+    events: () => ({ listen: async () => () => {} }),
+  })
+  return { useServiceHub: hub, getServiceHub: hub }
+})
 
 // The real PanelGroup measures a DOM jsdom does not have; keep the structure
 // and let the tiles render.
@@ -47,7 +53,11 @@ beforeEach(() => {
   invoked.calls.length = 0
   listing.value = { installed: [], broken: [] }
   picked.path = null
-  useBoard.setState({ open: [...DEFAULT_OPEN], locked: false })
+  // An explicit single panel, not DEFAULT_OPEN: the shell tests count tiles
+  // and assert on the Panels overview's own text, and the default board is a
+  // product decision that is free to change without rewriting them. The
+  // default itself is asserted in `the board store` below.
+  useBoard.setState({ open: ['builtin:panels'], locked: false })
 })
 
 describe('the registry', () => {
@@ -115,6 +125,17 @@ describe('the board store', () => {
     useBoard.getState().reset()
     expect(useBoard.getState().open).toEqual(DEFAULT_OPEN)
     expect(useBoard.getState().locked).toBe(false)
+  })
+
+  it('opens a default board that says something on a fresh install', () => {
+    // Phase 5's done-when. A single panel whose only content is "no custom
+    // panels installed" is not a useful first screen, so the default has to
+    // be panels that read Radium's own data, and they have to exist.
+    const known = new Set(builtinPanels().map((entry) => entry.id))
+    expect(DEFAULT_OPEN.length).toBeGreaterThan(1)
+    for (const id of DEFAULT_OPEN) {
+      expect(known.has(id)).toBe(true)
+    }
   })
 })
 

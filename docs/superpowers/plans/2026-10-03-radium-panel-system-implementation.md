@@ -379,6 +379,61 @@ benchmark harness, `nvidia-smi` metrics and log record shape are its own.
 **Done when:** the default board is useful on a fresh install with no custom
 panels present.
 
+**Status: done (2026-10-03).** Six built-ins under `web-app/src/panels/builtin/`,
+each one file plus its descriptor, discovered by the registry without being
+listed anywhere: `hardware.tsx`, `mcp.tsx`, `models.tsx`, `api-server.tsx`,
+`downloads.tsx` and `skills.tsx`. `DEFAULT_OPEN` now opens Hardware, Models
+and Skills — the three that say something on a machine with no models pulled,
+no servers configured and no custom panels installed. The panel manager moved
+off the default board to the Add panel menu, because a first screen whose only
+content is "no custom panels installed" is not the done-when.
+
+Step 31's rule — *a null measurement must never read as a real one* — turned
+out to be the whole design problem, so it is enforced in one place rather than
+per panel. `Readout` in `web-app/src/panels/Readout.tsx` prints a dash for
+`null`, `undefined` and `''`, and prints `0` for a real zero; every built-in
+routes its numbers through it. The cases that would otherwise have lied:
+
+- **CPU and memory usage.** `useHardware` persists its last enumeration, so
+  the figures on screen just after launch can be from a previous run. Static
+  facts (core count, VRAM) are safe to draw from that copy; live usage is not,
+  and `0%` would assert an idle machine. Usage is gated on a sample having
+  arrived this session, recognised by `systemUsage.total_memory` being
+  non-zero, which no real machine reports.
+- **MCP tool counts.** The tool snapshot belongs to the chat path
+  (`useTools`), so the panel can open before it exists. "0 tools" on a
+  connected server is a different claim from "we have not asked", so the count
+  is a dash until any tool is known.
+- **Token speed.** `undefined` until a generation measures one, and cleared
+  between turns. `0 tok/s` would read as a stalled model.
+- **Download speed and ETA.** Taken from the shared `formatSpeed` /
+  `formatEta` helpers, which already return `null` when there is nothing
+  honest to say; a paused transfer drops both rather than freezing the last
+  sample.
+- **The engine build.** Read off the provider's recorded `version_backend`
+  rather than probed, and a dash when the provider has not recorded one.
+- **Skill run counts.** A skill with no record shows no chip at all rather
+  than "0 runs": the message store holds only the threads currently loaded, so
+  it cannot support that claim. The count is labelled "this session" for the
+  same reason.
+
+"Which skills fired" needed nothing new, as step 30 predicted, but not from
+where the plan assumed: a selected skill already rides on user-message
+metadata (`agent_skill_name`) so that send, regenerate, edit and restart
+replay it uniformly, which makes the message store the existing record. The
+panel counts those with the same `readAgentSkillName` the chat path uses, and
+adds no tracking of its own.
+
+Two deliberate restrictions. The Local API server panel is read-only: starting
+the server loads a model, picks a provider and raises its own toasts
+(`useLocalApiServerControl`), which is not something a dashboard tile should do
+by accident. And it reports the API key as set or not set, never printing it —
+a panel is a thing people screen-share.
+
+34 tests in `web-app/src/panels/__tests__/builtins.test.tsx`, three per panel
+minimum: loading, empty, and unavailable-reads-as-a-dash, plus a populated
+case for each so the dash is not simply what it always prints.
+
 ## Phase 6 — Guardrails and verification
 
 32. A hardening test in the style of `tests/no-auto-update.test.mjs` locking

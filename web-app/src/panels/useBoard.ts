@@ -22,10 +22,16 @@ export type BoardState = {
 }
 
 /**
- * What a fresh board shows. Deliberately a real panel rather than nothing: an
- * empty board gives a new user no idea what this screen is for.
+ * What a fresh board shows.
+ *
+ * Deliberately real panels rather than nothing: an empty board gives a new
+ * user no idea what this screen is for. These three are the ones that say
+ * something on a fresh install with no models pulled, no servers configured
+ * and no custom panels present — the machine it is running on, what is
+ * loaded, and the skills it could use. The panel manager is reachable from
+ * the Add panel menu and does not need to take a slot on first run.
  */
-export const DEFAULT_OPEN = ['builtin:panels']
+export const DEFAULT_OPEN = ['builtin:hardware', 'builtin:models', 'builtin:skills']
 
 export const useBoard = create<BoardState>()(
   persist(
