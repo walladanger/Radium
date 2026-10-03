@@ -548,7 +548,16 @@ YAML folded scalars, so the regex missed every multi-line one. The number is 91,
 from the parser itself.
 
 Two `skill_run_script` process-tree tests fail in this container and are
-unrelated to any of this; they are unverified against a CI runner.
+unrelated to any of this. They were unverifiable from here, so they were
+reported as unverified rather than as passing — and CI then settled it: the
+same suite is green on a runner, which confirms those two failures are the
+sandbox's missing process-group reaping and not a real defect.
+
+**Confirmed on CI (2026-10-03, `15e7e910`).** `Repository verification` and
+`run-lint` are both green, having been red on `main` and on this branch
+respectively, and every other check passes — all thirteen super-linter
+validators, clippy, CodeQL, DevSkim, the six CodeQL analyses, and the unsigned
+Windows installer build. `mergeable_state: clean`.
 
 ## Phase 7 — Optional, later: bring CDC onto the frozen contract
 
