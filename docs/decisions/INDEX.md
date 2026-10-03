@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-245 records, 2026-05-19 → 2026-09-12.
+246 records, 2026-05-19 → 2026-10-03.
 
 <!-- Counted from the files on disk after the v2.0.35 upstream merge, not arithmetic on the two sides of the conflict. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -265,8 +265,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-05-22** — [Pin static WiX `upgradeCode` to legacy Jan UUID for in-place MSI upgrades](2026-05-22-pin-static-wix-upgradecode-to-legacy-jan-uuid-for-in-place-msi.md)
 - **2026-05-19** — [Product identity is "Radium Chat"; new code stops carrying Jan branding](2026-05-19-product-identity-is-atomic-chat-new-code-stops-carrying-jan.md)
 
-## UI / UX (33)
+## UI / UX (34)
 
+- **2026-10-03** — [Port the panel mechanism from ClaudeDesktopClient, not its built-in panels; freeze the manifest + SDK as a shared contract](2026-10-03-port-the-panel-mechanism-from-claudedesktopclient-not-its.md)
 - **2026-09-09** — [Resolve the reply model on send instead of asking (ATO-461)](2026-09-09-resolve-the-reply-model-on-send-instead-of-asking.md)
 - **2026-09-07** — [Answer a blocked send with a widget, not a red line (ATO-453)](2026-09-07-answer-a-blocked-send-with-a-widget-not-a-red-line.md)
 - **2026-09-04** — [Do not estimate ChatGPT subscription token speed](2026-09-04-do-not-estimate-chatgpt-subscription-token-speed.md)

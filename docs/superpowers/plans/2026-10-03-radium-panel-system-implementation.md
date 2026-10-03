@@ -1,0 +1,267 @@
+# Radium Panel System — Implementation Plan
+
+Carries the panel mechanism from `walladanger/ClaudeDesktopClient` (CDC) into
+Radium, behind a frozen contract, on a frameless shell that already exists.
+
+Decision record:
+`docs/decisions/2026-10-03-port-the-panel-mechanism-from-claudedesktopclient-not-its.md`
+Shell design already approved:
+`docs/superpowers/specs/2026-08-24-atomic-media-workspace-and-frameless-window-design.md`
+
+## What is being built
+
+A **panel** is a folder containing `panel.json` and an entry HTML file. It
+renders inside a dockable board in Radium, in an iframe on its own `panel://`
+origin with `sandbox="allow-scripts"`, and reaches the host only through a
+message bridge that authorises every call against the permissions its manifest
+declares. Panels can be installed from a folder at runtime, by the user, and
+written by third parties.
+
+Radium's own panels use the same board but render as native React — they are
+trusted, in-process, and do not go through the iframe.
+
+## Ground truth before starting
+
+Verified in-tree on 2026-10-03, so no step below needs to rediscover it.
+
+| Thing | Where it already is |
+|---|---|
+| Sandboxed-iframe-over-custom-scheme precedent | `src-tauri/src/lib.rs:62`, `src-tauri/src/core/artifact.rs` (62 lines) |
+| Path-safety for user folders (symlink + escape refusal) | `src-tauri/src/core/agent/skills/registry.rs` |
+| YAML/JSON manifest validation discipline | `src-tauri/src/core/agent/skills/manifest.rs` |
+| Frameless window | `tauri.windows.conf.json` (`decorations: false`), macOS/Linux overlay title bars with `trafficLightPosition` |
+| Window min / max / close | `web-app/src/components/WindowControls.tsx` (88 lines) |
+| Drag region, and the `mousedown` suppression pattern | `web-app/src/containers/HeaderPage.tsx` |
+| Split-pane layout library, already a dependency | `react-resizable-panels` 3.0.5, used by `web-app/src/containers/AgentWorkspaceLayout.tsx` |
+| MCP client (4 transports + OAuth) | `rmcp` 0.8.5, `src-tauri/src/core/mcp/` |
+| CSP, including the existing `artifact:` entries | `src-tauri/tauri.conf.json` → `app.security.csp` |
+
+CDC sources to port from: `electron/panels.js` (198 lines, validation +
+install/remove + path resolution), `electron/panel-bridge.js` (134, the
+authorising choke point), `public/panel-sdk.js` (84, the panel-facing SDK),
+`src/workspace/PanelFrame.jsx` (85, iframe host),
+`src/workspace/Workspace.jsx` (246, the board), `examples/panels/README.md`
+(the author-facing docs), `examples/panels/usage-sparkline/` (a working
+example panel).
+
+## Phase 0 — The container that holds panels
+
+The frameless shell exists; what is missing is chrome to hold a board. This
+phase ships that container with a single placeholder panel inside it, and
+nothing else.
+
+1. Add the route. `web-app/src/constants/routes.ts` gets
+   `workspace: { index: '/workspace/' }`; create
+   `web-app/src/routes/workspace/index.tsx`. Keep the route file thin — it
+   mounts the shell and nothing more.
+2. Build `web-app/src/panels/WorkspaceShell.tsx`: a top rail, then a board
+   region below it (`min-h-0 flex-1 overflow-hidden`, so the board scrolls
+   rather than the page). The rail carries the board's own controls — add
+   panel, install, lock layout, reset layout — and the window controls.
+3. Platform-correct chrome in the rail, following what `HeaderPage.tsx`
+   already does: on macOS pad for the traffic lights and mark the rail
+   `data-tauri-drag-region`; on Windows and Linux render `WindowControls`.
+   Reuse `WindowControls.tsx` — do not write a second set of window actions.
+4. **Settle the drag collision now, not later.** Exactly one element is a
+   window drag region: the outer rail. Every panel header is a panel-drag
+   handle and must call `stopPropagation` on `mousedown`, because Tauri
+   excludes `button`, `input`, `a`, `select` and `textarea` from drag regions
+   automatically but not `div`. Getting this wrong means dragging a panel
+   moves the whole window. Write the test in step 6 before moving on.
+5. Add the workspace to the existing Chat / Agent / Media workspace switch,
+   preserving the current Chat and Agent behaviour and the Agent-disabled
+   rules unchanged.
+6. Tests: the rail renders platform-correct chrome; window controls still
+   minimize, maximize/restore and close; a `mousedown` on a panel header does
+   not reach the drag region; maximize/restore leaves the board laid out
+   correctly.
+
+**Done when:** `/workspace` opens a frameless board with one placeholder tile,
+the window still drags and resizes from the rail, and dragging the tile's
+header does not move the window.
+
+## Phase 1 — Freeze the contract at v1
+
+Before either host is written, so two dialects never exist.
+
+7. Write `docs/superpowers/specs/2026-10-03-panel-contract-v1.md`: the
+   manifest fields, the SDK surface, the message shapes in both directions,
+   the error codes, and the permission names with exactly what each grants.
+   Carry over CDC's error shape — a denied call names the permission the
+   manifest is missing.
+8. Add `panel.schema.json` beside it — a JSON Schema for `panel.json`, with a
+   required `contract` field pinning the version. Both hosts validate against
+   this file; neither hand-rolls a second idea of what a manifest is.
+9. Rename for neutrality while the contract is still soft: `cdc-panel://` →
+   `panel://`, and the SDK's host methods lose CDC-specific naming. Freeze
+   `panel-sdk.js` as the single file both apps serve, byte-identical.
+10. Build the conformance fixture: a panel that exercises every SDK call and
+    every error path, plus a handful of deliberately invalid manifests. Both
+    hosts must load the fixture and produce the same results. This is the
+    artefact that keeps the two apps honest.
+
+**Done when:** the schema, the spec, the SDK and the fixture are committed,
+and CDC's existing example panel validates against the schema unchanged apart
+from the renamed scheme.
+
+## Phase 2 — Rust host: scheme, registry, manifest
+
+11. Create `src-tauri/src/core/panels/`: `manifest.rs` (schema validation,
+    ported from CDC's `validate`), `registry.rs` (list / get / install /
+    remove, reporting broken panels rather than hiding them, as CDC does),
+    `resolve.rs` (request path → file on disk), `mod.rs`.
+12. Path safety is not reinvented: lift the discipline from
+    `skills/registry.rs` — refuse symlinks, canonicalise, and check
+    containment on both the panel directory and the resolved file. Port CDC's
+    explicit refusal of traversal rather than normalising it away: at a
+    security boundary a logged refusal beats a silent rewrite.
+13. Register the scheme in `src-tauri/src/lib.rs` next to the existing
+    `artifact` registration, modelled on `core/artifact.rs`. The difference
+    from artifact: bytes come from disk, and the CSP is the inverse.
+14. The panel CSP is restrictive — roughly
+    `default-src 'self' 'unsafe-inline' data: blob:; connect-src 'none'`.
+    **Do not copy `ARTIFACT_CSP`**, which is permissive deliberately and for a
+    different threat model.
+15. Add `panel:` alongside `artifact:` in `tauri.conf.json` → `frame-src` and
+    `child-src`. Serve the frozen `panel-sdk.js` and a `panel-theme.css` to
+    every panel from the scheme handler, exactly as CDC does.
+16. IPC commands: `panels_list`, `panels_install`, `panels_remove`,
+    `panels_open_folder`, `panels_request`. Add a `panel-window` capability
+    file only if panels ever get their own windows; the board does not need
+    one.
+17. Tests: valid and invalid manifests; symlinked entry refused; `..`
+    refused; a panel directory outside the root refused; the served response
+    carries the restrictive CSP.
+
+**Done when:** a panel folder dropped into the panels directory is listed,
+served and rendered, and every hostile path case is refused with a log line.
+
+## Phase 3 — The bridge and the permission model
+
+The decision that is expensive to reverse. Build it once, here.
+
+18. `src-tauri/src/core/panels/bridge.rs` — one `dispatch` function, the only
+    way a panel reaches anything. Unknown method: rejected, not forwarded.
+    Undeclared permission: rejected, naming what the manifest needs.
+19. The bespoke core stays small on purpose: `host.info`, `panel.ready`,
+    `panel.resize`, `panel.theme`, `storage.get`, `storage.set`. Per-panel
+    storage is namespaced by panel id, as CDC does.
+20. Everything else goes through MCP: `mcp.listTools` and `mcp.callTool`,
+    gated by an `mcp.call` permission that carries a per-panel allowlist of
+    server ids. This is why panel authors write against a spec they already
+    know, and why the method table stops growing.
+21. Surface the permission list to the user wherever panels are managed,
+    before install — CDC shows declared permissions in its panel manager and
+    that behaviour carries over.
+22. Tests: an undeclared method is denied with the right code and message; a
+    declared one dispatches; an `mcp.call` to a server outside the panel's
+    allowlist is denied; storage is isolated between two panel ids.
+
+**Done when:** the conformance fixture from Phase 1 passes against the Rust
+host, including every denial path.
+
+## Phase 4 — Frontend host and the board
+
+23. `web-app/src/panels/PanelFrame.tsx` — port of CDC's: iframe, `postMessage`
+    in both directions, `invoke('panels_request')`, theme pushed down on
+    change, a spinner until the panel reports ready with a timeout so a panel
+    that never reports does not spin forever, and a broken-panel state that
+    shows the manifest errors.
+24. `web-app/src/panels/registry.ts` — **one** registry. Built-in panels are
+    discovered with `import.meta.glob`; each is one file exporting its
+    component plus a descriptor (id, name, default size). Custom panels come
+    from `panels_list`. The two-registry desync that cost CDC two releases is
+    not reproduced.
+25. `web-app/src/panels/PanelBoard.tsx` — the board on
+    `react-resizable-panels`, already a dependency, giving keyboard-resizable
+    dividers for free. Free-form drag tiling is explicitly deferred; revisit
+    only if split panes prove insufficient in use.
+26. Persist the board — open panels, geometry, lock state — through Radium's
+    existing store, not `localStorage`. Persist only after first load, so the
+    empty initial state is never written over a real layout; pin both the
+    open list and the geometry in the default so reset lands somewhere a
+    human chose. Both are bugs CDC already found and fixed.
+27. Install flow: folder picker → `panels_install` → refresh → open the new
+    panel. Uninstall behind a confirmation that says the folder is deleted
+    from disk.
+28. Tests: the registry yields built-ins and custom panels from one source;
+    adding, closing, locking and resetting behave; a broken manifest renders
+    the broken state rather than throwing; layout survives a remount.
+
+**Done when:** CDC's example panel, unmodified apart from the contract rename,
+installs and runs inside Radium.
+
+## Phase 5 — Radium's own built-in panels
+
+Rebuilt natively on Radium's data. CDC's built-ins are not ported — its
+benchmark harness, `nvidia-smi` metrics and log record shape are its own.
+
+29. First wave, each one file plus a descriptor: hardware and resource
+    telemetry (from the existing system-monitor data), MCP servers and their
+    tools, model and engine status, local API server status, download queue.
+30. The skills panel — list skills, enable and disable them, show which ones
+    fired. This is the panel that justifies the layer, and it needs nothing
+    new from the backend.
+31. Tests per panel: a loading state, an empty state, and an unavailable
+    state that renders as a dash rather than a zero. A null measurement must
+    never read as a real one.
+
+**Done when:** the default board is useful on a fresh install with no custom
+panels present.
+
+## Phase 6 — Guardrails and verification
+
+32. A hardening test in the style of `tests/no-auto-update.test.mjs` locking
+    the properties that matter: panels are served with the restrictive CSP;
+    the iframe never gets `allow-same-origin`; `dispatch` is the only path to
+    host state. Re-widening any of them should fail the build until someone
+    deletes the guard deliberately and writes a record saying why.
+33. Author-facing docs: port `examples/panels/README.md` into Radium's docs,
+    pointing at the frozen schema, and ship the example panel in-tree.
+34. Run the repository's focused frontend checks while iterating, then
+    `make verify` for the final branch state.
+
+## Phase 7 — Optional, later: bring CDC onto the frozen contract
+
+35. Retrofit CDC's host to contract v1 — mostly the scheme rename and schema
+    validation against the shared file.
+36. Split CDC's 775-line `builtin.jsx` into one file per panel with a
+    discovered registry, which also removes its split-view/workspace desync.
+37. Then one panel folder genuinely runs in both apps, which was the point of
+    freezing the contract.
+
+## Out of scope
+
+Mirroring the scope boundaries of the existing workspace spec:
+
+- Panels do **not** become an `ExtensionTypeEnum` member, and the extension
+  loader is not touched. Extensions are trusted services; panels are
+  untrusted UI. Two systems, two trust classes.
+- No change to the local OpenAI-compatible API on port 1337, to
+  model-provider logic, or to the Chat / Agent state model beyond adding the
+  workspace entry.
+- No renaming of legacy `jan*` / `@janhq/*` identifiers.
+- No refactor of unrelated frontend code. Everything new lives in
+  `web-app/src/panels/` and `src-tauri/src/core/panels/`; the touchpoints in
+  upstream-owned files are one route entry, one workspace-switch entry, one
+  scheme registration, one CSP edit, and the IPC command registrations.
+  Because Radium tracks upstream, every line outside those subtrees is a line
+  re-merged forever.
+
+## Tracked separately
+
+Found while reviewing the two codebases, independently worth doing, not part
+of this work:
+
+- Radium's `SKILL.md` frontmatter parser is `deny_unknown_fields` over seven
+  keys (`src-tauri/src/core/agent/skills/manifest.rs`), so a stock Agent
+  Skill carrying `license`, `allowed-tools` or `metadata` fails to parse
+  rather than ignoring the key, and the extension fields use underscores
+  where the official ones use hyphens. Accept-and-ignore unknown keys, and
+  alias `allowed-tools`, and ecosystem skills drop straight in.
+- Radium has no MCP **server** role; CDC does, and it makes the app
+  delegatable from Claude Code, Cursor and Zed. Worth considering on its own
+  merits.
+- CDC's chat rail has a "Skills" button that is only a label over an MCP
+  plugin-tools toggle, unrelated to Agent Skills. Rename before anything is
+  shared between the apps.
