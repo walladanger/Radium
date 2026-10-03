@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft-07/schema#",
   "$id": "https://radium.local/panel-contract/v1/panel.schema.json",
   "title": "Panel manifest (contract v1)",
   "description": "The shape of a panel.json. Frozen at v1: both Radium and ClaudeDesktopClient validate against this same file, so a panel folder that satisfies it loads in either host. See docs/superpowers/specs/2026-10-03-panel-contract-v1.md.",

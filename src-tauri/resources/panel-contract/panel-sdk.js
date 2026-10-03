@@ -29,39 +29,34 @@ window.addEventListener('message', (event) => {
   const msg = event.data
   if (!msg || typeof msg !== 'object') return
 
-  switch (msg.type) {
-    case 'host:init':
-    case 'host:theme':
-      themeSubs.forEach((fn) => fn(msg.theme))
-      return
-    case 'host:response': {
-      const entry = pending.get(msg.id)
-      if (!entry) return
-      pending.delete(msg.id)
-      if (msg.ok) {
-        entry.resolve(msg.result)
-      } else {
-        // `code` distinguishes the cases a panel can act on —
-        // `permission_denied` means the manifest is missing something, which
-        // the author can fix; `unknown_method` means the host is older than
-        // the panel expects.
-        const error = new Error(msg.error)
-        error.code = msg.code
-        entry.reject(error)
-      }
-      return
-    }
-    default:
-      return
+  if (msg.type === 'host:init' || msg.type === 'host:theme') {
+    themeSubs.forEach((fn) => fn(msg.theme))
+    return
   }
+
+  if (msg.type !== 'host:response') return
+
+  const entry = pending.get(msg.id)
+  if (!entry) return
+  pending.delete(msg.id)
+  if (msg.ok) {
+    entry.resolve(msg.result)
+    return
+  }
+  // `code` distinguishes the cases a panel can act on — `permission_denied`
+  // means the manifest is missing something, which the author can fix;
+  // `unknown_method` means the host is older than the panel expects.
+  const error = new Error(msg.error)
+  error.code = msg.code
+  entry.reject(error)
 })
 
 /** Call a host method. Requires the matching permission in panel.json. */
-function call(method, params) {
+const call = (method, params) => {
   const id = `r${++seq}`
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject })
-    parent.postMessage(
+    window.parent.postMessage(
       { type: 'panel:request', contract: CONTRACT, id, method, params: params || {} },
       '*'
     )
@@ -84,10 +79,10 @@ export const panel = {
   call,
 
   /** Tell the host the panel has rendered, so it can drop the spinner. */
-  ready: () => parent.postMessage({ type: 'panel:ready', contract: CONTRACT }, '*'),
+  ready: () => window.parent.postMessage({ type: 'panel:ready', contract: CONTRACT }, '*'),
 
   /** Ask the host for a different size, in board grid units. */
-  resize: (w, h) => parent.postMessage({ type: 'panel:resize', contract: CONTRACT, w, h }, '*'),
+  resize: (w, h) => window.parent.postMessage({ type: 'panel:resize', contract: CONTRACT, w, h }, '*'),
 
   /**
    * React to light/dark changes. The host pushes the current theme on init,
@@ -113,7 +108,7 @@ export const panel = {
   tools: () => call('mcp.listTools'),
 
   /** Run one MCP tool. Needs "mcp.call". */
-  callTool: (name, args) => call('mcp.callTool', { name, args: args || {} }),
+  callTool: (name, args) => call('mcp.callTool', { name, args: args || {} })
 }
 
 export default panel
