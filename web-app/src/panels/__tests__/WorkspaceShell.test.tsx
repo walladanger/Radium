@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { WorkspaceShell } from '../WorkspaceShell'
 import { PanelTile } from '../PanelTile'
@@ -66,35 +66,47 @@ describe('WorkspaceShell', () => {
 })
 
 describe('PanelTile', () => {
+  // Stands in for a Tauri drag region: an ancestor that would move the OS
+  // window if a mousedown reached it. Asserting on what it renders, rather
+  // than on a spy, keeps the test about the behaviour that matters — the
+  // window must not move when you grab a panel by its header.
+  function DragRegionProbe({ children }: { children: ReactNode }) {
+    const [moved, setMoved] = useState(false)
+    return (
+      <div onMouseDown={() => setMoved(true)}>
+        {children}
+        <span data-testid="window">{moved ? 'window moved' : 'window still'}</span>
+      </div>
+    )
+  }
+
   it('stops mousedown on its header from reaching an ancestor drag region', () => {
-    const onMouseDown = vi.fn()
     render(
-      <div onMouseDown={onMouseDown}>
+      <DragRegionProbe>
         <PanelTile title="Logs">
           <span>body</span>
         </PanelTile>
-      </div>
+      </DragRegionProbe>
     )
 
     const header = document.querySelector('[data-panel-header]')
     expect(header).not.toBeNull()
     fireEvent.mouseDown(header as Element)
 
-    expect(onMouseDown).not.toHaveBeenCalled()
+    expect(screen.getByTestId('window').textContent).toBe('window still')
   })
 
   it('lets mousedown through from its body, which the panel owns', () => {
-    const onMouseDown = vi.fn()
     render(
-      <div onMouseDown={onMouseDown}>
+      <DragRegionProbe>
         <PanelTile title="Logs">
           <span>body</span>
         </PanelTile>
-      </div>
+      </DragRegionProbe>
     )
 
     fireEvent.mouseDown(screen.getByText('body'))
 
-    expect(onMouseDown).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('window').textContent).toBe('window moved')
   })
 })
