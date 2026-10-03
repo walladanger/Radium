@@ -69,6 +69,54 @@ struct RawSkillManifest {
     metadata: Option<serde_yaml::Value>,
     #[allow(dead_code)]
     compatibility: Option<serde_yaml::Value>,
+    // The rest of the keys the bundled skill set actually uses: 27 distinct
+    // ones across 407 skills. `deny_unknown_fields` stays — a test locks it,
+    // and it is what catches a typo in a hand-written skill — so every
+    // third-party key has to be named here or the parse aborts and
+    // `bundled_skills_follow_explicit_platform_metadata_policy` fails. None of
+    // these are surfaced in `SkillManifest`.
+    //
+    // `allowed-tools` is deliberately *not* aliased onto `requires_tools`: the
+    // published Agent Skills field means "tools this skill may use", while
+    // `requires_tools` means "tools that must be present for it to run", and
+    // conflating them would change which skills this app considers runnable.
+    #[allow(dead_code)]
+    #[serde(rename = "allowed-tools")]
+    allowed_tools: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    tags: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    when_to_use: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    tools: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    author: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    permissions: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    owner: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    service: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    reviewed: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    #[serde(rename = "argument-hint")]
+    argument_hint: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    #[serde(rename = "disable-model-invocation")]
+    disable_model_invocation: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    title: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    triggers: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    user_invocable: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    argument: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    origin: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    data_classification: Option<serde_yaml::Value>,
 }
 
 pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {

@@ -43,6 +43,17 @@ jobs:
           # "fix" by editing vendored code. Exclude the whole vendored tree; the
           # skills are reviewed on import and gated by cargo tests instead.
           FILTER_REGEX_EXCLUDE: "src-tauri/resources/agent-skills/"
+          # super-linter looks for the markdown config at
+          # `.github/linters/.markdown-lint.yml` by default
+          # (MARKDOWN_FILE_NAME in lib/linter.sh), so our
+          # `.markdownlint.json` was never read and it silently fell back to
+          # its own bundled TEMPLATES/.markdown-lint.yml. That template leaves
+          # MD025 and MD034 on, which every ADR here violates by design: the
+          # records carry YAML frontmatter with a `title:` *and* an `# H1`,
+          # which MD025 counts as two titles. So MARKDOWN went red whenever a
+          # record changed, while our deliberate rule choices sat dead on
+          # disk. Naming the file we actually have makes them effective.
+          MARKDOWN_CONFIG_FILE: .markdownlint.json
           # textlint's terminology preset cannot tell prose from identifiers or
           # from quoted document titles, so it rejects "id", "api" and "ids"
           # wherever they appear. Markdown style is covered by markdownlint
