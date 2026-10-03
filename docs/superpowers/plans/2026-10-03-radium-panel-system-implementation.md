@@ -494,6 +494,62 @@ Both are held to the schema by two new tests in `tests/panel-contract.test.mjs`:
   mentioned somewhere", which passed while the table was mutated — the
   tightened version fails on an added row and on a renamed one alike.
 
+### The two CI blockers that were not this plan's
+
+Step 34 is `make verify`, which was red on `main` before this branch started.
+Four of its five causes were fixed in Phase 0. The remaining two:
+
+**`run-lint` (JSCPD)** was this branch's: the two parallel
+`tauri::generate_handler!` lists in `src-tauri/src/lib.rs` are a clone, and
+adding the five panel commands to both lengthened it. The file is now excluded
+in `.github/linters/.jscpd.json`, with the reasoning recorded beside the other
+exclusions in the workflow: Tauri's proc macro needs each list spelled out
+literally, and splicing a shared list through a `macro_rules!` wrapper would
+hide the whole IPC surface from the two guards that read `lib.rs` textually
+(`ipc-contract.test.ts`, which pins which handlers are desktop-only, and
+`tests/capabilities.test.mjs`). Those guards are worth more than the clone
+report. jscpd over this branch's 54 changed files now reports zero clones, and
+the threshold stays at 0 everywhere else.
+
+**`Repository verification`** was `main`'s, from the NVIDIA skills catalogue
+imported in `d60f2408`. 91 of its 407 skills have a `description` that folds
+out past the 512-character cap, so this repository's parser refuses them; two
+tests in `seeding.rs` asserted the authoring limits across every bundled skill
+and died on the first one. The fix separates the two things now living in
+`resources/agent-skills`: a `reviewed_platform_policy()` naming the 25 skills
+this repository added and reviewed one at a time, and the mirrored catalogue,
+which its own README says must not be hand-edited.
+
+The authoring limits — description length, and a body that survives
+`LOADED_SKILL_BODY_MAX_CHARS` — are asserted against the reviewed set, because
+they are rules for skills *we* write. Against the mirror they leave only worse
+options: edit 91 vendored files that the next sync overwrites, or raise a cap
+that exists to keep descriptions out of every prompt.
+
+What the mirror breaks is pinned rather than hidden, by
+`mirrored_skills_the_parser_refuses_cannot_grow`:
+
+- no reviewed skill is ever among the refused — a hard assertion with no
+  ceiling, verified by temporarily naming a refused mirrored skill as reviewed
+  and watching it fire;
+- the refused count cannot grow past 91. A mirror update that brings more
+  broken skills fails here instead of shipping them quietly; the ceiling may
+  shrink freely, and the failure message prints the full set so a diagnosis
+  needs no second run.
+
+Those skills are not silently dropped at runtime either: the registry reports
+each as broken with its reason, which is why pinning the count is enough.
+
+Two counts were wrong on the way to this and are worth recording, because both
+came from measuring with the wrong tool. The refused set was first reported as
+90 from a glance at a test failure, and before that as 11 from a Python regex
+that only read single-line `description:` values — the catalogue writes them as
+YAML folded scalars, so the regex missed every multi-line one. The number is 91,
+from the parser itself.
+
+Two `skill_run_script` process-tree tests fail in this container and are
+unrelated to any of this; they are unverified against a CI runner.
+
 ## Phase 7 — Optional, later: bring CDC onto the frozen contract
 
 35. Retrofit CDC's host to contract v1 — mostly the scheme rename and schema
