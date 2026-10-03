@@ -379,6 +379,27 @@ describe('the Local API server panel', () => {
     expect(readout('Base URL')).toBe('http://127.0.0.1:1337/v1')
   })
 
+  it('dials 127.0.0.1 when the server is configured to listen on any address', () => {
+    // 0.0.0.0 is a listen-any address, not a dial address. Printing it as the
+    // base URL would hand someone an address that cannot be reached, which is
+    // what a hand-rolled `http://${host}:${port}` in this panel did before it
+    // went through the shared helper.
+    useAppState.setState({ serverStatus: 'running' })
+    useLocalApiServer.setState({ serverHost: '0.0.0.0', serverPort: 1337, apiPrefix: '/v1' })
+    render(<Panel />)
+
+    expect(readout('Base URL')).toBe('http://127.0.0.1:1337/v1')
+    // The configuration row still reports what was actually configured.
+    expect(readout('Host')).toBe('0.0.0.0')
+  })
+
+  it('repairs an API prefix that is missing its leading slash', () => {
+    useAppState.setState({ serverStatus: 'running' })
+    useLocalApiServer.setState({ serverHost: '127.0.0.1', serverPort: 1337, apiPrefix: 'v1' })
+    render(<Panel />)
+    expect(readout('Base URL')).toBe('http://127.0.0.1:1337/v1')
+  })
+
   it('reports the API key as set without ever printing it', () => {
     useLocalApiServer.setState({ apiKey: 'sk-do-not-leak-this' })
     const { container } = render(<Panel />)

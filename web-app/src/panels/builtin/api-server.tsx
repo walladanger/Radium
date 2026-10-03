@@ -1,5 +1,6 @@
 import { useAppState } from '@/hooks/useAppState'
 import { useLocalApiServer } from '@/hooks/useLocalApiServer'
+import { getLocalApiServerUrl } from '@/utils/localApiServerControl'
 import { Chip } from '../Chip'
 import { PanelBody, Readout, Section } from '../Readout'
 import type { BuiltinPanel } from '../registry'
@@ -21,7 +22,18 @@ function ApiServerPanel() {
     useLocalApiServer()
 
   const running = serverStatus === 'running'
-  const baseUrl = `http://${serverHost}:${serverPort}${apiPrefix}`
+  /**
+   * The same helper the model factory and the tray dial, rather than a second
+   * copy of the format. The copy was wrong: `0.0.0.0` is a listen-any address
+   * and not a dial address, so a server configured to accept connections from
+   * the network would have had this panel print an address that cannot be
+   * reached. The helper also repairs a prefix missing its leading slash.
+   *
+   * Read non-reactively, which is safe because the component already
+   * subscribes to the whole store above: any change to host, port or prefix
+   * re-renders and re-reads.
+   */
+  const baseUrl = getLocalApiServerUrl()
 
   return (
     <PanelBody>
