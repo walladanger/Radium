@@ -333,13 +333,28 @@ lint: install-and-build
 .PHONY: test test-all test-local test-web test-extensions test-rust stub-resources app-icons \
 	test-selective-v2032 rebaseline-selective-v2032 stage-windows-backends verify-windows-backends \
 	typecheck verify-fast verify clippy-rust test-quality test-hardening-contracts \
-	test-telemetry-props test-coverage-critical capture-capabilities capture-hw-profile \
+	test-telemetry-props test-coverage-critical install-extensions \
+	capture-capabilities capture-hw-profile \
 	sync-upstream-baseline gen-amd-rocm-pci-ids test-live test-live-cloud mutants
 
 test-web:
 	yarn test
 
-test-extensions:
+# `extensions/` is its own Yarn project, so the root `yarn install` never
+# reaches it. Any target that runs a command inside it has to install it first:
+# CI's verification job runs `make install-and-build`, which installs only the
+# root project, so without this prerequisite `yarn --cwd extensions ...` aborts
+# with "Couldn't find the node_modules state file". The install is idempotent,
+# so repeat runs are a no-op.
+# --no-immutable because `core/package.tgz` is rebuilt by `yarn build:core` and
+# its hash lands in extensions/yarn.lock. Yarn turns immutable installs on by
+# default whenever CI=true, so without it the install aborts saying the lockfile
+# would be modified — for a freshly repacked tarball that is expected churn, not
+# a dependency change, and the runner's copy is discarded afterwards.
+install-extensions:
+	yarn --cwd extensions install --no-immutable
+
+test-extensions: install-extensions
 	yarn --cwd extensions workspaces foreach -A \
 		--include '@janhq/llamacpp-extension' \
 		--include '@janhq/llamacpp-upstream-extension' \
@@ -484,7 +499,9 @@ test-hardening-contracts:
 		tests/window-controls.test.mjs \
 		tests/scrollbar-arrows.test.mjs \
 		tests/radium-logo.test.mjs \
-		tests/upstream-backend-resolver.test.mjs
+		tests/upstream-backend-resolver.test.mjs \
+		tests/panel-contract.test.mjs \
+		tests/panel-sandbox.test.mjs
 
 # Every build gets a new version number (tracker D34). VERSION=x.y.z sets one.
 bump-version:
@@ -498,7 +515,7 @@ upstream-gate:
 upstream-post-merge:
 	node scripts/upstream-gateway.mjs post-merge
 
-test-coverage-critical:
+test-coverage-critical: install-extensions
 	yarn test:coverage
 	yarn --cwd extensions workspaces foreach -A \
 		--include '@janhq/llamacpp-extension' \

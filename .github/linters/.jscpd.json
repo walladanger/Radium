@@ -7,6 +7,7 @@
     "**/dist/**",
     "**/target/**",
     "**/src-tauri/resources/agent-skills/**",
+    "**/src-tauri/src/lib.rs",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/__tests__/**",

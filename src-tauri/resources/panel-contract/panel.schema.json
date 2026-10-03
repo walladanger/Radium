@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://radium.local/panel-contract/v1/panel.schema.json",
+  "title": "Panel manifest (contract v1)",
+  "description": "The shape of a panel.json. Frozen at v1: both Radium and ClaudeDesktopClient validate against this same file, so a panel folder that satisfies it loads in either host. See docs/superpowers/specs/2026-10-03-panel-contract-v1.md.",
+  "type": "object",
+  "required": ["contract", "id", "name", "entry"],
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "description": "Contract version this manifest is written against. A host that does not know the version refuses the panel rather than guessing.",
+      "const": 1
+    },
+    "id": {
+      "description": "Stable identifier, and the folder name. Lowercase letters, digits and dashes; 3-40 characters; no leading or trailing dash.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$"
+    },
+    "name": {
+      "description": "Shown in the panel's header and in the add-panel list.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "entry": {
+      "description": "Entry HTML file, relative to the panel folder. Must not escape it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\:*?\"<>|]+\\.html$"
+    },
+    "description": { "type": "string", "maxLength": 300 },
+    "version": {
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$"
+    },
+    "author": { "type": "string", "maxLength": 100 },
+    "permissions": {
+      "description": "What the panel is asking for. Anything not listed is unreachable: the host's bridge rejects undeclared methods and names the missing permission. Core permissions are portable across hosts; a `vendor:name` permission is host-specific and a host that does not recognise it refuses to install the panel rather than silently dropping the capability.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 16,
+      "items": {
+        "anyOf": [
+          {
+            "enum": ["storage", "mcp.read", "mcp.call"]
+          },
+          {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9.-]*$"
+          }
+        ]
+      }
+    },
+    "mcpServers": {
+      "description": "Server ids this panel may reach through `mcp.read` / `mcp.call`. Required when either is requested; an empty list grants nothing. The host never widens this at runtime.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+    },
+    "defaultSize": {
+      "description": "Opening size in board grid units.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "w": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "h": { "type": "integer", "minimum": 1, "maximum": 24 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "Asking for MCP access without naming any server is a mistake, not a grant of everything.",
+      "if": {
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "contains": { "enum": ["mcp.read", "mcp.call"] }
+          }
+        },
+        "required": ["permissions"]
+      },
+      "then": { "required": ["mcpServers"] }
+    }
+  ]
+}

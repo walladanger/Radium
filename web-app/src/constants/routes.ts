@@ -48,6 +48,9 @@ export const route = {
   skills: {
     index: '/skills/',
   },
+  workspace: {
+    index: '/workspace/',
+  },
   localApiServerlogs: '/local-api-server/logs',
   systemMonitor: '/system-monitor',
   threadsDetail: '/threads/$threadId',
