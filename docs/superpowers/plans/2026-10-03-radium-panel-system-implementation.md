@@ -132,6 +132,30 @@ Before either host is written, so two dialects never exist.
 and CDC's existing example panel validates against the schema unchanged apart
 from the renamed scheme.
 
+**Status: done (2026-10-03),** with one correction to that done-when. CDC's
+example panel does *not* validate unchanged: it declares bare `usage.read`,
+and v1 reserves unprefixed names for the portable core, so host-specific
+capabilities are namespaced (`cdc:usage.read`). Discovered while writing the
+schema — the alternative was to admit every host's capability names into the
+shared vocabulary, which would make "portable" meaningless. Renaming CDC's
+manifests is Phase 7, not a change anyone owes today.
+
+Shipped: `src-tauri/resources/panel-contract/` holding `panel.schema.json`
+(the only definition of a manifest), `panel-sdk.js` (frozen, pinning
+`CONTRACT = 1`) and `panel-theme.css`; the spec at
+`docs/superpowers/specs/2026-10-03-panel-contract-v1.md`; the conformance
+panel at `tests/fixtures/panels/conformance/` exercising every call and both
+refusal paths; six deliberately broken manifests in
+`tests/fixtures/panels/invalid/`; and `tests/panel-contract.test.mjs`, wired
+into `make test-hardening-contracts` so the contract is enforced by
+`make verify` rather than merely written down. The permission list is pinned
+by assertion, so a capability cannot be added without a deliberate edit.
+
+The test carries its own validator for the schema subset in use rather than a
+schema engine: the repository's contract tests run on plain `node --test` with
+no dependencies, and the only engine present (ajv 6) is a transitive eslint
+dependency. The authoritative validator at runtime is the Rust host, Phase 2.
+
 ## Phase 2 — Rust host: scheme, registry, manifest
 
 11. Create `src-tauri/src/core/panels/`: `manifest.rs` (schema validation,

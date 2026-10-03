@@ -48,6 +48,10 @@ src-tauri/resources/
 src-tauri/resources/*
 !src-tauri/resources/agent-skills/
 !src-tauri/resources/agent-skills/**
+# The frozen panel contract: manifest schema, panel SDK and panel theme. Shipped
+# to panels at runtime, so it is source, not build output.
+!src-tauri/resources/panel-contract/
+!src-tauri/resources/panel-contract/**
 !src-tauri/resources/llamacpp-backend/
 src-tauri/resources/llamacpp-backend/*
 !src-tauri/resources/llamacpp-backend/.gitkeep

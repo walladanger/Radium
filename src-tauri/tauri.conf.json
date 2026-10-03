@@ -63,6 +63,7 @@
     "resources": [
       "resources/LICENSE",
       "resources/agent-skills/**/*",
+      "resources/panel-contract/**/*",
       "resources/llamacpp-backend/"
     ],
     "windows": {
