@@ -333,13 +333,23 @@ lint: install-and-build
 .PHONY: test test-all test-local test-web test-extensions test-rust stub-resources app-icons \
 	test-selective-v2032 rebaseline-selective-v2032 stage-windows-backends verify-windows-backends \
 	typecheck verify-fast verify clippy-rust test-quality test-hardening-contracts \
-	test-telemetry-props test-coverage-critical capture-capabilities capture-hw-profile \
+	test-telemetry-props test-coverage-critical install-extensions \
+	capture-capabilities capture-hw-profile \
 	sync-upstream-baseline gen-amd-rocm-pci-ids test-live test-live-cloud mutants
 
 test-web:
 	yarn test
 
-test-extensions:
+# `extensions/` is its own Yarn project, so the root `yarn install` never
+# reaches it. Any target that runs a command inside it has to install it first:
+# CI's verification job runs `make install-and-build`, which installs only the
+# root project, so without this prerequisite `yarn --cwd extensions ...` aborts
+# with "Couldn't find the node_modules state file". The install is idempotent,
+# so repeat runs are a no-op.
+install-extensions:
+	yarn --cwd extensions install
+
+test-extensions: install-extensions
 	yarn --cwd extensions workspaces foreach -A \
 		--include '@janhq/llamacpp-extension' \
 		--include '@janhq/llamacpp-upstream-extension' \
@@ -498,7 +508,7 @@ upstream-gate:
 upstream-post-merge:
 	node scripts/upstream-gateway.mjs post-merge
 
-test-coverage-critical:
+test-coverage-critical: install-extensions
 	yarn test:coverage
 	yarn --cwd extensions workspaces foreach -A \
 		--include '@janhq/llamacpp-extension' \
