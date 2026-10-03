@@ -346,8 +346,13 @@ test-web:
 # root project, so without this prerequisite `yarn --cwd extensions ...` aborts
 # with "Couldn't find the node_modules state file". The install is idempotent,
 # so repeat runs are a no-op.
+# --no-immutable because `core/package.tgz` is rebuilt by `yarn build:core` and
+# its hash lands in extensions/yarn.lock. Yarn turns immutable installs on by
+# default whenever CI=true, so without it the install aborts saying the lockfile
+# would be modified — for a freshly repacked tarball that is expected churn, not
+# a dependency change, and the runner's copy is discarded afterwards.
 install-extensions:
-	yarn --cwd extensions install
+	yarn --cwd extensions install --no-immutable
 
 test-extensions: install-extensions
 	yarn --cwd extensions workspaces foreach -A \

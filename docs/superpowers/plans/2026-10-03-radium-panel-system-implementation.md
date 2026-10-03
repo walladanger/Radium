@@ -32,6 +32,7 @@ below needs to rediscover it.
 | YAML/JSON manifest validation discipline | `src-tauri/src/core/agent/skills/manifest.rs` |
 | Frameless window | `tauri.windows.conf.json` (`decorations: false`), macOS/Linux overlay title bars with `trafficLightPosition` |
 | Window min / max / close | `web-app/src/components/WindowControls.tsx` (88 lines) |
+| The frameless shell itself — title strip, drag region, controls, top z-index | `web-app/src/components/WindowFrame.tsx`, gated by `hasCustomWindowChrome()` (Windows main window only), locked by `tests/window-controls.test.mjs` |
 | Drag region, and the `mousedown` suppression pattern | `web-app/src/containers/HeaderPage.tsx` |
 | Split-pane layout library, already a dependency | `react-resizable-panels` 3.0.5, used by `web-app/src/containers/AgentWorkspaceLayout.tsx` |
 | MCP client (4 transports + OAuth) | `rmcp` 0.8.5, `src-tauri/src/core/mcp/` |
@@ -64,15 +65,26 @@ nothing else.
    already does: on macOS pad for the traffic lights and mark the rail
    `data-tauri-drag-region`; on Windows and Linux render `WindowControls`.
    Reuse `WindowControls.tsx` — do not write a second set of window actions.
-4. **Settle the drag collision now, not later.** Exactly one element is a
-   window drag region: the outer rail. Every panel header is a panel-drag
-   handle and must call `stopPropagation` on `mousedown`, because Tauri
+4. **Settle the drag collision now, not later.** Verified during Phase 0:
+   the current architecture already keeps the two apart. `WindowFrame` holds
+   its drag strip in an absolutely-positioned sibling layer, not an ancestor
+   of page content, and routes put their content *beside* `HeaderPage` rather
+   than inside it — only `HeaderPage`'s own title row is a drag region, and
+   only on macOS. So the board adds no drag region of its own, and a test
+   asserts it never does. The `stopPropagation` guard still goes on every
+   panel header: it costs nothing and it is what stops a panel drag from
+   moving the whole OS window once these headers become drag handles in
+   Phase 4, or if a route ever nests a board under `HeaderPage`. Tauri
    excludes `button`, `input`, `a`, `select` and `textarea` from drag regions
-   automatically but not `div`. Getting this wrong means dragging a panel
-   moves the whole window. Write the test in step 6 before moving on.
-5. Add the workspace to the existing Chat / Agent / Media workspace switch,
-   preserving the current Chat and Agent behaviour and the Agent-disabled
-   rules unchanged.
+   automatically but not `div`, which is why `HeaderPage` suppresses the same
+   event.
+5. Add the workspace as a standalone row in `NavMain`, next to Media.
+   The Chat / Agent / Media switch this step originally named no longer
+   exists: upstream removed that pill at v2.0.35 along with the whole
+   mode-switch mechanism, and Media was moved to its own sidebar row with a
+   comment recording that a standalone row is what survives this merge and
+   the next one. The workspace follows that precedent rather than reviving a
+   mechanism upstream deleted.
 6. Tests: the rail renders platform-correct chrome; window controls still
    minimize, maximize/restore and close; a `mousedown` on a panel header does
    not reach the drag region; maximize/restore leaves the board laid out
@@ -81,6 +93,20 @@ nothing else.
 **Done when:** `/workspace` opens a frameless board with one placeholder tile,
 the window still drags and resizes from the rail, and dragging the tile's
 header does not move the window.
+
+**Status: done (2026-10-03).** Shipped `web-app/src/panels/` with
+`WorkspaceShell.tsx` (title row from `HeaderPage`, board region that scrolls
+inside itself, working lock), `PanelTile.tsx` (header strip with the
+`mousedown` guard), `types.ts` (the `PanelDescriptor` both panel kinds will
+share), the `/workspace/` route, and the `NavMain` row. Five tests in
+`web-app/src/panels/__tests__/WorkspaceShell.test.tsx` cover the board, the
+lock really disabling the handle, the absence of a drag region on the board,
+and the header guard swallowing `mousedown` while the tile body does not.
+
+Two things were deliberately left out rather than stubbed: Add panel and
+Install need the registry and the sandboxed host, so they arrive with
+Phases 2 and 4. A rail of buttons that do nothing would be worse than a rail
+without them.
 
 ## Phase 1 — Freeze the contract at v1
 
