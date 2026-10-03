@@ -15,6 +15,7 @@
 //! Contract: docs/superpowers/specs/2026-10-03-panel-contract-v1.md
 //! Plan: docs/superpowers/plans/2026-10-03-radium-panel-system-implementation.md
 
+pub mod bridge;
 pub mod manifest;
 pub mod protocol;
 pub mod registry;

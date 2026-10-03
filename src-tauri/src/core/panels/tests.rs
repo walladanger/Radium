@@ -6,7 +6,7 @@
 //! cases are the ones that matter most: every refusal here is an attempt to
 //! read something outside the panel's folder.
 
-use super::manifest::{parse_manifest, CORE_PERMISSIONS};
+use super::manifest::{parse_manifest, PanelManifest, ALWAYS_ALLOWED, CORE_PERMISSIONS};
 use super::protocol::{serve, split_request, PANEL_CSP};
 use super::registry::PanelRegistry;
 use super::resolve::{resolve_panel_file, RefusedPath};
@@ -287,4 +287,258 @@ fn the_csp_constant_is_what_the_spec_promises() {
     ] {
         assert!(PANEL_CSP.contains(directive), "missing {directive}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Bridge: the authorisation rules, driven against a stub host so the tests say
+// what was allowed and what reached the app, without needing an app handle.
+// ---------------------------------------------------------------------------
+
+use super::bridge::{dispatch, PanelHost, PanelTool};
+use async_trait::async_trait;
+use serde_json::{json, Value};
+use std::sync::Mutex;
+
+#[derive(Default)]
+struct StubHost {
+    tools: Vec<PanelTool>,
+    /// Every (server, tool) the bridge actually asked for, in order. If a
+    /// denial leaks, it shows up here.
+    calls: Mutex<Vec<(String, String)>>,
+    /// Servers the bridge passed to `list_tools`.
+    listed_for: Mutex<Vec<Vec<String>>>,
+    storage: Mutex<Vec<(String, String, Value)>>,
+}
+
+impl StubHost {
+    fn with_tools(tools: &[(&str, &str)]) -> Self {
+        Self {
+            tools: tools
+                .iter()
+                .map(|(name, server)| PanelTool {
+                    name: (*name).to_string(),
+                    server: (*server).to_string(),
+                    description: None,
+                })
+                .collect(),
+            ..Default::default()
+        }
+    }
+}
+
+#[async_trait]
+impl PanelHost for StubHost {
+    fn app_version(&self) -> String {
+        "1.2.3".to_string()
+    }
+    fn platform(&self) -> String {
+        "test".to_string()
+    }
+    async fn theme(&self) -> String {
+        "dark".to_string()
+    }
+    async fn list_tools(&self, servers: &[String]) -> Result<Vec<PanelTool>, String> {
+        self.listed_for.lock().unwrap().push(servers.to_vec());
+        Ok(self
+            .tools
+            .iter()
+            .filter(|tool| servers.contains(&tool.server))
+            .cloned()
+            .collect())
+    }
+    async fn call_tool(&self, server: &str, tool: &str, _args: Value) -> Result<Value, String> {
+        self.calls
+            .lock()
+            .unwrap()
+            .push((server.to_string(), tool.to_string()));
+        Ok(json!({ "called": tool }))
+    }
+    async fn storage_get(&self, panel_id: &str, key: Option<&str>) -> Result<Value, String> {
+        let storage = self.storage.lock().unwrap();
+        match key {
+            Some(key) => Ok(storage
+                .iter()
+                .find(|(id, k, _)| id == panel_id && k == key)
+                .map(|(_, _, value)| value.clone())
+                .unwrap_or(Value::Null)),
+            None => Ok(json!({})),
+        }
+    }
+    async fn storage_set(&self, panel_id: &str, key: &str, value: Value) -> Result<(), String> {
+        self.storage
+            .lock()
+            .unwrap()
+            .push((panel_id.to_string(), key.to_string(), value));
+        Ok(())
+    }
+}
+
+fn manifest_with(permissions: &str, servers: &str) -> PanelManifest {
+    let source = format!(
+        r#"{{ "contract": 1, "id": "bridge-panel", "name": "B", "entry": "index.html", "permissions": {permissions}, "mcpServers": {servers} }}"#
+    );
+    parse_manifest(&source, None).expect("fixture manifest must be valid")
+}
+
+fn block_on<F: std::future::Future>(future: F) -> F::Output {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime")
+        .block_on(future)
+}
+
+#[test]
+fn an_unimplemented_method_reads_as_unknown_not_unauthorised() {
+    let manifest = manifest_with("[]", "[]");
+    let host = StubHost::default();
+    let response = block_on(dispatch(&manifest, "does.not.exist", &json!({}), &host));
+    assert_eq!(response.code(), Some("unknown_method"));
+    // A panel written against a newer contract must learn the host is old,
+    // not that it asked for the wrong permission.
+    assert!(response.error().unwrap().contains("does.not.exist"));
+}
+
+#[test]
+fn the_four_always_allowed_methods_need_no_permission() {
+    let manifest = manifest_with("[]", "[]");
+    let host = StubHost::default();
+    for method in ALWAYS_ALLOWED {
+        let response = block_on(dispatch(&manifest, method, &json!({}), &host));
+        assert!(response.is_ok(), "{method} must not need a permission");
+    }
+    let info = block_on(dispatch(&manifest, "host.info", &json!({}), &host));
+    assert_eq!(info.result().unwrap()["theme"], json!("dark"));
+    assert_eq!(info.result().unwrap()["contract"], json!(1));
+}
+
+#[test]
+fn an_undeclared_permission_is_denied_and_the_message_names_it() {
+    let manifest = manifest_with("[]", "[]");
+    let host = StubHost::default();
+    for (method, permission) in [
+        ("storage.get", "storage"),
+        ("storage.set", "storage"),
+        ("mcp.listTools", "mcp.read"),
+        ("mcp.callTool", "mcp.call"),
+    ] {
+        let response = block_on(dispatch(&manifest, method, &json!({"key": "k"}), &host));
+        assert_eq!(response.code(), Some("permission_denied"), "{method}");
+        let error = response.error().unwrap();
+        assert!(error.contains(permission), "{method} should name {permission}: {error}");
+    }
+    // Nothing reached the app behind the denials.
+    assert!(host.calls.lock().unwrap().is_empty());
+    assert!(host.listed_for.lock().unwrap().is_empty());
+    assert!(host.storage.lock().unwrap().is_empty());
+}
+
+#[test]
+fn storage_is_namespaced_to_the_panel_that_wrote_it() {
+    let host = StubHost::default();
+    let one = manifest_with(r#"["storage"]"#, "[]");
+    let mut two = one.clone();
+    two.id = "other-panel".to_string();
+
+    block_on(dispatch(&one, "storage.set", &json!({"key": "k", "value": 1}), &host));
+    let mine = block_on(dispatch(&one, "storage.get", &json!({"key": "k"}), &host));
+    let theirs = block_on(dispatch(&two, "storage.get", &json!({"key": "k"}), &host));
+
+    assert_eq!(mine.result().unwrap(), &json!(1));
+    // The other panel sees nothing, even for the same key.
+    assert_eq!(theirs.result().unwrap(), &json!(null));
+    assert_eq!(host.storage.lock().unwrap()[0].0, "bridge-panel");
+}
+
+#[test]
+fn listing_tools_is_scoped_to_the_servers_the_manifest_names() {
+    let host = StubHost::with_tools(&[("allowed-tool", "server-a"), ("other-tool", "server-b")]);
+    let manifest = manifest_with(r#"["mcp.read"]"#, r#"["server-a"]"#);
+
+    let response = block_on(dispatch(&manifest, "mcp.listTools", &json!({}), &host));
+    let tools = response.result().unwrap().as_array().unwrap();
+    assert_eq!(tools.len(), 1);
+    assert_eq!(tools[0]["server"], json!("server-a"));
+    // The bridge asked only for the allowlisted server, so a host that
+    // ignored the filter still could not widen it here.
+    assert_eq!(host.listed_for.lock().unwrap()[0], vec!["server-a".to_string()]);
+}
+
+#[test]
+fn naming_a_server_outside_the_allowlist_is_denied_before_anything_is_called() {
+    let host = StubHost::with_tools(&[("other-tool", "server-b")]);
+    let manifest = manifest_with(r#"["mcp.call"]"#, r#"["server-a"]"#);
+
+    let response = block_on(dispatch(
+        &manifest,
+        "mcp.callTool",
+        &json!({"name": "other-tool", "server": "server-b"}),
+        &host,
+    ));
+    assert_eq!(response.code(), Some("permission_denied"));
+    assert!(response.error().unwrap().contains("server-b"));
+    assert!(host.calls.lock().unwrap().is_empty(), "nothing may be called");
+}
+
+#[test]
+fn an_unqualified_tool_resolves_only_within_the_allowlist() {
+    let host = StubHost::with_tools(&[("shared-tool", "server-a"), ("shared-tool", "server-b")]);
+    let allowed_one = manifest_with(r#"["mcp.call"]"#, r#"["server-a"]"#);
+
+    // Unambiguous inside the allowlist even though another server offers the
+    // same name, because listing never left the allowlist.
+    let response = block_on(dispatch(
+        &allowed_one,
+        "mcp.callTool",
+        &json!({"name": "shared-tool"}),
+        &host,
+    ));
+    assert!(response.is_ok());
+    assert_eq!(host.calls.lock().unwrap()[0].0, "server-a");
+
+    // With both servers allowed the name really is ambiguous, and the bridge
+    // refuses rather than picking one.
+    let allowed_both = manifest_with(r#"["mcp.call"]"#, r#"["server-a", "server-b"]"#);
+    let ambiguous = block_on(dispatch(
+        &allowed_both,
+        "mcp.callTool",
+        &json!({"name": "shared-tool"}),
+        &host,
+    ));
+    assert!(!ambiguous.is_ok());
+    assert!(ambiguous.error().unwrap().contains("Pass `server`"));
+    assert_eq!(host.calls.lock().unwrap().len(), 1, "no second call was made");
+}
+
+#[test]
+fn an_unknown_tool_is_a_handler_error_not_a_denial() {
+    let host = StubHost::with_tools(&[("real-tool", "server-a")]);
+    let manifest = manifest_with(r#"["mcp.call"]"#, r#"["server-a"]"#);
+    let response = block_on(dispatch(
+        &manifest,
+        "mcp.callTool",
+        &json!({"name": "imaginary"}),
+        &host,
+    ));
+    // The panel asked correctly and was allowed; the tool simply is not there.
+    assert_eq!(response.code(), Some("handler_error"));
+    assert!(host.calls.lock().unwrap().is_empty());
+}
+
+#[test]
+fn an_empty_allowlist_grants_nothing_even_with_the_permission() {
+    let host = StubHost::with_tools(&[("a-tool", "server-a")]);
+    let manifest = manifest_with(r#"["mcp.read", "mcp.call"]"#, "[]");
+
+    let listed = block_on(dispatch(&manifest, "mcp.listTools", &json!({}), &host));
+    assert_eq!(listed.result().unwrap().as_array().unwrap().len(), 0);
+
+    let called = block_on(dispatch(
+        &manifest,
+        "mcp.callTool",
+        &json!({"name": "a-tool"}),
+        &host,
+    ));
+    assert!(!called.is_ok());
+    assert!(host.calls.lock().unwrap().is_empty());
 }

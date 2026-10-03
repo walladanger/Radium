@@ -244,6 +244,30 @@ The decision that is expensive to reverse. Build it once, here.
 **Done when:** the conformance fixture from Phase 1 passes against the Rust
 host, including every denial path.
 
+**Status: the bridge is done (2026-10-03); the IPC commands and the real host
+are the remaining piece.** `bridge.rs` holds one `dispatch`, expressed against
+a `PanelHost` trait so the authorisation rules are testable without an app
+handle. Nine tests drive a stub that records what the bridge actually asked
+the app for, which is how a leaked denial would show up.
+
+What the rules turned out to need, beyond the plan's sketch:
+
+- **Order matters.** An unimplemented method answers `unknown_method` *before*
+  any permission check, so a panel written against a newer contract learns the
+  host is old rather than that it asked for the wrong permission.
+- **An unqualified tool name resolves only inside the allowlist.** The frozen
+  SDK's `callTool(name, args)` sends no server, so the bridge lists tools
+  scoped to the manifest's `mcpServers` and matches within that — an
+  unqualified name cannot reach a server the panel was not granted. Where two
+  allowed servers offer the same name it refuses and says to pass `server`,
+  rather than silently picking one. `server` stays an optional param, so the
+  frozen SDK needed no change.
+- **An empty allowlist grants nothing**, even holding `mcp.read` and
+  `mcp.call`, and a server named outside the allowlist is denied before
+  anything is listed or called.
+- **Storage is namespaced by panel id**, so two panels asking for the same key
+  see different values.
+
 ## Phase 4 — Frontend host and the board
 
 23. `web-app/src/panels/PanelFrame.tsx` — port of CDC's: iframe, `postMessage`
