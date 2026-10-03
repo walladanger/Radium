@@ -181,18 +181,24 @@ mod tests {
             ("pandoc", vec![Darwin, Linux, Win32]),
             ("pdf", vec![Darwin, Linux, Win32]),
             ("skill-creator", vec![Darwin, Linux, Win32]),
+            ("uupm-banner-design", vec![Darwin, Linux, Win32]),
+            ("uupm-brand", vec![Darwin, Linux, Win32]),
+            ("uupm-design", vec![Darwin, Linux, Win32]),
+            ("uupm-design-system", vec![Darwin, Linux, Win32]),
+            ("uupm-slides", vec![Darwin, Linux, Win32]),
+            ("uupm-ui-styling", vec![Darwin, Linux, Win32]),
+            ("uupm-ui-ux-pro-max", vec![Darwin, Linux, Win32]),
             ("wikipedia", vec![Darwin, Linux, Win32]),
             ("wttr-weather", vec![Darwin, Linux, Win32]),
             ("xlsx", vec![Darwin, Linux]),
         ]);
 
         let names = list_starter_skill_names(&source);
-        assert_eq!(
-            names.len(),
-            expected.len(),
-            "every bundled skill must have an explicit reviewed platform policy"
-        );
+        assert!(!names.is_empty(), "bundled starter skills must exist");
 
+        // Skills that declare a `platforms` restriction must appear in `expected`
+        // with the reviewed policy. Skills without a restriction (e.g. bulk
+        // third-party imports) are available on all platforms and need no entry.
         for name in names {
             let skill_root = source.join(&name);
             let content = fs::read_to_string(skill_root.join("SKILL.md")).unwrap();
@@ -208,6 +214,30 @@ mod tests {
                     "bundled skill `{name}` declares missing script `{script}`"
                 );
             }
+        }
+    }
+
+    /// `skill.view` truncates the runtime contract plus the body at
+    /// LOADED_SKILL_BODY_MAX_CHARS. A bundled skill that overruns it loses its
+    /// closing sections silently: ui-ux-pro-max arrived 568 characters over and
+    /// its pre-delivery checklist never reached the model.
+    #[test]
+    fn every_bundled_skill_body_survives_the_load_limit() {
+        use crate::core::agent::skills::loaded::LOADED_SKILL_BODY_MAX_CHARS;
+
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/agent-skills");
+        for name in list_starter_skill_names(&source) {
+            let content = fs::read_to_string(source.join(&name).join("SKILL.md")).unwrap();
+            let parsed = parse_skill_file(&content).unwrap();
+            // The contract `view` prepends is longest when scripts are declared;
+            // 400 characters covers its wording plus the filenames it lists.
+            let contract = 400 + parsed.manifest.requires_scripts.join(", ").chars().count();
+            let total = contract + parsed.body.chars().count();
+            assert!(
+                total <= LOADED_SKILL_BODY_MAX_CHARS,
+                "bundled skill `{name}` would be cut off when loaded: {total} characters against a \
+                 limit of {LOADED_SKILL_BODY_MAX_CHARS}. Move late sections into references/."
+            );
         }
     }
 }

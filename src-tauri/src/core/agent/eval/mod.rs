@@ -448,6 +448,9 @@ async fn run_task_sample(
         }
     }
     let mut capture = TaskCapture::default();
+    let sampling = SamplingOverrides::default();
+    let disabled_tools = std::collections::BTreeSet::new();
+    let pty = super::pty::PtyRegistry::default();
     let future = run_turn(
         RunTurnInput {
             run_id: &run_id,
@@ -462,9 +465,9 @@ async fn run_task_sample(
             trusted_read_roots: &[],
             max_steps,
             reasoning,
-            sampling: &SamplingOverrides::default(),
+            sampling: &sampling,
             mcp: None,
-            disabled_tools: &std::collections::BTreeSet::new(),
+            disabled_tools: &disabled_tools,
             auto_approve_mcp: true,
             docs: None,
             documents_note: None,
@@ -475,6 +478,8 @@ async fn run_task_sample(
             cancellation: &cancellation,
             session: &mut session,
             skill_registry,
+            cache_dir: &workspace,
+            pty: &pty,
             bundled_script_runtime: None,
         },
         |event| {
@@ -660,12 +665,16 @@ impl TaskCapture {
     }
 }
 
+/// The harness runs its own fixture skills, so it trusts them explicitly;
+/// the app never does (Task 28).
 fn load_skills(skills_root: &Path) -> Result<SkillRegistry, String> {
-    SkillRegistry::load(
+    let mut registry = SkillRegistry::load(
         skills_root.to_path_buf(),
         &BTreeSet::new(),
         &available_tool_names(),
-    )
+    )?;
+    registry.trust_all();
+    Ok(registry)
 }
 
 fn task_error(mut result: GaiaTaskResult, error: String) -> GaiaTaskResult {

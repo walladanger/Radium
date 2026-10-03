@@ -127,12 +127,23 @@ title: "Port the panel mechanism from ClaudeDesktopClient, not its built-in pane
   label over an MCP plugin-tools toggle — unrelated to Agent Skills, and worth
   renaming before anything is shared between the two apps.
 
+  One more thing about the setting this lands in: `main` is actively tightening
+  the Tauri security policy (`cadd1be4`, following PR #64) — `connect-src`
+  narrowed to the telemetry hosts, `unsafe-eval` dropped from `script-src`, the
+  asset protocol scoped. The panel CSP above is consistent with that direction
+  and must stay so: it needs `'unsafe-inline'` for the inline scripts most
+  single-file panels rely on, but it does **not** reintroduce `unsafe-eval`,
+  and `connect-src 'none'` is stricter than the main window's, not looser.
+
   A separate, independently valuable find during this review: Radium's
-  `SKILL.md` frontmatter parser is `deny_unknown_fields` over seven keys, so a
-  stock Agent Skill carrying `license`, `allowed-tools` or `metadata` fails to
-  parse outright instead of ignoring the key, and Radium's extension fields use
-  underscores where the official ones use hyphens. That is a handful of lines
-  to fix and is tracked in the implementation plan, not in this record.
+  `SKILL.md` frontmatter parser is `deny_unknown_fields`, so a stock Agent Skill
+  whose frontmatter carries a key the struct does not name fails to parse
+  outright rather than ignoring it. `cadd1be4` has since fixed most of this by
+  naming `license`, `metadata` and `compatibility` as accepted-but-unused. What
+  remains is narrower: `allowed-tools` is still not a known key, so a skill
+  declaring it is still rejected, and Radium's own extension fields use
+  underscores where the official ones use hyphens. Tracked in the
+  implementation plan, not in this record.
 
 - **Owner:** @walladanger
 - **Links:**

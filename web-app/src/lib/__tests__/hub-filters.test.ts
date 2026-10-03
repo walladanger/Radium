@@ -3,10 +3,12 @@ import type { CatalogModel } from '@/services/models/types'
 import {
   applyHubFilters,
   DEFAULT_HUB_FILTERS,
+  filterByCapabilities,
   filterByFormats,
   formatMemoryBudget,
   hasLikeData,
   HUB_FILTERS_STORAGE_KEY,
+  huggingFaceQueries,
   modelDownloadSizeText,
   modelFitsBudget,
   normalizeHubFilters,
@@ -85,6 +87,8 @@ describe('normalizeHubFilters', () => {
       formats: ['mlx'],
       sort: 'downloads',
       onlyFitting: false,
+      uncensored: true,
+      capabilities: [],
     }
     expect(normalizeHubFilters(state)).toEqual(state)
   })
@@ -100,6 +104,8 @@ describe('hub filter persistence', () => {
       formats: ['mlx'],
       sort: 'last-modified',
       onlyFitting: false,
+      uncensored: true,
+      capabilities: [],
     }
     writeHubFilters(state)
     expect(readHubFilters()).toEqual(state)
@@ -123,6 +129,8 @@ describe('hub filter persistence', () => {
       formats: ['mlx'],
       sort: DEFAULT_HUB_FILTERS.sort,
       onlyFitting: DEFAULT_HUB_FILTERS.onlyFitting,
+      uncensored: DEFAULT_HUB_FILTERS.uncensored,
+      capabilities: [],
     })
   })
 
@@ -359,7 +367,7 @@ describe('applyHubFilters', () => {
   it('applies format filter, fit filter and sort together', () => {
     const result = applyHubFilters(
       models,
-      { formats: ['gguf'], sort: 'downloads', onlyFitting: true },
+      { formats: ['gguf'], sort: 'downloads', onlyFitting: true, uncensored: false, capabilities: [] },
       { budgetBytes: 20 * GB }
     )
     expect(result.map((m) => m.model_name)).toEqual(['a/small'])
@@ -368,7 +376,7 @@ describe('applyHubFilters', () => {
   it('skips the fit filter when the caller opts out', () => {
     const result = applyHubFilters(
       models,
-      { formats: ['gguf'], sort: 'downloads', onlyFitting: true },
+      { formats: ['gguf'], sort: 'downloads', onlyFitting: true, uncensored: false, capabilities: [] },
       { budgetBytes: 20 * GB, applyFitFilter: false }
     )
     expect(result.map((m) => m.model_name)).toEqual(['a/huge', 'a/small'])
@@ -379,6 +387,8 @@ describe('applyHubFilters', () => {
       formats: ['gguf', 'mlx'],
       sort: 'recommended',
       onlyFitting: true,
+      uncensored: false,
+      capabilities: [],
     })
     expect(result).toHaveLength(3)
   })
@@ -386,10 +396,61 @@ describe('applyHubFilters', () => {
   it('skips the fit filter when the user turned it off', () => {
     const result = applyHubFilters(
       models,
-      { formats: ['gguf'], sort: 'recommended', onlyFitting: false },
+      {
+        formats: ['gguf'],
+        sort: 'recommended',
+        onlyFitting: false,
+        uncensored: false,
+        capabilities: [],
+      },
       { budgetBytes: 20 * GB }
     )
     expect(result.map((m) => m.model_name)).toEqual(['a/small', 'a/huge'])
+  })
+
+  it('narrows to uncensored builds by repo name', () => {
+    const result = applyHubFilters(
+      [
+        gguf('a/plain-GGUF', '4 GB'),
+        gguf('a/Qwen3-8B-Uncensored-GGUF', '4 GB'),
+        gguf('a/gemma-4-12b-it-abliterated-GGUF', '4 GB'),
+      ],
+      {
+        formats: ['gguf'],
+        sort: 'recommended',
+        onlyFitting: false,
+        uncensored: true,
+        capabilities: [],
+      }
+    )
+    expect(result.map((m) => m.model_name)).toEqual([
+      'a/Qwen3-8B-Uncensored-GGUF',
+      'a/gemma-4-12b-it-abliterated-GGUF',
+    ])
+  })
+})
+
+describe('huggingFaceQueries', () => {
+  it('sends the query as typed when the uncensored filter is off', () => {
+    expect(huggingFaceQueries('  qwen ', false)).toEqual(['qwen'])
+    expect(huggingFaceQueries('', false)).toEqual([])
+  })
+
+  it('appends each uncensored term out of sight, one query per term', () => {
+    expect(huggingFaceQueries('qwen', true)).toEqual([
+      'qwen uncensored',
+      'qwen abliterated',
+    ])
+  })
+
+  it('still searches with an empty box', () => {
+    expect(huggingFaceQueries('', true)).toEqual(['uncensored', 'abliterated'])
+  })
+
+  it('does not stack a term the user already typed', () => {
+    expect(huggingFaceQueries('qwen Abliterated', true)).toEqual([
+      'qwen Abliterated',
+    ])
   })
 })
 
@@ -401,5 +462,143 @@ describe('formatMemoryBudget', () => {
   it('returns undefined for an unknown budget', () => {
     expect(formatMemoryBudget(0)).toBeUndefined()
     expect(formatMemoryBudget(-1)).toBeUndefined()
+  })
+})
+
+describe('sorting both ways (the user, 2026-09-14)', () => {
+  const models = [
+    gguf('org/Beta-7B-GGUF', '4 GB', {
+      downloads: 50,
+      likes: 3,
+      last_modified: '2026-02-01T00:00:00Z',
+    }),
+    gguf('org/alpha-70B-GGUF', '40 GB', {
+      downloads: 500,
+      likes: 1,
+      last_modified: '2026-01-01T00:00:00Z',
+    }),
+    gguf('org/Gamma-1B-GGUF', '1 GB', {
+      downloads: 5,
+      likes: 9,
+      last_modified: '2026-03-01T00:00:00Z',
+    }),
+  ]
+  const order = (sort: Parameters<typeof sortModels>[1], list = models) =>
+    sortModels(list, sort).map((m) => m.model_name)
+
+  it('puts the least downloaded first', () => {
+    expect(order('downloads-asc')).toEqual([
+      'org/Gamma-1B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/alpha-70B-GGUF',
+    ])
+  })
+
+  it('puts the least liked first', () => {
+    expect(order('likes-asc')).toEqual([
+      'org/alpha-70B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/Gamma-1B-GGUF',
+    ])
+  })
+
+  it('puts the oldest first', () => {
+    expect(order('last-modified-asc')).toEqual([
+      'org/alpha-70B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/Gamma-1B-GGUF',
+    ])
+  })
+
+  it('sorts by download size either way, with unknown sizes last', () => {
+    const withUnknown = [gguf('org/NoSize-GGUF', 'unknown'), ...models]
+    expect(order('size-asc', withUnknown)).toEqual([
+      'org/Gamma-1B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/alpha-70B-GGUF',
+      'org/NoSize-GGUF',
+    ])
+    expect(order('size-desc', withUnknown)).toEqual([
+      'org/alpha-70B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/Gamma-1B-GGUF',
+      'org/NoSize-GGUF',
+    ])
+  })
+
+  it('sorts by name either way, ignoring case', () => {
+    expect(order('name-asc')).toEqual([
+      'org/alpha-70B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/Gamma-1B-GGUF',
+    ])
+    expect(order('name-desc')).toEqual([
+      'org/Gamma-1B-GGUF',
+      'org/Beta-7B-GGUF',
+      'org/alpha-70B-GGUF',
+    ])
+  })
+
+  it('keeps a stored sort from an older build meaning the same thing', () => {
+    expect(normalizeHubFilters({ sort: 'downloads' }).sort).toBe('downloads')
+    expect(order('downloads')[0]).toBe('org/alpha-70B-GGUF')
+  })
+})
+
+describe('capability filters (the user, 2026-09-14)', () => {
+  const visionTools = gguf('org/Some-VL-GGUF', '4 GB', {
+    num_mmproj: 1,
+    tools: true,
+  })
+  const reasoner = gguf('org/Olmo-Think-GGUF', '4 GB', {
+    description: 'An open reasoning model.',
+  })
+  const plain = gguf('org/Plain-GGUF', '4 GB')
+  const all = [visionTools, reasoner, plain]
+  const names = (list: CatalogModel[]) => list.map((m) => m.model_name)
+
+  it('keeps everything when no capability is ticked', () => {
+    expect(names(filterByCapabilities(all, []))).toEqual(names(all))
+  })
+
+  it('keeps only models that have every ticked capability', () => {
+    expect(names(filterByCapabilities(all, ['vision']))).toEqual([
+      'org/Some-VL-GGUF',
+    ])
+    expect(names(filterByCapabilities(all, ['vision', 'tools']))).toEqual([
+      'org/Some-VL-GGUF',
+    ])
+    expect(names(filterByCapabilities(all, ['vision', 'reasoning']))).toEqual([])
+  })
+
+  it('judges a recommended model by its hand-checked categories, like its badges', () => {
+    // Nothing in the repo id says vision, but the staff pick does.
+    const curated = (model: CatalogModel) =>
+      model.model_name === 'org/Plain-GGUF'
+        ? (['general', 'vision', 'coding'] as const)
+        : undefined
+    expect(
+      names(filterByCapabilities(all, ['vision', 'coding'], curated))
+    ).toEqual(['org/Plain-GGUF'])
+  })
+
+  it('applies inside the full pipeline and round-trips through storage', () => {
+    const state: HubFilterState = {
+      ...DEFAULT_HUB_FILTERS,
+      onlyFitting: false,
+      capabilities: ['reasoning'],
+    }
+    expect(names(applyHubFilters(all, state))).toEqual(['org/Olmo-Think-GGUF'])
+    expect(
+      normalizeHubFilters(JSON.parse(JSON.stringify(state))).capabilities
+    ).toEqual(['reasoning'])
+  })
+
+  it('drops unknown or repeated capabilities from a stored value', () => {
+    expect(
+      normalizeHubFilters({ capabilities: ['vision', 'telepathy', 'vision', 3] })
+        .capabilities
+    ).toEqual(['vision'])
+    expect(normalizeHubFilters({}).capabilities).toEqual([])
   })
 })

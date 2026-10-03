@@ -18,6 +18,22 @@ pub struct AgentSkillDetail {
     #[serde(flatten)]
     pub entry: SkillListEntry,
     pub body: String,
+    /// The files that come with the skill besides SKILL.md, for Preview.
+    pub files: Vec<AgentSkillFile>,
+}
+
+/// The largest part of one bundled file shown in Preview.
+pub(crate) const PREVIEW_FILE_MAX_BYTES: usize = 64 * 1024;
+/// Preview lists at most this many bundled files.
+const PREVIEW_MAX_FILES: usize = 50;
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSkillFile {
+    pub path: String,
+    pub content: String,
+    /// Cut to PREVIEW_FILE_MAX_BYTES because the file is larger.
+    pub truncated: bool,
 }
 
 #[tauri::command]
@@ -40,12 +56,15 @@ pub async fn agent_get_skill<R: Runtime>(
         .into_iter()
         .find(|entry| entry.name == name)
         .ok_or_else(|| format!("Skill `{name}` was not found"))?;
+    let record = registry.get(&name);
+    let files = match record {
+        Some(record) => collect_skill_files(&record.root)?,
+        None => Vec::new(),
+    };
     Ok(AgentSkillDetail {
         entry,
-        body: registry
-            .get(&name)
-            .map(|record| record.body.clone())
-            .unwrap_or_default(),
+        body: record.map(|record| record.body.clone()).unwrap_or_default(),
+        files,
     })
 }
 
@@ -58,6 +77,20 @@ pub async fn agent_set_skill_enabled<R: Runtime>(
     let data_folder = get_jan_data_folder_path(app_handle);
     let mut registry = load_registry(&data_folder)?;
     registry.set_enabled(&name, enabled)
+}
+
+/// The user reviewed this skill and chose Allow (Task 28, D36): record it as
+/// reviewed exactly as it is now, and switch it on.
+#[tauri::command]
+pub async fn agent_approve_skill<R: Runtime>(
+    app_handle: AppHandle<R>,
+    name: String,
+) -> Result<AgentSkillDetail, String> {
+    let data_folder = get_jan_data_folder_path(app_handle.clone());
+    let mut registry = load_registry(&data_folder)?;
+    registry.approve(&name)?;
+    registry.set_enabled(&name, true)?;
+    agent_get_skill(app_handle, name).await
 }
 
 #[tauri::command]
@@ -154,6 +187,99 @@ pub async fn agent_delete_skill<R: Runtime>(
         .map_err(|error| format!("Failed to delete skill `{name}`: {error}"))
 }
 
+/// Code the skill can run: what a reviewer must see before allowing it.
+fn is_runnable_preview_file(relative: &str) -> bool {
+    relative.starts_with("scripts/")
+        || matches!(
+            Path::new(relative)
+                .extension()
+                .and_then(|value| value.to_str())
+                .map(str::to_ascii_lowercase)
+                .as_deref(),
+            Some(
+                "sh" | "bash" | "ps1" | "py" | "js" | "mjs" | "cjs" | "ts" | "cmd" | "bat" | "rb"
+                    | "pl"
+            )
+        )
+}
+
+/// The files that come with a skill besides its SKILL.md, for the review
+/// screen's Preview (Task 28, D36): relative paths with `/` separators in a
+/// fixed order, contents as text, each cut to PREVIEW_FILE_MAX_BYTES. A symbolic
+/// link is shown as a link and never followed, so Preview cannot read outside
+/// the skill.
+///
+/// Runnable files come first, then everything else, each group by path. Plain
+/// alphabetical order let a large skill push its scripts past
+/// PREVIEW_MAX_FILES: ui-styling's 98 files begin with bundled fonts, so its
+/// two Python scripts never reached the screen a user approves.
+fn collect_skill_files(skill_root: &Path) -> Result<Vec<AgentSkillFile>, String> {
+    let mut entries = Vec::new();
+    collect_preview_entries(skill_root, skill_root, &mut entries)?;
+    entries.sort_by(|left, right| {
+        is_runnable_preview_file(&right.0)
+            .cmp(&is_runnable_preview_file(&left.0))
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    let mut files = Vec::new();
+    for (relative, is_link) in entries
+        .into_iter()
+        .filter(|(relative, _)| relative != "SKILL.md")
+        .take(PREVIEW_MAX_FILES)
+    {
+        let path = skill_root.join(&relative);
+        if is_link {
+            let target = std::fs::read_link(&path)
+                .map_err(|error| format!("Failed to read link `{relative}`: {error}"))?;
+            files.push(AgentSkillFile {
+                path: relative,
+                content: format!("(symbolic link to {})", target.display()),
+                truncated: false,
+            });
+            continue;
+        }
+        let bytes = std::fs::read(&path)
+            .map_err(|error| format!("Failed to read skill file `{relative}`: {error}"))?;
+        let truncated = bytes.len() > PREVIEW_FILE_MAX_BYTES;
+        let shown = &bytes[..bytes.len().min(PREVIEW_FILE_MAX_BYTES)];
+        files.push(AgentSkillFile {
+            path: relative,
+            content: String::from_utf8_lossy(shown).into_owned(),
+            truncated,
+        });
+    }
+    Ok(files)
+}
+
+fn collect_preview_entries(
+    root: &Path,
+    directory: &Path,
+    entries: &mut Vec<(String, bool)>,
+) -> Result<(), String> {
+    let listing = std::fs::read_dir(directory)
+        .map_err(|error| format!("Failed to scan skill directory: {error}"))?;
+    for entry in listing {
+        let entry = entry.map_err(|error| format!("Failed to scan skill directory: {error}"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("Failed to inspect skill file: {error}"))?;
+        let path = entry.path();
+        if file_type.is_dir() {
+            collect_preview_entries(root, &path, entries)?;
+            continue;
+        }
+        let relative = path
+            .strip_prefix(root)
+            .map_err(|error| format!("Skill file is outside its folder: {error}"))?
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("/");
+        entries.push((relative, file_type.is_symlink()));
+    }
+    Ok(())
+}
+
 fn is_direct_child_name(name: &str) -> bool {
     let mut components = Path::new(name).components();
     matches!(components.next(), Some(Component::Normal(_))) && components.next().is_none()
@@ -202,6 +328,70 @@ pub async fn agent_refresh_skills<R: Runtime>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lists_a_skills_own_files_for_preview_but_not_its_manifest() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path();
+        std::fs::write(
+            root.join("SKILL.md"),
+            "---
+name: x
+description: y
+---
+Body",
+        )
+        .unwrap();
+        std::fs::create_dir_all(root.join("scripts")).unwrap();
+        std::fs::write(root.join("scripts").join("run.sh"), "echo hi").unwrap();
+        std::fs::write(
+            root.join("notes.txt"),
+            "a".repeat(PREVIEW_FILE_MAX_BYTES + 10),
+        )
+        .unwrap();
+
+        let files = collect_skill_files(root).unwrap();
+
+        // Runnable code first: that is what a reviewer is deciding about.
+        assert_eq!(
+            files
+                .iter()
+                .map(|file| file.path.as_str())
+                .collect::<Vec<_>>(),
+            ["scripts/run.sh", "notes.txt"]
+        );
+        assert_eq!(files[0].content, "echo hi");
+        assert!(!files[0].truncated);
+        assert!(files[1].truncated);
+        assert_eq!(files[1].content.len(), PREVIEW_FILE_MAX_BYTES);
+    }
+
+    /// A skill with more files than Preview shows must still show its code.
+    /// ui-styling ships 98 files whose names begin with fonts, so in plain
+    /// alphabetical order its two Python scripts fell past the cap and a user
+    /// approved code the screen never displayed.
+    #[test]
+    fn preview_shows_runnable_files_even_when_data_files_exceed_the_cap() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path();
+        std::fs::write(root.join("SKILL.md"), "---\nname: x\ndescription: y\n---\nBody").unwrap();
+        std::fs::create_dir_all(root.join("canvas-fonts")).unwrap();
+        for index in 0..PREVIEW_MAX_FILES + 20 {
+            std::fs::write(
+                root.join("canvas-fonts").join(format!("Aa{index:03}.ttf")),
+                "font",
+            )
+            .unwrap();
+        }
+        std::fs::create_dir_all(root.join("scripts")).unwrap();
+        std::fs::write(root.join("scripts").join("zz_add.py"), "print('hi')").unwrap();
+
+        let files = collect_skill_files(root).unwrap();
+
+        assert_eq!(files.len(), PREVIEW_MAX_FILES);
+        assert_eq!(files[0].path, "scripts/zz_add.py");
+        assert_eq!(files[0].content, "print('hi')");
+    }
 
     #[test]
     fn refuses_to_delete_bundled_skills() {

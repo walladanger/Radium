@@ -15,6 +15,7 @@ import HeaderPage from '@/containers/HeaderPage'
 import { HubFilters } from '@/containers/hub/HubFilters'
 import { ModelDetailPanel } from '@/containers/hub/ModelDetailPanel'
 import { ModelListRow } from '@/containers/hub/ModelListRow'
+import { ModelsFolderDialog } from '@/containers/hub/ModelsFolderDialog'
 import { RECOMMENDED_MODEL_FALLBACKS } from '@/constants/models'
 import { route } from '@/constants/routes'
 import { useGeneralSetting } from '@/hooks/useGeneralSetting'
@@ -26,7 +27,10 @@ import { useStaffPicks } from '@/hooks/useStaffPicks'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import {
   applyHubFilters,
+  filterByCapabilities,
   hasLikeData,
+  huggingFaceQueries,
+  isUncensoredModel,
   readHubFilters,
   sortModels,
   writeHubFilters,
@@ -158,6 +162,7 @@ function HubContent() {
   const [filters, setFilters] = useState<HubFilterState>(() => readHubFilters())
   const [showOnlyDownloaded, setShowOnlyDownloaded] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [hfSearching, setHfSearching] = useState(false)
   const [huggingFaceRepo, setHuggingFaceRepo] = useState<CatalogModel | null>(
     null
   )
@@ -167,6 +172,14 @@ function HubContent() {
   )
   const hfCandidatesFetchedForRef = useRef<string>('')
   const exactRepoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // True once this component is gone; the exact-repo fetch checks it after its
+  // await, where clearing the timer no longer helps.
+  const exactRepoDisposedRef = useRef(false)
+  // Bumped on every exact-repo call. Once a timer has fired its fetch is in
+  // flight and untracked, so a later call cannot cancel it - two lookups can
+  // be outstanding at once and resolve out of order. Without this, the slower
+  // one wins and shows a repo the search box no longer names.
+  const exactRepoRequestRef = useRef(0)
 
   const updateFilters = useCallback((next: HubFilterState) => {
     setFilters(next)
@@ -184,6 +197,24 @@ function HubContent() {
     const handler = setTimeout(() => setDebouncedSearchValue(searchValue), 80)
     return () => clearTimeout(handler)
   }, [searchValue])
+
+  // The exact-repo lookup is debounced through a ref rather than an effect, so
+  // nothing else cancels it. Two ways it can outlive this component, and
+  // clearing the timer only covers the first:
+  //   - the 500ms timer has not fired yet -> clearTimeout drops it;
+  //   - it has fired and the fetch is still in flight -> the timer is already
+  //     gone, so the continuation needs a flag to check after its await.
+  // Reset on mount, not just set on cleanup: StrictMode runs mount, cleanup,
+  // mount on the same instance, and a flag only ever set true would stay true.
+  useEffect(() => {
+    exactRepoDisposedRef.current = false
+    return () => {
+      exactRepoDisposedRef.current = true
+      if (exactRepoTimeoutRef.current) {
+        clearTimeout(exactRepoTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     void fetchSources()
@@ -220,7 +251,10 @@ function HubContent() {
       : 'gguf'
   const staffPickItems = useStaffPicks(sources, picksFormat)
 
-  const isSearchMode = debouncedSearchValue.length > 0 || showOnlyDownloaded
+  // Uncensored builds are a search of their own: the curated picks carry none,
+  // so the filter opens the whole catalog plus Hugging Face even with no query.
+  const isSearchMode =
+    debouncedSearchValue.length > 0 || showOnlyDownloaded || filters.uncensored
 
   // ---- Staff picks mode -------------------------------------------------
 
@@ -284,17 +318,39 @@ function HubContent() {
   const fetchExactRepo = useCallback(
     (rawValue: string) => {
       const normalized = rawValue.trim()
-      if (normalized.length < 3) return
+      // Every call supersedes the ones before it, this early return included:
+      // a query shortened back under the threshold must not be overwritten by
+      // the longer one the user has already abandoned.
+      const requestId = ++exactRepoRequestRef.current
+
+      const cancelPending = () => {
+        if (exactRepoTimeoutRef.current) {
+          clearTimeout(exactRepoTimeoutRef.current)
+          exactRepoTimeoutRef.current = null
+        }
+      }
+
+      if (normalized.length < 3) {
+        // Clearing `isSearching` here is what keeps the spinner honest: a fetch
+        // already in flight will see a newer `requestId` and skip its own
+        // `finally`, so nothing else would ever turn it off.
+        cancelPending()
+        setIsSearching(false)
+        return
+      }
 
       setIsSearching(true)
-      if (exactRepoTimeoutRef.current) {
-        clearTimeout(exactRepoTimeoutRef.current)
-      }
+      cancelPending()
       exactRepoTimeoutRef.current = setTimeout(async () => {
+        // Still the newest lookup, and the component still here.
+        const current = () =>
+          !exactRepoDisposedRef.current &&
+          requestId === exactRepoRequestRef.current
         try {
           const repoInfo = await serviceHub
             .models()
             .fetchHuggingFaceRepo(normalized, huggingfaceToken)
+          if (!current()) return
           if (repoInfo) {
             setHuggingFaceRepo(
               serviceHub.models().convertHfRepoToCatalogModel(repoInfo)
@@ -303,7 +359,10 @@ function HubContent() {
         } catch (error) {
           console.error('Error fetching repository info:', error)
         } finally {
-          setIsSearching(false)
+          // `return` above still runs this, so it needs the check too.
+          if (current()) {
+            setIsSearching(false)
+          }
         }
       }, 500)
     },
@@ -312,6 +371,8 @@ function HubContent() {
 
   // Long-tail Hugging Face fallback (Path B): fan out to HF's public search
   // when the curated catalog returns sparse hits for a non-trivial query.
+  // Uncensored builds are almost all long tail, so with that filter on HF is
+  // always asked, the filter's terms appended out of sight.
   useEffect(() => {
     if (showOnlyDownloaded) {
       setHfCandidates([])
@@ -319,36 +380,60 @@ function HubContent() {
       return
     }
     const query = debouncedSearchValue.trim()
-    if (query.length < 3 || catalogResults.length >= 5) {
+    if (
+      !filters.uncensored &&
+      (query.length < 3 || catalogResults.length >= 5)
+    ) {
       if (catalogResults.length >= 5) setHfCandidates([])
       return
     }
-    const cacheKey = query.toLowerCase()
+    const queries = huggingFaceQueries(query, filters.uncensored)
+    const cacheKey = queries.join('\n').toLowerCase()
     if (hfCandidatesFetchedForRef.current === cacheKey) return
     hfCandidatesFetchedForRef.current = cacheKey
 
+    const limit = filters.uncensored ? 20 : 10
     let cancelled = false
-    serviceHub
-      .models()
-      .searchHuggingFaceCandidates(query, huggingfaceToken, 10)
-      .then((candidates) => {
+    let settled = false
+    setHfSearching(true)
+    Promise.all(
+      queries.map((q) =>
+        serviceHub
+          .models()
+          .searchHuggingFaceCandidates(q, huggingfaceToken, limit)
+      )
+    )
+      .then((batches) => {
         if (cancelled) return
         const seen = new Set(catalogResults.map((m) => m.model_name))
         if (huggingFaceRepo) seen.add(huggingFaceRepo.model_name)
-        setHfCandidates(
-          candidates.filter((c) => c.model_name && !seen.has(c.model_name))
-        )
+        const merged: CatalogModel[] = []
+        for (const candidate of batches.flat()) {
+          if (!candidate.model_name || seen.has(candidate.model_name)) continue
+          seen.add(candidate.model_name)
+          merged.push(candidate)
+        }
+        setHfCandidates(merged)
       })
       .catch(() => {
         if (!cancelled) setHfCandidates([])
       })
+      .finally(() => {
+        settled = true
+        if (!cancelled) setHfSearching(false)
+      })
     return () => {
       cancelled = true
+      setHfSearching(false)
+      // A run superseded mid-flight (the catalog finished loading, say) drops
+      // its answer, so let the next run ask again instead of hitting the cache.
+      if (!settled) hfCandidatesFetchedForRef.current = ''
     }
   }, [
     debouncedSearchValue,
     catalogResults,
     showOnlyDownloaded,
+    filters.uncensored,
     serviceHub,
     huggingfaceToken,
     huggingFaceRepo,
@@ -356,11 +441,27 @@ function HubContent() {
 
   // ---- Unified list -----------------------------------------------------
 
+  // Capability filters judge a recommended model by its hand-checked
+  // categories, exactly like the badges on its page.
+  const curatedCategories = useCallback(
+    (model: CatalogModel) => pickByRepo.get(model.model_name)?.categories,
+    [pickByRepo]
+  )
+
   const listItems = useMemo<HubListItem[]>(() => {
     if (showOnlyDownloaded) {
       // The format and fit filters describe what to look for in the catalog;
       // applied here they would hide models the user already has on disk.
-      return sortModels(installedResults, filters.sort).map((model) => ({
+      // Uncensored is about the model itself, so it still narrows the list.
+      const installed = filters.uncensored
+        ? installedResults.filter(isUncensoredModel)
+        : installedResults
+      const withCapabilities = filterByCapabilities(
+        installed,
+        filters.capabilities,
+        curatedCategories
+      )
+      return sortModels(withCapabilities, filters.sort).map((model) => ({
         model,
         pick: pickByRepo.get(model.model_name),
       }))
@@ -370,6 +471,7 @@ function HubContent() {
       const filtered = applyHubFilters(staffPickModels, filters, {
         budgetBytes,
         applyFitFilter: true,
+        curatedCategories,
       })
       return filtered.map((model) => ({
         model,
@@ -398,7 +500,7 @@ function HubContent() {
     const filtered = applyHubFilters(
       [...head, ...catalogResults, ...tail],
       filters,
-      { budgetBytes, applyFitFilter: true }
+      { budgetBytes, applyFitFilter: true, curatedCategories }
     )
 
     return filtered.map((model) => ({
@@ -416,6 +518,7 @@ function HubContent() {
     hfCandidates,
     filters,
     budgetBytes,
+    curatedCategories,
   ])
 
   const showLikesSort = useMemo(
@@ -574,7 +677,7 @@ function HubContent() {
   }, [listItems.length, querySearchParam])
 
   const isEmpty = listItems.length === 0
-  const showSkeleton = loading && isEmpty && !isSearchMode
+  const showSkeleton = isEmpty && ((loading && !isSearchMode) || hfSearching)
 
   return (
     <div className="grid h-svh w-full grid-cols-[minmax(320px,420px)_1fr] grid-rows-[auto_minmax(0,1fr)]">
@@ -588,7 +691,7 @@ function HubContent() {
             ? { 'data-tauri-drag-region': true }
             : {})}
         >
-          {isSearching ? (
+          {isSearching || hfSearching ? (
             <Loader className="size-4 shrink-0 animate-spin text-muted-foreground" />
           ) : (
             <IconSearch className="shrink-0 text-muted-foreground" size={14} />
@@ -620,6 +723,7 @@ function HubContent() {
               }
             }}
           />
+          <ModelsFolderDialog />
         </div>
 
         <div ref={listScrollRef} className="min-h-0 flex-1 overflow-y-auto p-2">

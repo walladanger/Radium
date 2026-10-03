@@ -19,6 +19,7 @@
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { cn } from '@/lib/utils'
 import type { MediaParamSpec } from '@/services/media/contract'
+import { ImageFileInput } from './ImageFileInput'
 import {
   CHOICE_PARAM_TYPES,
   NUMERIC_PARAM_TYPES,
@@ -83,9 +84,20 @@ export function MediaParamField({
         <>
           <input {...shared} className={fieldClass} type="text" readOnly value="" />
           <p className="mt-1 text-xs text-muted-foreground">
-            This parameter is not supported by this version of Radium Chat.
+            This parameter is not supported by this version of Radium.
           </p>
         </>
+      ) : spec.type === 'image_ref' && spec.accept?.length ? (
+        // Only a parameter that lists the files it accepts takes the picture
+        // itself; a v1 worker's `input_image` is a path and keeps its text box.
+        <ImageFileInput
+          id={domId}
+          label={label}
+          value={value}
+          accept={spec.accept}
+          disabled={disabled}
+          onChange={(next) => onChange(spec.id, next)}
+        />
       ) : spec.type === 'text' ? (
         <textarea
           {...shared}

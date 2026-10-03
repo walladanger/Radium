@@ -14,7 +14,6 @@ import { useThreadNotifications } from '@/hooks/useThreadNotifications'
 import { useAppUpdater } from '@/hooks/useAppUpdater'
 import { useEffect, useState, useCallback } from 'react'
 import ChangeDataFolderLocation from '@/containers/dialogs/ChangeDataFolderLocation'
-import LocalModelLocationsCard from '@/containers/LocalModelLocationsCard'
 import { FactoryResetDialog } from '@/containers/dialogs'
 import { useServiceHub } from '@/hooks/useServiceHub'
 import {
@@ -25,6 +24,7 @@ import {
   IconLogs,
   IconCopy,
   IconCopyCheck,
+  IconLoader2,
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { isDev } from '@/lib/utils'
@@ -93,6 +93,7 @@ function General() {
   const [cliInstalled, setCliInstalled] = useState<boolean | null>(null)
   const [cliPath, setCliPath] = useState<string | null>(null)
   const [isCliLoading, setIsCliLoading] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
   const [autostartEnabled, setAutostartEnabled] = useState<boolean | null>(null)
   const canManageAutostart = IS_TAURI && !isDev()
 
@@ -164,7 +165,7 @@ function General() {
       await invoke('uninstall_jan_cli')
       setCliInstalled(false)
       setCliPath(null)
-      toast.success('Atomic Bot CLI uninstalled')
+      toast.success('Radium CLI uninstalled')
     } catch (e) {
       toast.error('Uninstall failed', { description: String(e) })
     } finally {
@@ -178,9 +179,14 @@ function General() {
       toast.error(t('settings:general.couldNotResetRootDirectory'))
       return
     }
+    setIsResetting(true)
     pausePolling()
-    // TODO: Loading indicator
-    await serviceHub.app().factoryReset()
+
+    try {
+      await serviceHub.app().factoryReset()
+    } finally {
+      setIsResetting(false)
+    }
   }
 
   const handleOpenLogs = async () => {
@@ -353,7 +359,7 @@ function General() {
             <Card title="Contact Us">
               <CardItem
                 title="Email"
-                description="Reach Radium Chat support by email."
+                description="Reach Radium support by email."
                 actions={
                   <a
                     href="mailto:support@atomic.chat"
@@ -369,7 +375,7 @@ function General() {
               />
               <CardItem
                 title="X"
-                description="Follow Radium Chat on X."
+                description="Follow Radium on X."
                 actions={
                   <a
                     href="https://x.com/atomic_chat_hq"
@@ -387,7 +393,7 @@ function General() {
               />
               <CardItem
                 title="GitHub"
-                description="View the Radium Chat repository on GitHub."
+                description="View the Radium repository on GitHub."
                 actions={
                   <a
                     href="https://github.com/AtomicBot-ai/Atomic-Chat"
@@ -603,8 +609,7 @@ function General() {
               />
             </Card>
 
-            {/* Detected model locations / scan folders - Desktop only */}
-            {IS_TAURI && <LocalModelLocationsCard />}
+            {/* Detected model locations moved to Models -> Model settings. */}
 
             {/* Advanced - Desktop only */}
             <Card title="Advanced">
@@ -650,7 +655,8 @@ function General() {
                 })}
                 actions={
                   <FactoryResetDialog onReset={resetApp}>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="destructive" size="sm" disabled={isResetting}>
+                      {isResetting && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />}
                       {t('common:reset')}
                     </Button>
                   </FactoryResetDialog>

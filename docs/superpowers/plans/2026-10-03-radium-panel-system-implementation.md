@@ -22,7 +22,8 @@ trusted, in-process, and do not go through the iframe.
 
 ## Ground truth before starting
 
-Verified in-tree on 2026-10-03, so no step below needs to rediscover it.
+Verified in-tree on 2026-10-03 against `main` at `cadd1be4`, so no step
+below needs to rediscover it.
 
 | Thing | Where it already is |
 |---|---|
@@ -35,6 +36,7 @@ Verified in-tree on 2026-10-03, so no step below needs to rediscover it.
 | Split-pane layout library, already a dependency | `react-resizable-panels` 3.0.5, used by `web-app/src/containers/AgentWorkspaceLayout.tsx` |
 | MCP client (4 transports + OAuth) | `rmcp` 0.8.5, `src-tauri/src/core/mcp/` |
 | CSP, including the existing `artifact:` entries | `src-tauri/tauri.conf.json` → `app.security.csp` |
+| Active security-hardening posture to stay consistent with | `cadd1be4` (after PR #64): `connect-src` narrowed, `unsafe-eval` dropped, asset protocol scoped |
 
 CDC sources to port from: `electron/panels.js` (198 lines, validation +
 install/remove + path resolution), `electron/panel-bridge.js` (134, the
@@ -121,7 +123,12 @@ from the renamed scheme.
 14. The panel CSP is restrictive — roughly
     `default-src 'self' 'unsafe-inline' data: blob:; connect-src 'none'`.
     **Do not copy `ARTIFACT_CSP`**, which is permissive deliberately and for a
-    different threat model.
+    different threat model. Stay aligned with the security hardening already
+    under way on `main` (`cadd1be4`, after PR #64): `'unsafe-inline'` is
+    needed for the inline scripts single-file panels rely on, but
+    `unsafe-eval` — just removed from the main window's `script-src` — is not
+    to be reintroduced here, and `connect-src 'none'` is deliberately
+    stricter than the main window's.
 15. Add `panel:` alongside `artifact:` in `tauri.conf.json` → `frame-src` and
     `child-src`. Serve the frozen `panel-sdk.js` and a `panel-theme.css` to
     every panel from the scheme handler, exactly as CDC does.
@@ -253,12 +260,15 @@ Mirroring the scope boundaries of the existing workspace spec:
 Found while reviewing the two codebases, independently worth doing, not part
 of this work:
 
-- Radium's `SKILL.md` frontmatter parser is `deny_unknown_fields` over seven
-  keys (`src-tauri/src/core/agent/skills/manifest.rs`), so a stock Agent
-  Skill carrying `license`, `allowed-tools` or `metadata` fails to parse
-  rather than ignoring the key, and the extension fields use underscores
-  where the official ones use hyphens. Accept-and-ignore unknown keys, and
-  alias `allowed-tools`, and ecosystem skills drop straight in.
+- `SKILL.md` frontmatter in `src-tauri/src/core/agent/skills/manifest.rs` is
+  `deny_unknown_fields`, so a key the struct does not name fails the parse
+  rather than being ignored. `cadd1be4` fixed most of this by naming
+  `license`, `metadata` and `compatibility` as accepted-but-unused. The
+  remaining gap is `allowed-tools`: still unknown, so a skill declaring it is
+  still rejected, and Radium's own fields use underscores where the official
+  ones use hyphens. Add it as an accepted key — or alias it onto
+  `requires_tools`, which is what it actually means — and ecosystem skills
+  drop straight in.
 - Radium has no MCP **server** role; CDC does, and it makes the app
   delegatable from Claude Code, Cursor and Zed. Worth considering on its own
   merits.

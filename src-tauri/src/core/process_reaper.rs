@@ -27,7 +27,9 @@ use tauri::{Manager, Runtime};
 use crate::core::app::commands::get_jan_data_folder_path;
 
 /// Executable file-name prefixes for the backends we manage.
-const BACKEND_NAME_PREFIXES: [&str; 2] = ["llama-server", "mlx-server"];
+// `sd-server` is the built-in media engine (Task 30), downloaded under the
+// data folder like llama.cpp.
+const BACKEND_NAME_PREFIXES: [&str; 3] = ["llama-server", "mlx-server", "sd-server"];
 
 /// How long to wait after `SIGTERM` before escalating survivors to `SIGKILL`.
 const GRACE_PERIOD: Duration = Duration::from_millis(1500);
@@ -140,6 +142,8 @@ mod tests {
     fn matches_exact_backend_names() {
         assert!(is_backend_name("llama-server"));
         assert!(is_backend_name("mlx-server"));
+        // The built-in media engine's server (Task 30).
+        assert!(is_backend_name("sd-server"));
     }
 
     #[test]
@@ -147,20 +151,21 @@ mod tests {
         // macOS/Windows may report a suffixed executable name.
         assert!(is_backend_name("llama-server-bin"));
         assert!(is_backend_name("mlx-server.exe"));
+        assert!(is_backend_name("sd-server.exe"));
     }
 
     #[test]
     fn rejects_unrelated_names() {
         assert!(!is_backend_name("server"));
-        assert!(!is_backend_name("Radium Chat"));
+        assert!(!is_backend_name("Radium"));
         assert!(!is_backend_name("node"));
         assert!(!is_backend_name("my-llama-server")); // prefix must be at the start
     }
 
     #[test]
     fn exe_must_live_under_an_owned_root() {
-        let data = PathBuf::from("/Users/x/Library/Application Support/Atomic Chat/data");
-        let resource = PathBuf::from("/Applications/Atomic Chat.app/Contents/Resources");
+        let data = PathBuf::from("/Users/x/Library/Application Support/Radium/data");
+        let resource = PathBuf::from("/Applications/Radium.app/Contents/Resources");
         let roots = vec![data.clone(), resource.clone()];
 
         // llama-server downloaded under the data folder → owned.

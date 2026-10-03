@@ -3,7 +3,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Radium Chat",
+        "title": "Radium",
         "width": 1200,
         "minWidth": 1024,
         "height": 800,
@@ -33,6 +33,7 @@
         "upgradeCode": "b75dd42f-800c-57cb-8c5c-ed7fcbef13a0"
       },
       "nsis": {
+        "installerIcon": "icons/icon.ico",
         "installerHooks": "./windows/hooks.nsh"
       },
       "webviewInstallMode": {

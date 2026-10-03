@@ -129,6 +129,8 @@ pub fn run() {
         core::app::commands::get_configuration_file_path,
         core::app::commands::default_data_folder_path,
         core::app::commands::change_app_data_folder,
+        core::app::models_folder::get_models_folder,
+        core::app::models_folder::set_models_folder,
         core::app::commands::app_token,
         // Extension commands
         core::extensions::commands::get_jan_extensions_path,
@@ -148,6 +150,7 @@ pub fn run() {
         core::system::commands::install_jan_cli,
         core::system::commands::uninstall_jan_cli,
         core::system::commands::migrate_macos_autostart_launchagent,
+        core::system::commands::migrate_legacy_autostart_entry,
         core::system::commands::clear_claude_code_env,
         core::system::commands::configure_hermes_agent,
         core::system::commands::clear_hermes_agent_config,
@@ -212,6 +215,7 @@ pub fn run() {
         core::agent::skills::commands::agent_list_skills,
         core::agent::skills::commands::agent_get_skill,
         core::agent::skills::commands::agent_set_skill_enabled,
+        core::agent::skills::commands::agent_approve_skill,
         core::agent::skills::commands::agent_create_skill,
         core::agent::skills::commands::agent_import_skill,
         core::agent::skills::commands::agent_update_skill,
@@ -223,6 +227,9 @@ pub fn run() {
         core::mcp::commands::save_mcp_configs,
         core::mcp::commands::get_mcp_configs,
         core::mcp::commands::activate_mcp_server,
+        core::mcp::review::mcp_connector_needs_review,
+        core::mcp::review::approve_mcp_connector,
+        core::mcp::review::preview_mcp_connector_tools,
         core::mcp::commands::deactivate_mcp_server,
         core::mcp::commands::check_jan_browser_extension_connected,
         core::mcp::oauth::mcp_oauth_login,
@@ -264,6 +271,10 @@ pub fn run() {
         core::media::commands::media_secret_get,
         core::media::commands::media_secret_delete,
         core::media::commands::media_secret_available,
+        core::media::runtime::media_engine_status,
+        core::media::runtime::media_engine_install,
+        core::media::runtime::media_engine_start,
+        core::media::runtime::media_engine_stop,
     ]);
 
     // Mobile: the same surface minus the desktop-only commands.
@@ -297,6 +308,8 @@ pub fn run() {
         core::app::commands::get_configuration_file_path,
         core::app::commands::default_data_folder_path,
         core::app::commands::change_app_data_folder,
+        core::app::models_folder::get_models_folder,
+        core::app::models_folder::set_models_folder,
         core::app::commands::app_token,
         // Extension commands
         core::extensions::commands::get_jan_extensions_path,
@@ -316,6 +329,7 @@ pub fn run() {
         core::system::commands::install_jan_cli,
         core::system::commands::uninstall_jan_cli,
         core::system::commands::migrate_macos_autostart_launchagent,
+        core::system::commands::migrate_legacy_autostart_entry,
         core::system::commands::clear_claude_code_env,
         core::system::commands::configure_hermes_agent,
         core::system::commands::clear_hermes_agent_config,
@@ -375,6 +389,7 @@ pub fn run() {
         core::agent::skills::commands::agent_list_skills,
         core::agent::skills::commands::agent_get_skill,
         core::agent::skills::commands::agent_set_skill_enabled,
+        core::agent::skills::commands::agent_approve_skill,
         core::agent::skills::commands::agent_create_skill,
         core::agent::skills::commands::agent_import_skill,
         core::agent::skills::commands::agent_update_skill,
@@ -386,6 +401,9 @@ pub fn run() {
         core::mcp::commands::save_mcp_configs,
         core::mcp::commands::get_mcp_configs,
         core::mcp::commands::activate_mcp_server,
+        core::mcp::review::mcp_connector_needs_review,
+        core::mcp::review::approve_mcp_connector,
+        core::mcp::review::preview_mcp_connector_tools,
         core::mcp::commands::deactivate_mcp_server,
         core::mcp::commands::check_jan_browser_extension_connected,
         core::mcp::oauth::mcp_oauth_login,
@@ -414,6 +432,7 @@ pub fn run() {
     ]);
 
     let app = app_builder
+        .manage(core::media::runtime::MediaEngineState::default())
         .manage(AppState {
             app_token: Some(generate_app_token()),
             mcp_servers: Arc::new(Mutex::new(HashMap::new())),
@@ -443,6 +462,10 @@ pub fn run() {
             tray_handles: Arc::new(std::sync::Mutex::new(None)),
         })
         .setup(|app| {
+            // Must run before anything resolves the data folder: the logger
+            // opens `logs/` inside it on the next line (ADR 2026-09-13).
+            let data_folder_migration =
+                crate::core::app::data_migration::migrate_default_data_folder(app.handle());
             let log_dir = get_jan_data_folder_path(app.handle().clone()).join("logs");
             // The plugin's defaults are 40 KB per file with
             // `RotationStrategy::KeepOne`, and `KeepOne` does not archive
@@ -492,6 +515,47 @@ pub fn run() {
             #[cfg(any(target_os = "ios", target_os = "android"))]
             app.handle().plugin(log_builder.build())?;
 
+            // Reported only now that the logger exists; the move itself had to
+            // happen before the logger opened `logs/`.
+            {
+                use crate::core::app::data_migration::{MigrationOutcome, SkipReason, StrayFolder};
+                for stray in &data_folder_migration.strays {
+                    match stray {
+                        StrayFolder::Removed(path) => {
+                            log::info!("Removed the empty old data folder {}", path.display())
+                        }
+                        StrayFolder::HoldsData(path) => log::warn!(
+                            "Kept the old data folder {} because it still holds data",
+                            path.display()
+                        ),
+                        StrayFolder::Failed(path, err) => log::warn!(
+                            "Could not remove the empty old data folder {} (will retry next launch): {err}",
+                            path.display()
+                        ),
+                    }
+                }
+                match &data_folder_migration.outcome {
+                    MigrationOutcome::Moved {
+                        from,
+                        to,
+                        configs_updated,
+                    } => log::info!(
+                        "Moved the data folder from {} to {} ({configs_updated} settings file(s) updated)",
+                        from.display(),
+                        to.display()
+                    ),
+                    MigrationOutcome::Skipped(
+                        reason @ (SkipReason::TargetNotEmpty(_)
+                        | SkipReason::RenameFailed(_)
+                        | SkipReason::ConfigWriteFailed(_)
+                        | SkipReason::NoDataDir(_)),
+                    ) => log::warn!("Data folder not moved to the new product name: {reason:?}"),
+                    MigrationOutcome::Skipped(reason) => {
+                        log::debug!("Data folder migration not needed: {reason:?}")
+                    }
+                }
+            }
+
             // Reap backend processes orphaned by a previous *abnormal* exit
             // (crash / OOM / Force Quit / SIGKILL — none of which run our
             // RunEvent::Exit cleanup) before any engine spawns. Single-instance
@@ -515,7 +579,7 @@ pub fn run() {
             {
                 if let Err(e) = crate::core::notifications::ensure_aumid_registered(
                     "chat.atomic.app",
-                    "Radium Chat",
+                    "Radium",
                 ) {
                     log::warn!("Failed to register AUMID for toast notifications: {e}");
                 }
@@ -533,10 +597,21 @@ pub fn run() {
                 .and_then(|v| v.as_str().map(String::from))
                 .unwrap_or_default();
             let app_version = app.config().version.clone().unwrap_or_default();
-            // Migrate extensions
-            if let Err(e) =
-                setup::install_extensions(app.handle().clone(), stored_version != app_version)
-            {
+            // Migrate extensions. Also reinstall them when extensions.json can
+            // no longer be trusted - after the data folder moved it still names
+            // the old folder, and the app would load no extension at all.
+            let extensions_stale = setup::extensions_point_elsewhere(
+                &core::extensions::commands::get_jan_extensions_path(app.handle().clone()),
+            );
+            if extensions_stale {
+                log::warn!(
+                    "extensions.json points outside the current data folder or cannot be read; reinstalling the bundled extensions"
+                );
+            }
+            if let Err(e) = setup::install_extensions(
+                app.handle().clone(),
+                stored_version != app_version || extensions_stale,
+            ) {
                 log::error!("Failed to install extensions: {e}");
             }
 
@@ -672,6 +747,15 @@ pub fn run() {
                 let killed = state.agent_pty_sessions.kill_all();
                 if killed > 0 {
                     log::info!("[agent-pty] terminated {killed} agent process(es) on exit");
+                }
+
+                // The built-in media engine holds gigabytes of graphics memory.
+                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                {
+                    let engine = app_handle.state::<core::media::runtime::MediaEngineState>();
+                    tauri::async_runtime::block_on(
+                        core::media::runtime::stop_engine_on_exit(&engine),
+                    );
                 }
 
                 // Check if cleanup already ran.

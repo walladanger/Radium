@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { localStorageKey } from '@/constants/localStorage'
 import { ONBOARDING_REMINDER_MODEL_HF_REPO } from '@/constants/models'
 import { useModelProvider } from '@/hooks/useModelProvider'
 import { seedServiceHub } from '@/test/service-hub'
@@ -98,8 +97,8 @@ const catalogModel: CatalogModel = {
   downloads: 0,
   quants: [
     {
-      model_id: 'AtomicChat/Qwen3.5-4B-Q4_K_M',
-      path: 'https://example.test/Qwen3.5-4B-Q4_K_M.gguf',
+      model_id: 'LiquidAI/LFM2.5-1.2B-Instruct-GGUF',
+      path: 'https://example.test/LFM2.5-1.2B-Instruct-GGUF.gguf',
       file_size: '2.5 GB',
     },
   ],
@@ -203,51 +202,21 @@ describe('ReplyModelGate', () => {
     expect(useModelProvider.getState().selectedModel?.id).toBe('only-one')
   })
 
-  it('offers the choice last-used-first when there are several', async () => {
-    localStorage.setItem(
-      localStorageKey.lastUsedModel,
-      JSON.stringify({ provider: 'llamacpp-upstream', model: 'second' })
-    )
+  it('starts the most compact of several models instead of listing them', async () => {
     const { onResolved } = renderGate([
-      localProvider([model('first'), model('second')]),
+      localProvider([model('Qwen3.5-9B-Q4_K_M'), model('LFM2.5-1.2B-Q4_K_M')]),
     ])
 
-    const rows = await screen.findAllByTestId('reply-gate-option')
-    expect(rows).toHaveLength(2)
-    expect(rows[0]).toHaveTextContent('Second')
-    expect(mocks.switchToModel).not.toHaveBeenCalled()
-
-    fireEvent.click(rows[0])
-
-    expect(mocks.switchToModel).toHaveBeenCalledWith(
-      expect.objectContaining({ modelId: 'second' })
+    await waitFor(() =>
+      expect(mocks.switchToModel).toHaveBeenCalledWith(
+        expect.objectContaining({ modelId: 'LFM2.5-1.2B-Q4_K_M' })
+      )
     )
+    expect(
+      screen.getByText(/chat:replyGate\.startingTitle.*1\.2B/)
+    ).toBeInTheDocument()
     expect(onResolved).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: 'picked', branch: 'pick' })
-    )
-  })
-
-  it('marks a local row with the model brand, not the engine', async () => {
-    // A local row is named after the model, so "Qwen3.5 4B" under a llama.cpp
-    // provider used to sit beside a llama — while the engine it runs on is
-    // already spelled out on the second line.
-    renderGate([
-      localProvider([model('Qwen3.5-4B-Q4_K_M'), model('other')]),
-      cloudProvider(),
-    ])
-
-    const rows = await screen.findAllByTestId('reply-gate-option')
-    expect(rows[0].querySelector('img')).toHaveAttribute(
-      'src',
-      '/svg/qwen-color.svg'
-    )
-
-    // A cloud row is named after the provider, where the provider mark is the
-    // brand, so it keeps the avatar.
-    const cloudRow = rows.find((row) => row.textContent?.includes('gpt-a'))
-    expect(cloudRow?.querySelector('img')).toHaveAttribute(
-      'alt',
-      'openai - Logo'
+      expect.objectContaining({ outcome: 'auto_start', branch: 'auto_start' })
     )
   })
 
@@ -257,23 +226,30 @@ describe('ReplyModelGate', () => {
     const download = await screen.findByRole('button', {
       name: /replyGate.download/,
     })
+    await waitFor(() => expect(download).toBeEnabled())
     fireEvent.click(download)
 
-    expect(mocks.pullModelWithMetadata).toHaveBeenCalledWith(
-      'AtomicChat/Qwen3.5-4B-Q4_K_M',
-      'https://example.test/Qwen3.5-4B-Q4_K_M.gguf',
-      undefined,
-      '',
-      true,
-      false
+    await waitFor(() =>
+      expect(mocks.pullModelWithMetadata).toHaveBeenCalledWith(
+        'LiquidAI/LFM2.5-1.2B-Instruct-GGUF',
+        'https://example.test/LFM2.5-1.2B-Instruct-GGUF.gguf',
+        undefined,
+        '',
+        true,
+        false
+      )
     )
-    expect(onResolved).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: 'download', branch: 'none' })
+    await waitFor(() =>
+      expect(onResolved).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'download', branch: 'none' })
+      )
     )
-    expect(capturedEvent('reply_model_gate_outcome')).toMatchObject({
-      outcome: 'download',
-      branch: 'none',
-    })
+    await waitFor(() =>
+      expect(capturedEvent('reply_model_gate_outcome')).toMatchObject({
+        outcome: 'download',
+        branch: 'none',
+      })
+    )
   })
 
   it('lets the empty-handed point the scanner at their own folder', async () => {
@@ -374,7 +350,7 @@ describe('ReplyModelGate', () => {
       subscriptionProvider(),
     ])
 
-    await screen.findAllByTestId('reply-gate-option')
+    await screen.findByText(/chat:replyGate\.startingTitle/)
     expect(
       screen.queryByRole('button', {
         name: 'chat:replyGate.connectSubscription',
@@ -389,7 +365,7 @@ describe('ReplyModelGate', () => {
       expect(capturedEvent('reply_model_gate_shown')).toBeDefined()
     )
     expect(capturedEvent('reply_model_gate_shown')).toMatchObject({
-      branch: 'pick',
+      branch: 'auto_start',
       local_model_count: 2,
       cloud_provider_count: 1,
       has_cloud_connection: true,
@@ -402,9 +378,9 @@ describe('ReplyModelGate', () => {
 
   it('records a give-up as a dismissal, not as a resolution', async () => {
     const { onDismissed, onResolved, onOpenChange } = renderGate([
-      localProvider([model('a'), model('b')]),
+      unconnectedCloud(),
     ])
-    await screen.findAllByTestId('reply-gate-option')
+    await screen.findByText('chat:replyGate.emptyTitle')
 
     fireEvent.keyDown(document.activeElement ?? document.body, {
       key: 'Escape',
@@ -415,7 +391,7 @@ describe('ReplyModelGate', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(capturedEvent('reply_model_gate_outcome')).toMatchObject({
       outcome: 'dismissed',
-      branch: 'pick',
+      branch: 'none',
     })
   })
 
