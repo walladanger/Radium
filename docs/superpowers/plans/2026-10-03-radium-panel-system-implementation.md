@@ -268,6 +268,39 @@ What the rules turned out to need, beyond the plan's sketch:
 - **Storage is namespaced by panel id**, so two panels asking for the same key
   see different values.
 
+**Status: Phase 3 done (2026-10-03).** The real host and the IPC commands
+landed with the bridge. `host.rs` adapts the bridge to the MCP client and to
+per-panel JSON storage under `<data>/panel-storage/`, kept out of the panel
+folders so uninstalling a panel cannot take a user's settings with it and
+reinstalling one cannot inherit a stranger's state; writes go through a
+temporary file and a rename so an interrupted write cannot truncate what was
+there. `commands.rs` adds `panels_list`, `panels_install`, `panels_remove`,
+`panels_open_folder` and `panels_request`, registered in the desktop handler
+list only — the board is a desktop surface.
+
+Decisions worth recording:
+
+- **Both roots resolve through `get_jan_data_folder_path`**, not
+  `app_data_dir()` directly, so panels follow the data folder wherever it is
+  configured — including the move the product rename made, and the override
+  the tests use.
+- **The frontend picks the folder to install**, as `agent_import_skill`
+  already does, which keeps the native dialog on the side that owns it.
+- **The theme is passed in per request** rather than mirrored in the backend.
+  The renderer owns it; a second copy would be one more thing to keep in step.
+- **`panels_remove` re-resolves through the registry** instead of joining an
+  id onto the root, so it can only ever delete something the registry already
+  calls a panel directly under the panels directory.
+- **Install refuses symlinks** anywhere in the source tree: a link in a
+  downloaded folder would otherwise pull in anything the user can read, into a
+  directory the panel is then served from.
+
+One real bug came out of writing the tests. `install_from` removes the
+destination before copying, so picking a folder that *is* the destination — an
+already-installed panel, or anything beneath it — deleted the source and then
+copied nothing, losing the panel. Now refused by comparing canonicalised
+paths, with a test that asserts the panel survives.
+
 ## Phase 4 — Frontend host and the board
 
 23. `web-app/src/panels/PanelFrame.tsx` — port of CDC's: iframe, `postMessage`

@@ -268,6 +268,12 @@ pub fn run() {
         // HTML artifact preview (served via the artifact:// protocol)
         core::artifact::set_artifact_html,
         core::artifact::clear_artifact_html,
+        // Custom panels (desktop only: the board is a desktop surface)
+        core::panels::commands::panels_list,
+        core::panels::commands::panels_install,
+        core::panels::commands::panels_remove,
+        core::panels::commands::panels_open_folder,
+        core::panels::commands::panels_request,
         // Tray status (desktop only runtime behaviour; the symbol exists on mobile as a no-op)
         core::tray_status::update_tray_status,
         // Telemetry (ATO-113): consent sync + zero-PII context tags for Sentry

@@ -16,6 +16,8 @@
 //! Plan: docs/superpowers/plans/2026-10-03-radium-panel-system-implementation.md
 
 pub mod bridge;
+pub mod commands;
+pub mod host;
 pub mod manifest;
 pub mod protocol;
 pub mod registry;
@@ -29,11 +31,19 @@ use tauri::http::{Request, Response};
 use tauri::{Manager, Runtime, UriSchemeContext};
 
 /// Panels live beside the other per-user state, one folder each.
-pub fn panels_root<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<std::path::PathBuf, String> {
-    app.path()
-        .app_data_dir()
-        .map(|dir| dir.join("panels"))
-        .map_err(|error| format!("Failed to resolve the app data directory: {error}"))
+///
+/// Resolved through `get_jan_data_folder_path` rather than `app_data_dir()`
+/// directly, so panels follow the data folder wherever it is configured —
+/// including the move the product rename made, and the override the tests use.
+pub fn panels_root<R: Runtime>(app: &tauri::AppHandle<R>) -> std::path::PathBuf {
+    crate::core::app::commands::get_jan_data_folder_path(app.clone()).join("panels")
+}
+
+/// Per-panel key/value storage, kept out of the panel folders so uninstalling
+/// a panel cannot take a user's settings with it by accident, and reinstalling
+/// one does not inherit a stranger's state.
+pub fn panel_storage_root<R: Runtime>(app: &tauri::AppHandle<R>) -> std::path::PathBuf {
+    crate::core::app::commands::get_jan_data_folder_path(app.clone()).join("panel-storage")
 }
 
 /// Serves `panel://<id>/<path>` (and `http://panel.localhost/<id>/<path>` on
@@ -59,9 +69,7 @@ pub fn handle_panel_request<R: Runtime>(
             .unwrap_or_else(|_| Response::new(Cow::Borrowed(b"" as &[u8])))
     };
 
-    let Ok(root) = panels_root(app) else {
-        return not_ready("panels directory unavailable");
-    };
+    let root = panels_root(app);
     let Ok(resource_dir) = app.path().resource_dir() else {
         return not_ready("resource directory unavailable");
     };

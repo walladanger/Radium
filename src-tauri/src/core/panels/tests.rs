@@ -542,3 +542,99 @@ fn an_empty_allowlist_grants_nothing_even_with_the_permission() {
     assert!(!called.is_ok());
     assert!(host.calls.lock().unwrap().is_empty());
 }
+
+// ---------------------------------------------------------------------------
+// Install: what a folder from someone else is allowed to bring with it.
+// ---------------------------------------------------------------------------
+
+use super::commands::install_from;
+
+#[test]
+fn installing_validates_the_manifest_before_copying_anything() {
+    let root = temp_root("install-invalid");
+    let source = temp_root("install-invalid-src").join("staging");
+    fs::create_dir_all(&source).unwrap();
+    // Valid JSON, invalid manifest: no name, no entry.
+    fs::write(source.join("panel.json"), r#"{ "contract": 1, "id": "staging" }"#).unwrap();
+    fs::write(source.join("index.html"), "<p>hi").unwrap();
+
+    let error = install_from(&root, &source).unwrap_err();
+    assert!(error.contains("Invalid panel.json"), "got: {error}");
+    // Nothing half-installed: the destination was never created.
+    assert!(!root.join("staging").join("index.html").exists() || root.join("staging") == source);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn installing_requires_the_folder_name_to_match_the_id() {
+    let root = temp_root("install-mismatch");
+    let source = temp_root("install-mismatch-src").join("wrong-folder");
+    fs::create_dir_all(&source).unwrap();
+    fs::write(source.join("panel.json"), good_manifest("other-id")).unwrap();
+    fs::write(source.join("index.html"), "<p>hi").unwrap();
+
+    let error = install_from(&root, &source).unwrap_err();
+    assert!(error.contains("must match the folder name"), "got: {error}");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn installing_refuses_a_folder_containing_a_symlink() {
+    let root = temp_root("install-symlink");
+    let staging = temp_root("install-symlink-src");
+    let outside = staging.join("secret.txt");
+    fs::write(&outside, "not yours").unwrap();
+    let source = staging.join("sneaky-copy");
+    fs::create_dir_all(&source).unwrap();
+    fs::write(source.join("panel.json"), good_manifest("sneaky-copy")).unwrap();
+    fs::write(source.join("index.html"), "<p>hi").unwrap();
+    // A link in a downloaded folder would otherwise pull in anything the user
+    // can read, into a directory the panel is then served from.
+    std::os::unix::fs::symlink(&outside, source.join("link.txt")).unwrap();
+
+    let error = install_from(&root, &source).unwrap_err();
+    assert!(error.contains("symbolic link"), "got: {error}");
+    // And the partial copy is cleaned up rather than left serving.
+    assert!(!root.join("sneaky-copy").join("index.html").exists());
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&staging);
+}
+
+#[test]
+fn installing_a_panel_onto_itself_is_refused_rather_than_deleting_it() {
+    // Found by a test that staged its source inside the panels root: the
+    // replace step removes the destination first, so without the guard this
+    // deleted the source and then copied nothing.
+    let root = temp_root("install-self");
+    let panel = write_panel(&root, "self-panel", &good_manifest("self-panel"), "<p>hi");
+
+    let error = install_from(&root, &panel).unwrap_err();
+    assert!(error.contains("already installed"), "got: {error}");
+    // The panel is still there, which is the whole point.
+    assert!(panel.join("index.html").is_file());
+    assert!(PanelRegistry::load(&root).unwrap().get("self-panel").is_some());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_good_folder_installs_and_is_then_listed() {
+    let root = temp_root("install-good");
+    let source = temp_root("install-good-src");
+    let panel_dir = source.join("nice-panel");
+    fs::create_dir_all(&panel_dir).unwrap();
+    fs::write(panel_dir.join("panel.json"), good_manifest("nice-panel")).unwrap();
+    fs::write(panel_dir.join("index.html"), "<p>hi").unwrap();
+    fs::create_dir_all(panel_dir.join("assets")).unwrap();
+    fs::write(panel_dir.join("assets").join("style.css"), "body{}").unwrap();
+
+    let manifest = install_from(&root, &panel_dir).expect("should install");
+    assert_eq!(manifest.id, "nice-panel");
+    // Nested files come along.
+    assert!(root.join("nice-panel").join("assets").join("style.css").is_file());
+
+    let registry = PanelRegistry::load(&root).unwrap();
+    assert!(registry.get("nice-panel").is_some());
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&source);
+}
