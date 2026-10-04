@@ -20,7 +20,7 @@
       ],
       "csp": {
         "default-src": "'self' customprotocol: asset: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
-        "connect-src": "'self' asset: ipc: data: http://asset.localhost http://ipc.localhost http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://posthog.com https://eu-assets.i.posthog.com",
+        "connect-src": "'self' asset: ipc: data: http://asset.localhost http://ipc.localhost http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://raw.githubusercontent.com https://huggingface.co https://posthog.com https://eu-assets.i.posthog.com",
         "font-src": [
           "https://fonts.gstatic.com blob: data: tauri://localhost http://tauri.localhost"
         ],
@@ -38,6 +38,18 @@
           "allow": [
             "$APPDATA/**/*",
             "$HOME/**/*"
+          ],
+          "deny": [
+            "$HOME/.ssh/**",
+            "$HOME/.gnupg/**",
+            "$HOME/.aws/**",
+            "$HOME/.kube/**",
+            "$HOME/.docker/config.json",
+            "$HOME/.config/gh/**",
+            "$HOME/.netrc",
+            "$HOME/.git-credentials",
+            "$HOME/.npmrc",
+            "$HOME/.pypirc"
           ]
         }
       }
