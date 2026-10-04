@@ -43,6 +43,31 @@ jobs:
           # "fix" by editing vendored code. Exclude the whole vendored tree; the
           # skills are reviewed on import and gated by cargo tests instead.
           FILTER_REGEX_EXCLUDE: "src-tauri/resources/agent-skills/"
+          # JSCPD runs at threshold 0, and src-tauri/src/lib.rs is excluded in
+          # .github/linters/.jscpd.json because it holds two deliberately
+          # parallel `tauri::generate_handler!` lists — the desktop command
+          # surface and the mobile one, which is the same surface minus the
+          # desktop-only commands. Tauri's proc macro needs each list spelled
+          # out literally at its call site, so the duplication is structural:
+          # any command added to the app lengthens both lists and the clone
+          # with them. The alternative, splicing a shared list in through a
+          # `macro_rules!` wrapper, would hide the whole IPC surface behind a
+          # macro and break the two guards that read lib.rs textually
+          # (web-app/src/lib/__tests__/ipc-contract.test.ts, which pins exactly
+          # which handlers are desktop-only, and tests/capabilities.test.mjs).
+          # Those guards are worth more than the clone report, so the file is
+          # excluded rather than refactored. Everything else stays at zero.
+          # super-linter looks for the markdown config at
+          # `.github/linters/.markdown-lint.yml` by default
+          # (MARKDOWN_FILE_NAME in lib/linter.sh), so our
+          # `.markdownlint.json` was never read and it silently fell back to
+          # its own bundled TEMPLATES/.markdown-lint.yml. That template leaves
+          # MD025 and MD034 on, which every ADR here violates by design: the
+          # records carry YAML frontmatter with a `title:` *and* an `# H1`,
+          # which MD025 counts as two titles. So MARKDOWN went red whenever a
+          # record changed, while our deliberate rule choices sat dead on
+          # disk. Naming the file we actually have makes them effective.
+          MARKDOWN_CONFIG_FILE: .markdownlint.json
           # textlint's terminology preset cannot tell prose from identifiers or
           # from quoted document titles, so it rejects "id", "api" and "ids"
           # wherever they appear. Markdown style is covered by markdownlint

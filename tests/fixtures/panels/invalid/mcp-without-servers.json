@@ -1,0 +1,1 @@
+{ "contract": 1, "id": "mcp-no-allowlist", "name": "MCP with no allowlist", "entry": "index.html", "permissions": ["mcp.call"] }

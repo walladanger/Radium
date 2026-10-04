@@ -39,6 +39,16 @@ const EXPECTED_DESKTOP_ONLY = new Set([
   'media_secret_delete',
   'media_secret_get',
   'media_secret_set',
+  // The panel board and its sandboxed custom panels. Desktop only on purpose:
+  // the board is a desktop surface, a panel is a folder on a filesystem the
+  // user can reach, and the `panel://` scheme handler serves it from there.
+  // See docs/decisions/2026-10-03-port-the-panel-mechanism-from-
+  // claudedesktopclient-not-its.md.
+  'panels_install',
+  'panels_list',
+  'panels_open_folder',
+  'panels_remove',
+  'panels_request',
   'post_local_http',
   'set_telemetry_consent',
   'set_telemetry_context',

@@ -67,6 +67,10 @@ pub fn run() {
 
     let mut app_builder = builder
         .register_uri_scheme_protocol("artifact", core::artifact::handle_artifact_request)
+        // Custom panels: third-party folders rendered in a sandboxed iframe.
+        // Same mechanism as `artifact` above, opposite policy — the response
+        // CSP forbids the network entirely. See core::panels.
+        .register_uri_scheme_protocol("panel", core::panels::handle_panel_request)
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
@@ -264,6 +268,12 @@ pub fn run() {
         // HTML artifact preview (served via the artifact:// protocol)
         core::artifact::set_artifact_html,
         core::artifact::clear_artifact_html,
+        // Custom panels (desktop only: the board is a desktop surface)
+        core::panels::commands::panels_list,
+        core::panels::commands::panels_install,
+        core::panels::commands::panels_remove,
+        core::panels::commands::panels_open_folder,
+        core::panels::commands::panels_request,
         // Tray status (desktop only runtime behaviour; the symbol exists on mobile as a no-op)
         core::tray_status::update_tray_status,
         // Telemetry (ATO-113): consent sync + zero-PII context tags for Sentry
