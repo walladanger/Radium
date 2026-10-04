@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 
 import { FactoryResetDialog } from '@/containers/dialogs/FactoryResetDialog'
 
@@ -8,9 +9,62 @@ const toast = vi.hoisted(() => ({ error: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast }))
 
+vi.mock('@/i18n/react-i18next-compat', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogClose: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    ...props
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+    disabled?: boolean
+    [key: string]: any
+  }) => (
+    <button
+      data-testid="button"
+      onClick={onClick}
+      disabled={disabled}
+      {...props}
+    >
+      {children}
+    </button>
+  ),
+}))
+
+async function startReset(
+  onReset: () => Promise<void>
+): Promise<{ user: Awaited<ReturnType<typeof userEvent.setup>>> }> {
+  const user = userEvent.setup()
+  render(
+    <FactoryResetDialog onReset={onReset}>
+      <button type="button">Open reset dialog</button>
+    </FactoryResetDialog>
+  )
+  await user.click(screen.getByRole('button', { name: 'Open reset dialog' }))
+  await user.click(
+    await screen.findByRole('button', { name: 'settings:general.reset' })
+  )
+  return { user }
+}
+
 describe('FactoryResetDialog', () => {
   it('shows a loading state while reset is running', async () => {
-    const user = userEvent.setup()
     let resolveReset: (() => void) | undefined
     const onReset = vi.fn(
       () =>
@@ -19,23 +73,14 @@ describe('FactoryResetDialog', () => {
         })
     )
 
-    render(
-      <FactoryResetDialog onReset={onReset}>
-        <button type="button">Open reset dialog</button>
-      </FactoryResetDialog>
-    )
+    await startReset(onReset)
 
-    await user.click(screen.getByRole('button', { name: 'Open reset dialog' }))
-    await user.click(
-      await screen.findByRole('button', { name: 'settings:general.reset' })
-    )
-
-    const loadingButton = screen.getByRole('button', {
+    const resetButton = screen.getByRole('button', {
       name: 'settings:general.reset',
     })
     expect(onReset).toHaveBeenCalledTimes(1)
-    expect(loadingButton).toBeDisabled()
-    expect(loadingButton).toHaveAttribute('aria-busy', 'true')
+    expect(resetButton).toBeDisabled()
+    expect(resetButton).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: 'settings:general.cancel' })).toBeDisabled()
     expect(screen.getByText('common:loading')).toBeInTheDocument()
     expect(screen.getByText('settings:general.factoryResetTitle')).toBeInTheDocument()
@@ -50,21 +95,11 @@ describe('FactoryResetDialog', () => {
   })
 
   it('surfaces reset failures and keeps the dialog open', async () => {
-    const user = userEvent.setup()
     const error = new Error('boom')
     const onReset = vi.fn().mockRejectedValue(error)
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    render(
-      <FactoryResetDialog onReset={onReset}>
-        <button type="button">Open reset dialog</button>
-      </FactoryResetDialog>
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Open reset dialog' }))
-    await user.click(
-      await screen.findByRole('button', { name: 'settings:general.reset' })
-    )
+    await startReset(onReset)
 
     await waitFor(() => expect(onReset).toHaveBeenCalledTimes(1))
     await waitFor(() =>
