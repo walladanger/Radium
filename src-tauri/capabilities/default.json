@@ -3,12 +3,6 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main", "thread-*"],
-  "remote": {
-    "urls": [
-      "https://posthog.com",
-      "https://eu-assets.i.posthog.com"
-    ]
-  },
   "permissions": [
     "core:default",
     "core:webview:allow-print",
