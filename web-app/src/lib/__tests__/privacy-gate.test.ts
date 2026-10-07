@@ -27,6 +27,27 @@ describe('privacy gate', () => {
     expect(redacted).not.toMatch(/project falcon/i)
   })
 
+  it('restores the original casing for custom private terms', () => {
+    const state = createPrivacyState(['Project Falcon'], 'case1')
+    const redacted = redactText('PROJECT FALCON is private', state)
+    expect(rehydrateText(redacted, state)).toBe('PROJECT FALCON is private')
+  })
+
+  it('keeps originals out of a fake remote egress payload', () => {
+    const outbound = applyPrivacyGate({
+      messages: [{ role: 'user', content: 'ops@example.com uses 10.0.0.8' }],
+      system: 'API key sk-abcdefghijklmnopqrstuvwxyz123456',
+      customTerms: ['Northstar'],
+      requestId: 'canary',
+    })
+    const wirePayload = JSON.stringify({
+      messages: outbound.messages,
+      system: outbound.system,
+    })
+    expect(wirePayload).not.toContain('ops@example.com')
+    expect(wirePayload).not.toContain('10.0.0.8')
+    expect(wirePayload).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
+  })
   it('does not fabricate hits for invalid card numbers', () => {
     expect(scanSensitiveText('card 4111 1111 1111 1112')).toEqual([])
   })
