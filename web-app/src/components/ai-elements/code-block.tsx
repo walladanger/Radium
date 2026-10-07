@@ -1,5 +1,5 @@
-import DOMPurify from 'dompurify'
 /* eslint-disable react-refresh/only-export-components */
+import DOMPurify from 'dompurify'
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
