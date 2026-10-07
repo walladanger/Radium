@@ -333,6 +333,27 @@ mod tests {
     }
 
     #[test]
+    fn backend_specific_oom_messages_classify_as_out_of_memory() {
+        for stderr in [
+            "CUDA error: cudaErrorMemoryAllocation",
+            "HIP error: hipErrorOutOfMemory",
+            "MUSA error: musaErrorMemoryAllocation",
+            "clEnqueueNDRangeKernel failed: CL_OUT_OF_RESOURCES",
+            "clCreateBuffer: CL_OUT_OF_HOST_MEMORY",
+            "vk::Device::allocateMemory: ErrorOutOfHostMemory",
+            "ggml_gallocr_alloc_graph: GGML_STATUS_ALLOC_FAILED",
+            "ggml_new_object: not enough space in the buffer",
+            "llama_model_load: unable to allocate CPU buffer",
+        ] {
+            let error = LlamacppError::from_stderr(stderr);
+            assert!(
+                matches!(error.code, ErrorCode::OutOfMemory),
+                "expected OutOfMemory for {stderr:?}"
+            );
+        }
+    }
+
+    #[test]
     fn library_path_invalid_from_stderr() {
         let error = LlamacppError::from_process_output(
             &exit_code(1),
