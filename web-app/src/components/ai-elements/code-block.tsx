@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
@@ -47,6 +46,7 @@ const lineNumberTransformer: ShikiTransformer = {
   },
 };
 
+/* eslint-disable-next-line react-refresh/only-export-components */
 export async function highlightCode(
   code: string,
   language: BundledLanguage,
