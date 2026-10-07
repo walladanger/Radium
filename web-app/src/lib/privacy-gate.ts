@@ -109,7 +109,7 @@ export const PRIVACY_RULES: PrivacyRule[] = [
 ]
 
 function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\  return value.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')')
 }
 
 function makeRequestId(): string {
@@ -134,8 +134,13 @@ export function createPrivacyState(
   }
 }
 
-function tokenFor(type: string, original: string, state: PrivacyState): string {
-  const key = `${type}:${original}`
+function tokenFor(
+  type: string,
+  original: string,
+  state: PrivacyState,
+  keyValue = original
+): string {
+  const key = `${type}:${keyValue}`
   const existing = state.map.get(key)
   if (existing) return existing
 
@@ -163,7 +168,7 @@ export function redactText(text: string, state: PrivacyState): string {
   for (const term of state.customTerms) {
     const regex = new RegExp(escapeRegex(term), 'gi')
     output = output.replace(regex, (match) =>
-      tokenFor('TERM', match.toLowerCase(), state)
+      tokenFor('TERM', match, state, match.toLowerCase())
     )
   }
 
