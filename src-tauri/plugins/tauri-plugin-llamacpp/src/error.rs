@@ -73,6 +73,18 @@ impl LlamacppError {
             );
         }
 
+
+        // A library path was invalid or a required dynamic library is missing.
+        if lower_stderr.contains("cannot load library")
+            || lower_stderr.contains("library not found")
+        {
+            return Self::new(
+                ErrorCode::LibraryPathInvalid,
+                "A required library could not be loaded.".into(),
+                Some(stderr.into()),
+            );
+        }
+
         // TODO: add others
         let is_out_of_memory = lower_stderr.contains("out of memory")
             || lower_stderr.contains("failed to allocate")
@@ -311,5 +323,15 @@ mod tests {
         );
 
         assert!(matches!(error.code, ErrorCode::OutOfMemory));
+    }
+
+    #[test]
+    fn library_path_invalid_from_stderr() {
+        let error = LlamacppError::from_process_output(
+            &exit_code(1),
+            "cannot load library libcublas.so: No such file or directory\n",
+            "",
+        );
+        assert!(matches!(error.code, ErrorCode::LibraryPathInvalid));
     }
 }
