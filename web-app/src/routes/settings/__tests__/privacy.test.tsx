@@ -78,7 +78,13 @@ vi.mock('@tanstack/react-router', () => ({
 describe('Privacy Settings Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
   })
+
+  const getAnalyticsSwitch = () => {
+    const switches = screen.getAllByTestId('switch')
+    return switches[switches.length - 1]
+  }
 
   it('should render the privacy settings page', () => {
     const Component = PrivacyRoute.component as React.ComponentType
@@ -93,8 +99,9 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    expect(screen.getByTestId('card')).toBeInTheDocument()
-    expect(screen.getByTestId('card-header')).toBeInTheDocument()
+    expect(screen.getAllByTestId('card')).toHaveLength(2)
+    expect(screen.getAllByTestId('card-header')).toHaveLength(2)
+    expect(screen.getByText('Cloud privacy gate')).toBeInTheDocument()
     expect(screen.getByText('settings:privacy.analytics')).toBeInTheDocument()
   })
 
@@ -102,7 +109,7 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    const analyticsSwitch = screen.getByTestId('switch')
+    const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
     expect(analyticsSwitch).not.toBeChecked()
   })
@@ -111,7 +118,7 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    const analyticsSwitch = screen.getByTestId('switch')
+    const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
     
     // Test that switch is interactive
@@ -123,7 +130,7 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    const analyticsSwitch = screen.getByTestId('switch')
+    const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
     
     // Test that switch is interactive
@@ -146,7 +153,7 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    const analyticsSwitch = screen.getByTestId('switch')
+    const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
     // Test that switch has some state
     expect(analyticsSwitch).toHaveAttribute('type', 'checkbox')
@@ -156,7 +163,7 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    const analyticsSwitch = screen.getByTestId('switch')
+    const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
     expect(analyticsSwitch).toHaveAttribute('type', 'checkbox')
   })
@@ -174,7 +181,7 @@ describe('Privacy Settings Route', () => {
     const Component = PrivacyRoute.component as React.ComponentType
     render(<Component />)
 
-    const analyticsSwitch = screen.getByTestId('switch')
+    const analyticsSwitch = getAnalyticsSwitch()
     
     // Test that switch can be toggled
     fireEvent.click(analyticsSwitch)
