@@ -257,8 +257,8 @@ function SystemMonitorContent() {
                     (candidate) => candidate.uuid === usage.uuid
                   )
                   const powerPercent =
-                    usage.power_w !== null &&
-                    usage.power_limit_w !== null &&
+                    typeof usage.power_w === 'number' &&
+                    typeof usage.power_limit_w === 'number' &&
                     usage.power_limit_w > 0
                       ? (usage.power_w / usage.power_limit_w) * 100
                       : null
@@ -273,9 +273,9 @@ function SystemMonitorContent() {
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                         <span className="text-muted-foreground">GPU load</span>
                         <span className="text-right">
-                          {usage.utilization_percent === null
-                            ? '—'
-                            : `${usage.utilization_percent}%`}
+                          {typeof usage.utilization_percent === 'number'
+                            ? `${usage.utilization_percent}%`
+                            : '—'}
                         </span>
                         <span className="text-muted-foreground">VRAM</span>
                         <span className="text-right">
@@ -284,36 +284,36 @@ function SystemMonitorContent() {
                         </span>
                         <span className="text-muted-foreground">Temperature</span>
                         <span className="text-right">
-                          {usage.temperature_c === null
-                            ? '—'
-                            : `${usage.temperature_c} °C`}
+                          {typeof usage.temperature_c === 'number'
+                            ? `${usage.temperature_c} °C`
+                            : '—'}
                         </span>
                         <span className="text-muted-foreground">Power</span>
                         <span className="text-right">
-                          {usage.power_w === null
-                            ? '—'
-                            : `${usage.power_w.toFixed(1)} W`}
-                          {usage.power_limit_w !== null &&
+                          {typeof usage.power_w === 'number'
+                            ? `${usage.power_w.toFixed(1)} W`
+                            : '—'}
+                          {typeof usage.power_limit_w === 'number' &&
                             ` / ${usage.power_limit_w.toFixed(1)} W`}
                         </span>
                         <span className="text-muted-foreground">
                           Graphics clock
                         </span>
                         <span className="text-right">
-                          {usage.clock_graphics_mhz === null
-                            ? '—'
-                            : `${usage.clock_graphics_mhz} MHz`}
+                          {typeof usage.clock_graphics_mhz === 'number'
+                            ? `${usage.clock_graphics_mhz} MHz`
+                            : '—'}
                         </span>
                         <span className="text-muted-foreground">
                           Memory clock
                         </span>
                         <span className="text-right">
-                          {usage.clock_memory_mhz === null
-                            ? '—'
-                            : `${usage.clock_memory_mhz} MHz`}
+                          {typeof usage.clock_memory_mhz === 'number'
+                            ? `${usage.clock_memory_mhz} MHz`
+                            : '—'}
                         </span>
                       </div>
-                      {usage.utilization_percent !== null && (
+                      {typeof usage.utilization_percent === 'number' && (
                         <Progress
                           value={usage.utilization_percent}
                           className="h-2 w-full"
