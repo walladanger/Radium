@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import DOMPurify from 'dompurify'
 
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,7 @@ const lineNumberTransformer: ShikiTransformer = {
   },
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export async function highlightCode(
   code: string,
   language: BundledLanguage,
