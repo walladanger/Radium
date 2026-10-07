@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  basenameNoExt,
   effectiveCtxSize,
   firstGgufShardPath,
   getProxyConfig,
@@ -1027,5 +1028,40 @@ describe('classifyProjector', () => {
         'clip.audio.projector_type': '  ',
       })
     ).toEqual({ vision: true, audio: false })
+  })
+})
+
+describe('basenameNoExt', () => {
+  it('removes standard single extension', () => {
+    expect(basenameNoExt('file.txt')).toBe('file')
+  })
+
+  it('removes the last extension from multiple extensions', () => {
+    expect(basenameNoExt('file.test.txt')).toBe('file.test')
+  })
+
+  it('removes .tar.gz extension', () => {
+    expect(basenameNoExt('archive.tar.gz')).toBe('archive')
+  })
+
+  it('removes .tar.gz extension with different casing', () => {
+    expect(basenameNoExt('archive.TAR.GZ')).toBe('archive')
+  })
+
+  it('removes .zip extension', () => {
+    expect(basenameNoExt('archive.zip')).toBe('archive')
+  })
+
+  it('does nothing to files without extension', () => {
+    expect(basenameNoExt('file')).toBe('file')
+  })
+
+  it('does nothing to hidden files', () => {
+    expect(basenameNoExt('.hidden')).toBe('.hidden')
+  })
+
+  it('does not strip path directories', () => {
+    expect(basenameNoExt('/path/to/file.txt')).toBe('/path/to/file')
+    expect(basenameNoExt('C:\\path\\to\\archive.tar.gz')).toBe('C:\\path\\to\\archive')
   })
 })

@@ -7,7 +7,7 @@
     "seed-catalog": "node scripts/fetch-seed-catalog.mjs",
     "dev": "yarn seed-catalog && vite",
     "build": "yarn seed-catalog && tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 35",
     "preview": "vite preview",
     "test": "vitest --run",
     "test:coverage": "vitest --coverage --run"

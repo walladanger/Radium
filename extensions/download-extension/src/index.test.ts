@@ -2,6 +2,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 import DownloadManager, { buildAuthHeaders, isHuggingFaceUrl } from './index'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+
+
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -113,5 +116,38 @@ describe('buildAuthHeaders', () => {
     expect(
       buildAuthHeaders([{ url: HF_URL }, { url: 'not a url' }], 'hf_secret')
     ).toEqual({})
+  })
+})
+
+describe('DownloadManager', () => {
+  let originalConsoleError: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    originalConsoleError = console.error;
+    console.error = vi.fn();
+  })
+
+  afterEach(() => {
+    console.error = originalConsoleError;
+  })
+
+  it('unlistens to event when invoke fails in downloadFiles', async () => {
+    const unlistenMock = vi.fn();
+    (listen as any).mockResolvedValue(unlistenMock);
+
+    const expectedError = new Error('Invoke failed');
+    (invoke as any).mockRejectedValue(expectedError);
+
+    const manager = new DownloadManager();
+    const taskId = 'test-task';
+    const items = [{ url: 'http://example.com', save_path: '/tmp/test' }];
+
+    await expect(manager.downloadFiles(items, taskId)).rejects.toThrow('Invoke failed');
+
+    expect(listen).toHaveBeenCalledWith(`download-${taskId}`, expect.any(Function));
+    expect(invoke).toHaveBeenCalledWith('download_files', expect.any(Object));
+    expect(unlistenMock).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith('Error downloading task', taskId, expectedError);
   })
 })

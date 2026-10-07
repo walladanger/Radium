@@ -377,15 +377,17 @@ describe.runIf(process.env.ATOMIC_TEST_LIVE_REGISTRIES === '1')(
         )
 
         const missing: string[] = []
-        for (const backend of manifest.backends) {
-          const url = `${FORK_RELEASES}/download/${backend.tag}/${backend.asset}`
-          // A ranged GET, because GitHub's asset CDN answers HEAD with a 403.
-          // The single byte is read rather than cancelled: abandoning the body
-          // poisons the pooled connection and the next request dies on it.
-          const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
-          await response.arrayBuffer()
-          if (!response.ok) missing.push(`${backend.id} -> ${url}`)
-        }
+        await Promise.all(
+          manifest.backends.map(async (backend) => {
+            const url = `${FORK_RELEASES}/download/${backend.tag}/${backend.asset}`
+            // A ranged GET, because GitHub's asset CDN answers HEAD with a 403.
+            // The single byte is read rather than cancelled: abandoning the body
+            // poisons the pooled connection and the next request dies on it.
+            const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
+            await response.arrayBuffer()
+            if (!response.ok) missing.push(`${backend.id} -> ${url}`)
+          })
+        )
 
         expect(missing).toEqual([])
       },
@@ -443,14 +445,16 @@ describe.runIf(process.env.ATOMIC_TEST_LIVE_REGISTRIES === '1')(
         if (!live.download_base) return
 
         const missing: string[] = []
-        for (const asset of live.assets) {
-          if (!asset.sha256) continue
-          const url = `${live.download_base}/${live.tag_name}/${asset.name}`
-          // Ranged GET for the same reason as the TurboQuant check above.
-          const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
-          await response.arrayBuffer()
-          if (!response.ok) missing.push(`${asset.name} -> ${url}`)
-        }
+        await Promise.all(
+          live.assets.map(async (asset) => {
+            if (!asset.sha256) return
+            const url = `${live.download_base}/${live.tag_name}/${asset.name}`
+            // Ranged GET for the same reason as the TurboQuant check above.
+            const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
+            await response.arrayBuffer()
+            if (!response.ok) missing.push(`${asset.name} -> ${url}`)
+          })
+        )
 
         expect(missing).toEqual([])
       },

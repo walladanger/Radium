@@ -149,13 +149,15 @@ export default class mlx_extension extends AIEngine {
     this.registerSettings(settings)
 
     let loadedConfig: any = {}
-    for (const item of settings) {
-      const defaultValue = item.controllerProps.value
-      loadedConfig[item.key] = await this.getSetting<typeof defaultValue>(
-        item.key,
-        defaultValue
-      )
-    }
+    await Promise.all(
+      settings.map(async (item) => {
+        const defaultValue = item.controllerProps.value
+        loadedConfig[item.key] = await this.getSetting<typeof defaultValue>(
+          item.key,
+          defaultValue
+        )
+      })
+    )
     this.config = loadedConfig
 
     this.timeout = asNumber(this.config.timeout) ?? 600
