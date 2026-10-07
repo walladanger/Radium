@@ -92,6 +92,7 @@ import type { ServiceHub } from '@/services'
 import { ensureRemoteProviderReady } from '@/utils/ensureRemoteProviderReady'
 import {
   isLocalProvider as isLocalProviderName,
+  isLoopbackUrl,
   isSubscriptionProvider,
 } from '@/utils/registerRemoteProvider'
 import {
@@ -1097,8 +1098,12 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
     // It is applied after all message preparation but before streamText sends
     // anything to a remote provider. Local providers remain untouched.
     const privacySettings = readPrivacyGateSettings()
+    const privacyStaysOnDevice =
+      isLocalProviderName(effectiveProviderName) ||
+      (!isSubscriptionProvider(effectiveProviderName) &&
+        isLoopbackUrl(provider.base_url))
     const privacyRequest =
-      !isLocalProviderName(effectiveProviderName) && privacySettings.enabled
+      !privacyStaysOnDevice && privacySettings.enabled
         ? applyPrivacyGate({
             messages: finalModelMessages,
             system: effectiveSystemMessage,
