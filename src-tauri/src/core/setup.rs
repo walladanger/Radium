@@ -8,7 +8,7 @@ use std::{
 use tar::Archive;
 use tauri::{App, Emitter, Manager, Runtime, WindowEvent, Wry};
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 use tauri::{
     menu::{IconMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::{TrayIcon, TrayIconBuilder},
@@ -389,7 +389,7 @@ pub fn setup_mcp<R: Runtime>(app: &App<R>) {
     });
 }
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 pub fn setup_tray(app: &App) -> tauri::Result<TrayIcon> {
     use crate::core::state::AppState;
     use crate::core::tray_status::{

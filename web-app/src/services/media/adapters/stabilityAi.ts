@@ -125,14 +125,14 @@ export function createStabilityAiAdapter(
                 local_id: 'core',
                 provider_id: descriptor.id,
                 label: 'Stable Image Core',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: ['prompt', 'negative_prompt'] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [{ id: 'prompt', type: 'string', required: true }, { id: 'negative_prompt', type: 'string' }] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
             },
             {
                 id: `${descriptor.id}:ultra`,
                 local_id: 'ultra',
                 provider_id: descriptor.id,
                 label: 'Stable Image Ultra',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: ['prompt', 'negative_prompt'] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [{ id: 'prompt', type: 'string', required: true }, { id: 'negative_prompt', type: 'string' }] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
             }
         ],
         tasks: [

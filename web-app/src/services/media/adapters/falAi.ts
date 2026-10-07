@@ -3,6 +3,7 @@ import type {
   MediaCapabilities,
   MediaJobHandle,
   MediaJobSnapshot,
+  MediaOutputRef,
   MediaProviderAdapter,
   MediaProviderDescriptor,
   MediaProviderHealth,
@@ -124,14 +125,14 @@ export function createFalAiAdapter(
                 local_id: 'fal-ai/flux/schnell',
                 provider_id: descriptor.id,
                 label: 'Flux Schnell (fal.ai)',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: ['prompt'] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [{ id: 'prompt', type: 'string', required: true }] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
             },
             {
                 id: `${descriptor.id}:fal-ai/kling-video/v1/standard/text-to-video`,
                 local_id: 'fal-ai/kling-video/v1/standard/text-to-video',
                 provider_id: descriptor.id,
                 label: 'Kling Video (fal.ai)',
-                tasks: [MEDIA_TASK.TEXT_TO_VIDEO], params: { [MEDIA_TASK.TEXT_TO_VIDEO]: ['prompt'] }, outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: "video" } }, install: { installed: true, installable: false }
+                tasks: [MEDIA_TASK.TEXT_TO_VIDEO], params: { [MEDIA_TASK.TEXT_TO_VIDEO]: [{ id: 'prompt', type: 'string', required: true }] }, outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: "video" } }, install: { installed: true, installable: false }
             }
         ],
         tasks: [

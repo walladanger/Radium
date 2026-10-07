@@ -243,7 +243,7 @@ fn build_agent_client<R: Runtime>(
 #[async_trait]
 impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
     async fn write_clipboard(&self, text: String) -> Result<(), String> {
-        #[cfg(desktop)]
+        #[cfg(feature = "desktop")]
         {
             tauri::async_runtime::spawn_blocking(move || {
                 crate::core::tray_status::write_clipboard(&text)
@@ -251,7 +251,7 @@ impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
             .await
             .map_err(|error| format!("Clipboard task failed: {error}"))?
         }
-        #[cfg(not(desktop))]
+        #[cfg(not(feature = "desktop"))]
         {
             let _ = text;
             Err("Clipboard write is unavailable on this platform".into())
@@ -259,7 +259,7 @@ impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
     }
 
     async fn notify(&self, title: String, body: String) -> Result<(), String> {
-        #[cfg(desktop)]
+        #[cfg(feature = "desktop")]
         {
             crate::core::system::commands::show_desktop_notification(
                 self.app_handle.clone(),
@@ -268,7 +268,7 @@ impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
             )
             .await
         }
-        #[cfg(not(desktop))]
+        #[cfg(not(feature = "desktop"))]
         {
             let _ = (&self.app_handle, title, body);
             Err("Desktop notifications are unavailable on this platform".into())
@@ -505,9 +505,9 @@ pub async fn agent_run_turn<R: Runtime>(
         arch: std::env::consts::ARCH.into(),
         browser_channel: "none".into(),
         working_dir: working_dir.display().to_string(),
-        has_clipboard: cfg!(desktop),
+        has_clipboard: cfg!(feature = "desktop"),
         has_wmctrl: false,
-        has_notifications: cfg!(desktop),
+        has_notifications: cfg!(feature = "desktop"),
     };
     let skill_registry = load_registry(&data_folder)?;
     let bundled_script_runtime = resolve_bundled_script_runtime(&app_handle);

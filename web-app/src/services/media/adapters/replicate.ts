@@ -155,14 +155,14 @@ export function createReplicateAdapter(
                 local_id: 'black-forest-labs/flux-schnell',
                 provider_id: descriptor.id,
                 label: 'Flux Schnell (Replicate)',
-                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: ['prompt', 'negative_prompt', 'resolution'] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+                tasks: [MEDIA_TASK.TEXT_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [{ id: 'prompt', type: 'string', required: true }, { id: 'negative_prompt', type: 'string' }, { id: 'resolution', type: 'resolution' }] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
             },
             {
                 id: `${descriptor.id}:tencent/hunyuan-video`,
                 local_id: 'tencent/hunyuan-video',
                 provider_id: descriptor.id,
                 label: 'Hunyuan Video (Replicate)',
-                tasks: [MEDIA_TASK.TEXT_TO_VIDEO], params: { [MEDIA_TASK.TEXT_TO_VIDEO]: ['prompt', 'negative_prompt', 'resolution'] }, outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: "video" } }, install: { installed: true, installable: false }
+                tasks: [MEDIA_TASK.TEXT_TO_VIDEO], params: { [MEDIA_TASK.TEXT_TO_VIDEO]: [{ id: 'prompt', type: 'string', required: true }, { id: 'negative_prompt', type: 'string' }, { id: 'resolution', type: 'resolution' }] }, outputs: { [MEDIA_TASK.TEXT_TO_VIDEO]: { media_type: "video" } }, install: { installed: true, installable: false }
             }
         ],
         tasks: [
