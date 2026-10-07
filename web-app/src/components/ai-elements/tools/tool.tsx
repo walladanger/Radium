@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 import { useControllableState } from '@radix-ui/react-use-controllable-state'
 import {
   Collapsible,
@@ -269,8 +270,8 @@ const ToolTextBlock = memo(
           try {
             const [light, dark] = await highlightCode(target, language as never)
             if (!aliveRef.current) break
-            setHtml(light)
-            setDarkHtml(dark)
+            setHtml(DOMPurify.sanitize(light))
+            setDarkHtml(DOMPurify.sanitize(dark))
           } catch {
             // Keep the last good render rather than blanking the preview.
           }

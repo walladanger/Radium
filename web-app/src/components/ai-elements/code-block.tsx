@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 /* eslint-disable react-refresh/only-export-components */
 
 import { Button } from "@/components/ui/button";
@@ -97,8 +98,8 @@ export const CodeBlock = ({
       if (cancelled) {
         return;
       }
-      setHtml(light);
-      setDarkHtml(dark);
+      setHtml(DOMPurify.sanitize(light));
+      setDarkHtml(DOMPurify.sanitize(dark));
     });
 
     return () => {
