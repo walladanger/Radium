@@ -59,8 +59,15 @@ impl GpuInfo {
                 };
                 return Ok(GpuUsage {
                     uuid: self.uuid.clone(),
+                    available: true,
                     total_memory: read_mem(&device_path.join("mem_info_vram_total")),
                     used_memory: read_mem(&device_path.join("mem_info_vram_used")),
+                    utilization_percent: None,
+                    temperature_c: None,
+                    power_w: None,
+                    power_limit_w: None,
+                    clock_graphics_mhz: None,
+                    clock_memory_mhz: None,
                 });
             }
             Err(format!("GPU not found").into())
@@ -101,8 +108,15 @@ impl GpuInfo {
         match memory_usage_map.get(&self.name) {
             Some(&used_memory) => GpuUsage {
                 uuid: self.uuid.clone(),
+                available: true,
                 used_memory: used_memory as u64,
                 total_memory: self.total_memory,
+                utilization_percent: None,
+                temperature_c: None,
+                power_w: None,
+                power_limit_w: None,
+                clock_graphics_mhz: None,
+                clock_memory_mhz: None,
             },
             None => self.get_usage_unsupported(),
         }
