@@ -160,12 +160,24 @@ mod tests {
         assert!(!destination.join(REMOVED_STARTER_SKILLS[0]).exists());
     }
 
-    #[test]
-    fn bundled_skills_follow_explicit_platform_metadata_policy() {
+    /// The bundled skills this repository added and reviewed one at a time.
+    ///
+    /// `resources/agent-skills` holds two different things. These are ours:
+    /// each was added deliberately, with its platform policy and its length
+    /// reviewed. The rest is the NVIDIA skills catalog — see that folder's own
+    /// README, which says the product folders are mirrored from their source
+    /// repositories by automation and must not be hand-edited.
+    ///
+    /// The authoring limits asserted below are this repository's rules for
+    /// skills *we* write, so they are asserted against the reviewed set.
+    /// Asserting them against the mirror leaves only bad options: edit
+    /// vendored content, or raise a limit that exists to keep hand-written
+    /// skills honest. What the mirror can break instead is pinned, so it
+    /// cannot get worse quietly — see the two tests below.
+    fn reviewed_platform_policy() -> BTreeMap<&'static str, Vec<SkillPlatform>> {
         use SkillPlatform::{Darwin, Linux, Win32};
 
-        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/agent-skills");
-        let expected = BTreeMap::from([
+        BTreeMap::from([
             ("apple-calendar", vec![Darwin]),
             ("apple-notes", vec![Darwin]),
             ("apple-reminders", vec![Darwin]),
@@ -181,22 +193,54 @@ mod tests {
             ("pandoc", vec![Darwin, Linux, Win32]),
             ("pdf", vec![Darwin, Linux, Win32]),
             ("skill-creator", vec![Darwin, Linux, Win32]),
+            ("uupm-banner-design", vec![Darwin, Linux, Win32]),
+            ("uupm-brand", vec![Darwin, Linux, Win32]),
+            ("uupm-design", vec![Darwin, Linux, Win32]),
+            ("uupm-design-system", vec![Darwin, Linux, Win32]),
+            ("uupm-slides", vec![Darwin, Linux, Win32]),
+            ("uupm-ui-styling", vec![Darwin, Linux, Win32]),
+            ("uupm-ui-ux-pro-max", vec![Darwin, Linux, Win32]),
             ("wikipedia", vec![Darwin, Linux, Win32]),
             ("wttr-weather", vec![Darwin, Linux, Win32]),
             ("xlsx", vec![Darwin, Linux]),
-        ]);
+        ])
+    }
+
+    fn bundled_skills_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/agent-skills")
+    }
+
+    #[test]
+    fn bundled_skills_follow_explicit_platform_metadata_policy() {
+        let source = bundled_skills_root();
+        let expected = reviewed_platform_policy();
 
         let names = list_starter_skill_names(&source);
-        assert_eq!(
-            names.len(),
-            expected.len(),
-            "every bundled skill must have an explicit reviewed platform policy"
-        );
+        assert!(!names.is_empty(), "bundled starter skills must exist");
 
+        // Skills that declare a `platforms` restriction must appear in the
+        // reviewed policy with it. Skills without a restriction — the whole
+        // mirrored catalog included — are available everywhere and need no
+        // entry, which is what makes the policy a review record rather than
+        // an inventory.
         for name in names {
             let skill_root = source.join(&name);
             let content = fs::read_to_string(skill_root.join("SKILL.md")).unwrap();
-            let parsed = parse_skill_file(&content).unwrap();
+            let reviewed = expected.contains_key(name.as_str());
+            let parsed = match parse_skill_file(&content) {
+                Ok(parsed) => parsed,
+                Err(reason) => {
+                    assert!(
+                        !reviewed,
+                        "reviewed bundled skill `{name}` no longer parses: {reason}"
+                    );
+                    // A mirrored skill the parser refuses is pinned by
+                    // `mirrored_skills_the_parser_refuses_stay_pinned`.
+                    // Failing here too would only bury the platform policy
+                    // under that same breakage.
+                    continue;
+                }
+            };
             assert_eq!(
                 parsed.manifest.platforms.as_ref(),
                 expected.get(name.as_str()),
@@ -208,6 +252,103 @@ mod tests {
                     "bundled skill `{name}` declares missing script `{script}`"
                 );
             }
+        }
+    }
+
+    /// Mirrored skills this repository's parser refuses outright.
+    ///
+    /// Every one has a `description` that folds out past the 512-character
+    /// cap. The NVIDIA catalog writes long multi-paragraph trigger
+    /// descriptions as YAML folded scalars, and folded they run from 517
+    /// characters upwards. The app does not hide them: the skills registry
+    /// reports each as broken, with the reason, so a user can see what is
+    /// wrong rather than wondering where a skill went.
+    ///
+    /// Not repaired here, because every repair available is worse than the
+    /// symptom. The catalog is mirrored from product repositories by
+    /// automation and its own README says the product folders must not be
+    /// hand-edited, so editing 91 descriptions would be undone by the next
+    /// sync. Raising the cap instead would weaken it for hand-written skills,
+    /// whose descriptions go into every prompt — which is what the cap is
+    /// for.
+    ///
+    /// So what is asserted is the part that must not slip:
+    ///
+    /// 1. no *reviewed* skill is ever among the refused — ours always parse,
+    ///    and that is a hard assertion with no ceiling;
+    /// 2. the count cannot grow. A mirror update that brings more broken
+    ///    skills fails here instead of shipping them quietly. The ceiling is
+    ///    the count as imported, so it records the state rather than blessing
+    ///    it, and it may shrink freely.
+    #[test]
+    fn mirrored_skills_the_parser_refuses_cannot_grow() {
+        /// The count when the NVIDIA catalog was imported (`d60f2408`), all of
+        /// them over-long descriptions. Lower it when upstream shortens one;
+        /// never raise it.
+        const REFUSED_CEILING: usize = 91;
+
+        let source = bundled_skills_root();
+        let reviewed = reviewed_platform_policy();
+        let refused: Vec<String> = list_starter_skill_names(&source)
+            .into_iter()
+            .filter(|name| {
+                let content = fs::read_to_string(source.join(name).join("SKILL.md")).unwrap();
+                parse_skill_file(&content).is_err()
+            })
+            .collect();
+
+        let reviewed_and_refused: Vec<&String> = refused
+            .iter()
+            .filter(|name| reviewed.contains_key(name.as_str()))
+            .collect();
+        assert!(
+            reviewed_and_refused.is_empty(),
+            "reviewed bundled skills no longer parse: {reviewed_and_refused:?}. These are ours; \
+             fix the SKILL.md rather than the limit"
+        );
+
+        assert!(
+            refused.len() <= REFUSED_CEILING,
+            "{} bundled skills are refused by the parser, up from {REFUSED_CEILING}. The new ones \
+             are shipped broken and reported as such in the skills list. Full set: {refused:?}",
+            refused.len()
+        );
+    }
+
+    /// `skill.view` truncates the runtime contract plus the body at
+    /// LOADED_SKILL_BODY_MAX_CHARS. A bundled skill that overruns it loses its
+    /// closing sections: ui-ux-pro-max arrived 568 characters over and its
+    /// pre-delivery checklist never reached the model.
+    ///
+    /// Asserted for the reviewed skills, which are ours to restructure. The
+    /// mirrored catalog overruns it in bulk, and its bodies are not ours to
+    /// move into `references/`; what it loses is marked `[truncated]` in the
+    /// loaded text (asserted in `loaded.rs`), so it is visible rather than
+    /// silent.
+    #[test]
+    fn every_reviewed_bundled_skill_body_survives_the_load_limit() {
+        use crate::core::agent::skills::loaded::LOADED_SKILL_BODY_MAX_CHARS;
+
+        let source = bundled_skills_root();
+        let reviewed = reviewed_platform_policy();
+        let present = list_starter_skill_names(&source);
+
+        for name in reviewed.keys() {
+            assert!(
+                present.contains(*name),
+                "reviewed bundled skill `{name}` is no longer bundled"
+            );
+            let content = fs::read_to_string(source.join(name).join("SKILL.md")).unwrap();
+            let parsed = parse_skill_file(&content).unwrap();
+            // The contract `view` prepends is longest when scripts are declared;
+            // 400 characters covers its wording plus the filenames it lists.
+            let contract = 400 + parsed.manifest.requires_scripts.join(", ").chars().count();
+            let total = contract + parsed.body.chars().count();
+            assert!(
+                total <= LOADED_SKILL_BODY_MAX_CHARS,
+                "bundled skill `{name}` would be cut off when loaded: {total} characters against a \
+                 limit of {LOADED_SKILL_BODY_MAX_CHARS}. Move late sections into references/."
+            );
         }
     }
 }

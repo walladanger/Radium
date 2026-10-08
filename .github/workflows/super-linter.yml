@@ -25,17 +25,49 @@ jobs:
       statuses: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
 
       - name: Lint Code Base
-        uses: github/super-linter@v4
+        uses: github/super-linter@985ef206aaca4d560cb9ee2af2b42ba44adc1d55 #@v4
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: "main"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # src-tauri/resources/agent-skills/ holds third-party skills bundled
+          # verbatim (UI UX Pro Max, MIT). Their bodies are kept byte-for-byte
+          # from upstream on purpose, so linting them to this repo's Python,
+          # Markdown and duplicate-code rules only produces failures we must not
+          # "fix" by editing vendored code. Exclude the whole vendored tree; the
+          # skills are reviewed on import and gated by cargo tests instead.
+          FILTER_REGEX_EXCLUDE: "src-tauri/resources/agent-skills/"
+          # JSCPD runs at threshold 0, and src-tauri/src/lib.rs is excluded in
+          # .github/linters/.jscpd.json because it holds two deliberately
+          # parallel `tauri::generate_handler!` lists — the desktop command
+          # surface and the mobile one, which is the same surface minus the
+          # desktop-only commands. Tauri's proc macro needs each list spelled
+          # out literally at its call site, so the duplication is structural:
+          # any command added to the app lengthens both lists and the clone
+          # with them. The alternative, splicing a shared list in through a
+          # `macro_rules!` wrapper, would hide the whole IPC surface behind a
+          # macro and break the two guards that read lib.rs textually
+          # (web-app/src/lib/__tests__/ipc-contract.test.ts, which pins exactly
+          # which handlers are desktop-only, and tests/capabilities.test.mjs).
+          # Those guards are worth more than the clone report, so the file is
+          # excluded rather than refactored. Everything else stays at zero.
+          # super-linter looks for the markdown config at
+          # `.github/linters/.markdown-lint.yml` by default
+          # (MARKDOWN_FILE_NAME in lib/linter.sh), so our
+          # `.markdownlint.json` was never read and it silently fell back to
+          # its own bundled TEMPLATES/.markdown-lint.yml. That template leaves
+          # MD025 and MD034 on, which every ADR here violates by design: the
+          # records carry YAML frontmatter with a `title:` *and* an `# H1`,
+          # which MD025 counts as two titles. So MARKDOWN went red whenever a
+          # record changed, while our deliberate rule choices sat dead on
+          # disk. Naming the file we actually have makes them effective.
+          MARKDOWN_CONFIG_FILE: .markdownlint.json
           # textlint's terminology preset cannot tell prose from identifiers or
           # from quoted document titles, so it rejects "id", "api" and "ids"
           # wherever they appear. Markdown style is covered by markdownlint
@@ -60,3 +92,14 @@ jobs:
           # Cargo.toml or Rust. radium-ci.yml runs the real clippy, over
           # `make verify`, with the toolchain and system libraries it needs.
           VALIDATE_RUST_CLIPPY: false
+          # super-linter's rustfmt validators cannot lint this crate either. The
+          # crate is edition 2021, so RUST_2015 and RUST_2018 abort on the first
+          # `async fn` (error[E0670]: `async fn` is not permitted in Rust 2015),
+          # and RUST_2021 runs a different rustfmt build than the repo's pinned
+          # toolchain, so it reports formatting diffs on files that the repo's
+          # own `cargo fmt` considers clean. Rust lints are enforced
+          # authoritatively by rust-clippy.yml and radium-ci.yml (real
+          # toolchain); keep these three super-linter validators off.
+          VALIDATE_RUST_2015: false
+          VALIDATE_RUST_2018: false
+          VALIDATE_RUST_2021: false

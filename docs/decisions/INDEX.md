@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-255 records, 2026-05-19 → 2026-09-19.
+256 records, 2026-05-19 → 2026-10-03.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -271,8 +271,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-05-22** — [Pin static WiX `upgradeCode` to legacy Jan UUID for in-place MSI upgrades](2026-05-22-pin-static-wix-upgradecode-to-legacy-jan-uuid-for-in-place-msi.md)
 - **2026-05-19** — [Product identity is "Radium Chat"; new code stops carrying Jan branding](2026-05-19-product-identity-is-atomic-chat-new-code-stops-carrying-jan.md)
 
-## UI / UX (36)
+## UI / UX (37)
 
+- **2026-10-03** — [Port the panel mechanism from ClaudeDesktopClient, not its built-in panels; freeze the manifest + SDK as a shared contract](2026-10-03-port-the-panel-mechanism-from-claudedesktopclient-not-its.md)
 - **2026-09-11** — [List the Hub picks under the onboarding offer](2026-09-11-list-the-hub-picks-under-the-onboarding-offer.md)
 - **2026-09-11** — [Pick the model and its reasoning effort from one composer pill](2026-09-11-pick-the-model-and-its-effort-from-one-composer-pill.md)
 - **2026-09-11** — [Show engine state in the model dot and let a Stop hold](2026-09-11-show-engine-state-in-the-model-dot-and-let-a-stop-hold.md)

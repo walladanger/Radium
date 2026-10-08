@@ -13,6 +13,7 @@ import { Route as SystemMonitorRouteImport } from './routes/system-monitor'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkspaceIndexRouteImport } from './routes/workspace/index'
 import { Route as SkillsIndexRouteImport } from './routes/skills/index'
 import { Route as LaunchIndexRouteImport } from './routes/launch/index'
 import { Route as HubIndexRouteImport } from './routes/hub/index'
@@ -63,6 +64,11 @@ const LogsRoute = LogsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceIndexRoute = WorkspaceIndexRouteImport.update({
+  id: '/workspace/',
+  path: '/workspace/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillsIndexRoute = SkillsIndexRouteImport.update({
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/hub/': typeof HubIndexRoute
   '/launch/': typeof LaunchIndexRoute
   '/skills/': typeof SkillsIndexRoute
+  '/workspace/': typeof WorkspaceIndexRoute
   '/settings/providers/$providerName': typeof SettingsProvidersProviderNameRoute
   '/settings/media/': typeof SettingsMediaIndexRoute
   '/settings/providers/': typeof SettingsProvidersIndexRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/hub': typeof HubIndexRoute
   '/launch': typeof LaunchIndexRoute
   '/skills': typeof SkillsIndexRoute
+  '/workspace': typeof WorkspaceIndexRoute
   '/settings/providers/$providerName': typeof SettingsProvidersProviderNameRoute
   '/settings/media': typeof SettingsMediaIndexRoute
   '/settings/providers': typeof SettingsProvidersIndexRoute
@@ -330,6 +338,7 @@ export interface FileRoutesById {
   '/hub/': typeof HubIndexRoute
   '/launch/': typeof LaunchIndexRoute
   '/skills/': typeof SkillsIndexRoute
+  '/workspace/': typeof WorkspaceIndexRoute
   '/settings/providers/$providerName': typeof SettingsProvidersProviderNameRoute
   '/settings/media/': typeof SettingsMediaIndexRoute
   '/settings/providers/': typeof SettingsProvidersIndexRoute
@@ -369,6 +378,7 @@ export interface FileRouteTypes {
     | '/hub/'
     | '/launch/'
     | '/skills/'
+    | '/workspace/'
     | '/settings/providers/$providerName'
     | '/settings/media/'
     | '/settings/providers/'
@@ -406,6 +416,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/launch'
     | '/skills'
+    | '/workspace'
     | '/settings/providers/$providerName'
     | '/settings/media'
     | '/settings/providers'
@@ -443,6 +454,7 @@ export interface FileRouteTypes {
     | '/hub/'
     | '/launch/'
     | '/skills/'
+    | '/workspace/'
     | '/settings/providers/$providerName'
     | '/settings/media/'
     | '/settings/providers/'
@@ -481,6 +493,7 @@ export interface RootRouteChildren {
   HubIndexRoute: typeof HubIndexRoute
   LaunchIndexRoute: typeof LaunchIndexRoute
   SkillsIndexRoute: typeof SkillsIndexRoute
+  WorkspaceIndexRoute: typeof WorkspaceIndexRoute
   SettingsProvidersProviderNameRoute: typeof SettingsProvidersProviderNameRoute
   SettingsMediaIndexRoute: typeof SettingsMediaIndexRoute
   SettingsProvidersIndexRoute: typeof SettingsProvidersIndexRoute
@@ -514,6 +527,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace/': {
+      id: '/workspace/'
+      path: '/workspace'
+      fullPath: '/workspace/'
+      preLoaderRoute: typeof WorkspaceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skills/': {
@@ -769,6 +789,7 @@ const rootRouteChildren: RootRouteChildren = {
   HubIndexRoute: HubIndexRoute,
   LaunchIndexRoute: LaunchIndexRoute,
   SkillsIndexRoute: SkillsIndexRoute,
+  WorkspaceIndexRoute: WorkspaceIndexRoute,
   SettingsProvidersProviderNameRoute: SettingsProvidersProviderNameRoute,
   SettingsMediaIndexRoute: SettingsMediaIndexRoute,
   SettingsProvidersIndexRoute: SettingsProvidersIndexRoute,

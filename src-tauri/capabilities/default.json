@@ -3,9 +3,6 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main", "thread-*"],
-  "remote": {
-    "urls": ["http://*"]
-  },
   "permissions": [
     "core:default",
     "core:webview:allow-print",
@@ -62,9 +59,6 @@
         },
         {
           "url": "http://127.0.0.1:*"
-        },
-        {
-          "url": "http://0.0.0.0:*"
         }
       ]
     }
