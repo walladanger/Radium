@@ -114,10 +114,11 @@ export function findInstalledLocalModel(
   ids: readonly string[],
   providerNames: readonly string[] = LOCAL_PROVIDERS
 ): InstalledModelLocation | null {
+  const idSet = new Set(ids)
   for (const name of providerNames) {
     const provider = providers.find((entry) => entry.provider === name)
     if (!provider) continue
-    const match = provider.models.find((model) => ids.includes(model.id))
+    const match = provider.models.find((model) => idSet.has(model.id))
     if (match) return { modelId: match.id, provider: name }
   }
   return null
