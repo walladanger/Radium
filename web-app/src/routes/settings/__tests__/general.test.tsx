@@ -332,13 +332,15 @@ describe('General Settings Route', () => {
     expect(screen.getByText('v1.0.0')).toBeInTheDocument()
   })
 
-  // TODO: This test is currently commented out due to missing implementation
-  // it('should render language switcher', () => {
-  //   const Component = GeneralRoute.component as React.ComponentType
-  //   render(<Component />)
+  // TODO: This test was formerly commented out
+  it('should render language switcher', async () => {
+    const Component = GeneralRoute.component as React.ComponentType
+    await act(async () => {
+      render(<Component />)
+    })
 
-  //   expect(screen.getByTestId('language-switcher')).toBeInTheDocument()
-  // })
+    expect(screen.getByTestId('language-switcher')).toBeInTheDocument()
+  })
 
   it('should render huggingface token input', async () => {
     const Component = GeneralRoute.component as React.ComponentType
