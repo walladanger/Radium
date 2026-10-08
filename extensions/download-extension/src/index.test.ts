@@ -11,8 +11,46 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(),
+  listen: vi.fn().mockResolvedValue(() => {}),
 }))
+
+// Mock console.error to avoid noise in test output
+const originalConsoleError = console.error;
+beforeEach(() => {
+  console.error = vi.fn();
+  vi.clearAllMocks();
+});
+afterEach(() => {
+  console.error = originalConsoleError;
+});
+
+describe('DownloadManager', () => {
+  let downloadManager: DownloadManager;
+
+  beforeEach(() => {
+    downloadManager = new DownloadManager();
+  });
+
+  describe('cancelDownload', () => {
+    it('throws an error if invoke fails', async () => {
+      const mockError = new Error('Tauri invoke failed');
+      vi.mocked(invoke).mockRejectedValueOnce(mockError);
+
+      await expect(downloadManager.cancelDownload('task-123')).rejects.toThrow('Tauri invoke failed');
+      expect(console.error).toHaveBeenCalledWith('Error cancelling download:', mockError);
+    });
+  });
+
+  describe('downloadFiles', () => {
+    it('throws an error if invoke fails', async () => {
+      const mockError = new Error('Tauri invoke failed');
+      vi.mocked(invoke).mockRejectedValueOnce(mockError);
+
+      await expect(downloadManager.downloadFiles([], 'task-123')).rejects.toThrow('Tauri invoke failed');
+      expect(console.error).toHaveBeenCalledWith('Error downloading task', 'task-123', mockError);
+    });
+  });
+});
 
 describe('isHuggingFaceUrl', () => {
   it.each([
