@@ -10,7 +10,9 @@ import { HARDWARE_TIERS } from '@/lib/hardware-tier'
 // web-app, and every fixture read failed with ENOENT - nine tests failing for
 // no real reason, on the one platform this project is primarily developed on.
 const repositoryRoot =
-  basename(process.cwd()) === 'web-app' ? resolve(process.cwd(), '..') : process.cwd()
+  basename(process.cwd()) === 'web-app'
+    ? resolve(process.cwd(), '..')
+    : process.cwd()
 
 const fixture = (name: string): unknown =>
   JSON.parse(
@@ -264,7 +266,9 @@ describe('pinned external registry contracts', () => {
    * where the offer comes from and what the recommended loader reads.
    */
   it('keeps the onboarding manifest independent of staff picks', () => {
-    const recommended = recommendationSchema.parse(fixture('recommended-models'))
+    const recommended = recommendationSchema.parse(
+      fixture('recommended-models')
+    )
     expect(recommended.schema_version).toBe(1)
     for (const entry of recommended.recommendations) {
       expect(Object.keys(entry).sort()).toEqual([
@@ -274,7 +278,13 @@ describe('pinned external registry contracts', () => {
     }
 
     const setupScreen = readFileSync(
-      resolve(repositoryRoot, 'web-app', 'src', 'containers', 'SetupScreen.tsx'),
+      resolve(
+        repositoryRoot,
+        'web-app',
+        'src',
+        'containers',
+        'SetupScreen.tsx'
+      ),
       'utf8'
     )
     expect(setupScreen).toContain('useResolvedRecommendedModels')
@@ -340,59 +350,65 @@ describe.runIf(process.env.ATOMIC_TEST_LIVE_REGISTRIES === '1')(
 describe.runIf(process.env.ATOMIC_TEST_LIVE_REGISTRIES === '1')(
   'live TurboQuant release resolution',
   () => {
-    it(
-      'resolves a stable release through the index or the latest redirect',
-      async () => {
-        const index = await fetch(RELEASE_INDEX_URL)
+    it('resolves a stable release through the index or the latest redirect', async () => {
+      const index = await fetch(RELEASE_INDEX_URL)
 
-        // index.json is the target state; until the fork publishes it, the
-        // /releases/latest redirect must keep naming a stable tag on its own.
-        if (index.ok) {
-          const payload = releaseIndexSchema.parse(await index.json())
-          const stable = payload.releases.filter(
-            (release) => release.prerelease !== true
-          )
-          expect(stable.length).toBeGreaterThan(0)
-          expect(stable.map((release) => release.tag)).toContain(payload.latest)
-          for (const release of stable) {
-            expect(release.tag).toMatch(/^b\d+-\d+\.\d+\.\d+$/)
-          }
-          return
+      // index.json is the target state; until the fork publishes it, the
+      // /releases/latest redirect must keep naming a stable tag on its own.
+      if (index.ok) {
+        const payload = releaseIndexSchema.parse(await index.json())
+        const stable = payload.releases.filter(
+          (release) => release.prerelease !== true
+        )
+        expect(stable.length).toBeGreaterThan(0)
+        expect(stable.map((release) => release.tag)).toContain(payload.latest)
+        for (const release of stable) {
+          expect(release.tag).toMatch(/^b\d+-\d+\.\d+\.\d+$/)
         }
+        return
+      }
 
-        expect(index.status).toBe(404)
-        const latest = await fetch(LATEST_RELEASE_URL)
-        expect(latest.ok).toBe(true)
-        const tag = /\/releases\/tag\/([^/?#]+)/.exec(latest.url)?.[1]
-        expect(tag).toMatch(/^b\d+-\d+\.\d+\.\d+$/)
-      },
-      60_000
-    )
+      expect(index.status).toBe(404)
+      const latest = await fetch(LATEST_RELEASE_URL)
+      expect(latest.ok).toBe(true)
+      const tag = /\/releases\/tag\/([^/?#]+)/.exec(latest.url)?.[1]
+      expect(tag).toMatch(/^b\d+-\d+\.\d+\.\d+$/)
+    }, 60_000)
 
-    it(
-      'publishes a downloadable archive for every backend the app offers',
-      async () => {
-        const manifest = turboquantManifestSchema.parse(
-          await (await fetch(LEGACY_MANIFEST_URL)).json()
-        )
+    it('publishes a downloadable archive for every backend the app offers', async () => {
+      const manifest = turboquantManifestSchema.parse(
+        await (await fetch(LEGACY_MANIFEST_URL)).json()
+      )
 
-        const missing: string[] = []
-        await Promise.all(
-          manifest.backends.map(async (backend) => {
-            const url = `${FORK_RELEASES}/download/${backend.tag}/${backend.asset}`
-            // A ranged GET, because GitHub's asset CDN answers HEAD with a 403.
-            // The single byte is read rather than cancelled: abandoning the body
-            // poisons the pooled connection and the next request dies on it.
-            const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
-            await response.arrayBuffer()
-            if (!response.ok) missing.push(`${backend.id} -> ${url}`)
-          })
-        )
+      const missing: string[] = []
 
-        expect(missing).toEqual([])
-      },
-      120_000
-    )
+      const urlToIds = new Map<string, string[]>()
+      for (const backend of manifest.backends) {
+        const url = `${FORK_RELEASES}/download/${backend.tag}/${backend.asset}`
+        if (!urlToIds.has(url)) {
+          urlToIds.set(url, [])
+        }
+        urlToIds.get(url)!.push(backend.id)
+      }
+
+      await Promise.all(
+        Array.from(urlToIds.keys()).map(async (url) => {
+          // A ranged GET, because GitHub's asset CDN answers HEAD with a 403.
+          // The single byte is read rather than cancelled: abandoning the body
+          // poisons the pooled connection and the next request dies on it.
+          const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
+          await response.arrayBuffer()
+          if (!response.ok) {
+            const ids = urlToIds.get(url)!
+            for (const id of ids) {
+              missing.push(`${id} -> ${url}`)
+            }
+          }
+        })
+      )
+
+      expect(missing).toEqual([])
+    }, 120_000)
   }
 )
 
@@ -408,57 +424,63 @@ describe.runIf(process.env.ATOMIC_TEST_LIVE_REGISTRIES === '1')(
 describe.runIf(process.env.ATOMIC_TEST_LIVE_REGISTRIES === '1')(
   'live upstream baseline freshness',
   () => {
-    it(
-      'ships an offline baseline that still matches the live manifest',
-      async () => {
-        const live = upstreamManifestSchema.parse(
-          await (
-            await fetch(
-              'https://raw.githubusercontent.com/AtomicBot-ai/atomic-chat-conf/main/backends/manifest.json'
-            )
-          ).json()
-        )
-        const baseline = upstreamManifestSchema.parse(
-          fixture('upstream-manifest')
-        )
+    it('ships an offline baseline that still matches the live manifest', async () => {
+      const live = upstreamManifestSchema.parse(
+        await (
+          await fetch(
+            'https://raw.githubusercontent.com/AtomicBot-ai/atomic-chat-conf/main/backends/manifest.json'
+          )
+        ).json()
+      )
+      const baseline = upstreamManifestSchema.parse(
+        fixture('upstream-manifest')
+      )
 
-        expect(baseline.tag_name).toBe(live.tag_name)
-        expect(baseline.assets.map(({ name }) => name).sort()).toEqual(
-          live.assets.map(({ name }) => name).sort()
-        )
-      },
-      30_000
-    )
+      expect(baseline.tag_name).toBe(live.tag_name)
+      expect(baseline.assets.map(({ name }) => name).sort()).toEqual(
+        live.assets.map(({ name }) => name).sort()
+      )
+    }, 30_000)
 
-    it(
-      'serves every mirrored archive it advertises',
-      async () => {
-        const live = upstreamManifestSchema.parse(
-          await (
-            await fetch(
-              'https://raw.githubusercontent.com/AtomicBot-ai/atomic-chat-conf/main/backends/manifest.json'
-            )
-          ).json()
-        )
-        // Nothing mirrored yet means nothing to check: the app is on the
-        // ggml-org fallback, which the resolver contract covers.
-        if (!live.download_base) return
+    it('serves every mirrored archive it advertises', async () => {
+      const live = upstreamManifestSchema.parse(
+        await (
+          await fetch(
+            'https://raw.githubusercontent.com/AtomicBot-ai/atomic-chat-conf/main/backends/manifest.json'
+          )
+        ).json()
+      )
+      // Nothing mirrored yet means nothing to check: the app is on the
+      // ggml-org fallback, which the resolver contract covers.
+      if (!live.download_base) return
 
-        const missing: string[] = []
-        await Promise.all(
-          live.assets.map(async (asset) => {
-            if (!asset.sha256) return
-            const url = `${live.download_base}/${live.tag_name}/${asset.name}`
-            // Ranged GET for the same reason as the TurboQuant check above.
-            const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
-            await response.arrayBuffer()
-            if (!response.ok) missing.push(`${asset.name} -> ${url}`)
-          })
-        )
+      const missing: string[] = []
 
-        expect(missing).toEqual([])
-      },
-      120_000
-    )
+      const urlToNames = new Map<string, string[]>()
+      for (const asset of live.assets) {
+        if (!asset.sha256) continue
+        const url = `${live.download_base}/${live.tag_name}/${asset.name}`
+        if (!urlToNames.has(url)) {
+          urlToNames.set(url, [])
+        }
+        urlToNames.get(url)!.push(asset.name)
+      }
+
+      await Promise.all(
+        Array.from(urlToNames.keys()).map(async (url) => {
+          // Ranged GET for the same reason as the TurboQuant check above.
+          const response = await fetch(url, { headers: { Range: 'bytes=0-0' } })
+          await response.arrayBuffer()
+          if (!response.ok) {
+            const names = urlToNames.get(url)!
+            for (const name of names) {
+              missing.push(`${name} -> ${url}`)
+            }
+          }
+        })
+      )
+
+      expect(missing).toEqual([])
+    }, 120_000)
   }
 )
