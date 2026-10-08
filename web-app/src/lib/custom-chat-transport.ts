@@ -92,8 +92,15 @@ import type { ServiceHub } from '@/services'
 import { ensureRemoteProviderReady } from '@/utils/ensureRemoteProviderReady'
 import {
   isLocalProvider as isLocalProviderName,
+  isLoopbackUrl,
   isSubscriptionProvider,
 } from '@/utils/registerRemoteProvider'
+import {
+  applyPrivacyGate,
+  readPrivacyGateSettings,
+  rehydrateText,
+  type PrivacyState,
+} from '@/lib/privacy-gate'
 
 /// Local inference backends (mlx, llamacpp, llamacpp-upstream,
 /// foundation-models) get special handling at the `streamText` boundary:
@@ -392,6 +399,54 @@ function prependTextDeltaToUIStream(
             delta: prefixText,
           } as UIMessageChunk)
         }
+      } catch (error) {
+        controller.error(error)
+      }
+    },
+    cancel() {
+      reader.cancel()
+    },
+  })
+}
+
+
+function rehydratePrivacyValue(value: unknown, state: PrivacyState): unknown {
+  if (typeof value === 'string') return rehydrateText(value, state)
+  if (Array.isArray(value)) {
+    return value.map((entry) => rehydratePrivacyValue(entry, state))
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key,
+        rehydratePrivacyValue(entry, state),
+      ])
+    )
+  }
+  return value
+}
+
+/**
+ * Restores request-scoped privacy placeholders before provider output reaches
+ * the visible transcript or local tool execution. The remote provider never
+ * receives the originals; rehydration happens only on the local stream.
+ */
+function rehydratePrivacyUIStream(
+  stream: ReadableStream<UIMessageChunk>,
+  state: PrivacyState
+): ReadableStream<UIMessageChunk> {
+  const reader = stream.getReader()
+  return new ReadableStream<UIMessageChunk>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          controller.close()
+          return
+        }
+        controller.enqueue(
+          rehydratePrivacyValue(value, state) as UIMessageChunk
+        )
       } catch (error) {
         controller.error(error)
       }
@@ -1039,6 +1094,27 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
         ? foldSystemIntoFirstUserMessage(modelMessages, systemWithSkills)
         : modelMessages
 
+    // The privacy gate is an egress boundary, not a provider-specific patch.
+    // It is applied after all message preparation but before streamText sends
+    // anything to a remote provider. Local providers remain untouched.
+    const privacySettings = readPrivacyGateSettings()
+    const privacyStaysOnDevice =
+      isLocalProviderName(effectiveProviderName) ||
+      (!isSubscriptionProvider(effectiveProviderName) &&
+        isLoopbackUrl(provider.base_url))
+    const privacyRequest =
+      !privacyStaysOnDevice && privacySettings.enabled
+        ? applyPrivacyGate({
+            messages: finalModelMessages,
+            system: effectiveSystemMessage,
+            customTerms: privacySettings.customTerms,
+          })
+        : null
+    const outboundModelMessages =
+      privacyRequest?.messages ?? finalModelMessages
+    const outboundSystemMessage =
+      privacyRequest?.system ?? effectiveSystemMessage
+
     // Track stream timing and token count for token speed calculation.
     // We start the clock on the *first generated delta* (text or reasoning),
     // not on the `start` event, so the wall-clock fallback measures decode
@@ -1071,11 +1147,11 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
     const result = streamText({
       model: this.model,
-      messages: finalModelMessages,
+      messages: outboundModelMessages,
       abortSignal: options.abortSignal,
       tools: activeTools,
       toolChoice: shouldEnableTools ? 'auto' : undefined,
-      system: effectiveSystemMessage,
+      system: outboundSystemMessage,
       maxOutputTokens,
       // Local engines answer a prompt that does not fit with a fast,
       // deterministic error; retrying it (the SDK default for 5xx) only
@@ -1094,7 +1170,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
     let draftTokensTotal: number | null = null
     let draftTokensAccepted: number | null = null
 
-    const uiStream = result.toUIMessageStream({
+    const providerUiStream = result.toUIMessageStream({
       messageMetadata: ({ part }) => {
         // Start the wall-clock timer on the first generated delta (text or
         // reasoning), NOT on `start` — the latter fires before prefill, so
@@ -1208,6 +1284,11 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
         }
       },
     })
+
+    const uiStream =
+      privacyRequest && privacySettings.rehydrateResponses
+        ? rehydratePrivacyUIStream(providerUiStream, privacyRequest.state)
+        : providerUiStream
 
     // When continuing a truncated response, inject the partial content as the
     // very first text-delta so the new message immediately shows it and the
