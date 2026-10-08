@@ -27,7 +27,7 @@ export interface PrivacyGateResult<T> {
   counts: Record<string, number>
 }
 
-export const PRIVACY_GATE_STORAGE_KEY = 'privacyGateV1'
+export const PRIVACY_GATE_STORAGE_KEY = 'privacy-gate'
 
 export const DEFAULT_PRIVACY_GATE_SETTINGS: PrivacyGateSettings = {
   enabled: false,
@@ -109,7 +109,7 @@ export const PRIVACY_RULES: PrivacyRule[] = [
 ]
 
 function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\  return value.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')')')
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function makeRequestId(): string {
