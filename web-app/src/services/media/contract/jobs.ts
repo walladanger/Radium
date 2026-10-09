@@ -68,11 +68,7 @@ export type NormalizedMediaRequest = {
 }
 
 export type MediaJobState =
-  | 'queued'
-  | 'running'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
+  'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 
 export type MediaOutputRef =
   | { kind: 'local_path'; path: string; mime?: string }

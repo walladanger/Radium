@@ -216,10 +216,7 @@ export function replyGateContext(providers: ModelProvider[]): {
  *    one, on a default engine when there is one. It loads fastest.
  */
 export type ReplyResolution =
-  | 'last_used'
-  | 'cloud'
-  | 'single_local'
-  | 'smallest_local'
+  'last_used' | 'cloud' | 'single_local' | 'smallest_local'
 
 /**
  * Parameter count named in a model id, in billions, or `undefined`.

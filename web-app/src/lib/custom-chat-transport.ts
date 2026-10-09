@@ -970,8 +970,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
         }
         this.lastChatTemplateKwargs =
           effectiveReasoningOverride.chat_template_kwargs as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
       } catch (error) {
         console.error('Failed to create model:', error)
         throw new Error(
@@ -1182,8 +1181,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
         if (part.type === 'finish-step') {
           const pm = part.providerMetadata?.providerMetadata as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
           tokensPerSecond = (pm?.tokensPerSecond as number) || 0
           draftTokensTotal = (pm?.draftTokensTotal as number) ?? null
           draftTokensAccepted = (pm?.draftTokensAccepted as number) ?? null
@@ -1273,8 +1271,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
         // Call the token usage callback with usage data when stream completes
         if (responseMessage) {
           const metadata = responseMessage.metadata as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
           const usage = metadata?.usage as LanguageModelUsage | undefined
           if (usage) {
             this.onTokenUsage?.(usage, responseMessage.id)

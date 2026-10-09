@@ -91,7 +91,7 @@ vi.mock('@/constants/routes', () => ({
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
+  createFileRoute: (_path: string) => (config: any) => ({
     ...config,
     component: config.component,
   }),
