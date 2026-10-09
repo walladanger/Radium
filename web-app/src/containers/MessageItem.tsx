@@ -21,6 +21,7 @@ import { useModelProvider } from '@/hooks/useModelProvider'
 import { useGeneralSetting } from '@/hooks/useGeneralSetting'
 import { IconPencil, IconRefresh } from '@tabler/icons-react'
 import { AudioPlayer } from '@/containers/AudioPlayer'
+import { InlineMedia, inlineMediaOf } from '@/containers/InlineMedia'
 import { InlineMessageEditor } from '@/containers/InlineMessageEditor'
 import { DeleteMessageDialog } from '@/containers/dialogs/DeleteMessageDialog'
 import TokenSpeedIndicator from '@/containers/TokenSpeedIndicator'
@@ -332,6 +333,13 @@ export const MessageItem = memo(
               messageId={message.id}
               isAnimating={isAnimating}
               enableHtmlPreview
+            />
+          )}
+          {message.role === 'assistant' && isLastBlock && (
+            <InlineMedia
+              items={inlineMediaOf(
+                message.metadata as Record<string, unknown> | undefined
+              )}
             />
           )}
         </div>

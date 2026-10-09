@@ -171,13 +171,14 @@ export function SkillsPage() {
               <div
                 key={skill.name}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-lg border p-2 transition-colors hover:bg-accent',
+                  'flex w-full cursor-pointer items-center gap-2 rounded-lg border p-2 transition-colors hover:bg-accent',
                   selected?.name === skill.name && 'bg-accent'
                 )}
               >
                 <button
                   type="button"
-                  className="min-w-0 flex-1 p-1 text-left"
+                  data-no-hover-glow
+                  className="min-w-0 flex-1 rounded-md p-1 text-left outline-none"
                   onClick={() => void select(skill.name)}
                 >
                   <div className="flex items-center gap-2">
