@@ -53,15 +53,22 @@ pub fn seed_starter_skills(
     let mut installed = Vec::new();
     for name in names {
         let source = source_root.join(&name);
-        let manifest_content = fs::read_to_string(source.join("SKILL.md"))
-            .map_err(|error| format!("Failed to read bundled skill `{name}`: {error}"))?;
-        let parsed = parse_skill_file(&manifest_content)
-            .map_err(|error| format!("Invalid bundled skill `{name}`: {error}"))?;
-        if parsed.manifest.name != name {
-            return Err(format!(
-                "Bundled skill `{name}` declares name `{}`",
-                parsed.manifest.name
-            ));
+        // One bad bundled skill must not stop the rest from being seeded: the
+        // set is installed alphabetically, so aborting here left every skill
+        // after the first invalid one (the mirrored catalog has 91 refused and
+        // 10 whose `name` differs from the folder) missing from the data
+        // folder. It is installed anyway; the registry reports it as broken,
+        // with the reason, like any other invalid skill folder.
+        match fs::read_to_string(source.join("SKILL.md")) {
+            Ok(manifest_content) => match parse_skill_file(&manifest_content) {
+                Ok(parsed) if parsed.manifest.name != name => log::warn!(
+                    "Bundled skill `{name}` declares name `{}`",
+                    parsed.manifest.name
+                ),
+                Ok(_) => {}
+                Err(error) => log::warn!("Invalid bundled skill `{name}`: {error}"),
+            },
+            Err(error) => log::warn!("Failed to read bundled skill `{name}`: {error}"),
         }
         let destination = destination_root.join(&name);
         let temporary = temporary_seed_path(destination_root, &name);
@@ -146,6 +153,31 @@ mod tests {
             .unwrap()
             .ends_with("new"));
         assert!(destination.join("custom/SKILL.md").exists());
+    }
+
+    #[test]
+    fn an_invalid_bundled_skill_does_not_stop_the_rest_from_seeding() {
+        let temp = TempDir::new().unwrap();
+        let source = temp.path().join("source");
+        let destination = temp.path().join("destination");
+        fs::create_dir_all(source.join("aa-broken")).unwrap();
+        fs::write(source.join("aa-broken/SKILL.md"), "no frontmatter").unwrap();
+        write_skill(&source, "bb-renamed", "body");
+        fs::write(
+            source.join("bb-renamed/SKILL.md"),
+            "---\nname: other-name\ndescription: Test\n---\nbody",
+        )
+        .unwrap();
+        write_skill(&source, "zz-valid", "valid");
+        let result = seed_starter_skills(&source, &destination).unwrap();
+        assert_eq!(result.installed, ["aa-broken", "bb-renamed", "zz-valid"]);
+        assert!(fs::read_to_string(destination.join("zz-valid/SKILL.md"))
+            .unwrap()
+            .ends_with("valid"));
+        assert_eq!(
+            fs::read_to_string(destination.join("aa-broken/SKILL.md")).unwrap(),
+            "no frontmatter"
+        );
     }
 
     #[test]
