@@ -235,7 +235,11 @@ export function createA1111Adapter(
 
       let width, height
       if (typeof req.params.resolution === 'string') {
-        ;[width, height] = req.params.resolution.split('x').map(Number)
+        const [parsedWidth, parsedHeight] = req.params.resolution
+          .split('x')
+          .map(Number)
+        width = parsedWidth
+        height = parsedHeight
       }
 
       const body: Record<string, unknown> = {
