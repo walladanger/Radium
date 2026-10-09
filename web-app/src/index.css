@@ -433,26 +433,29 @@
  * thickness (see the menu button variants in components/ui/sidebar.tsx).
  */
 @keyframes rail-icon-in {
-  from {
+  0% {
     opacity: 0;
     transform: translateX(-10px) scale(0.55);
   }
+
   60% {
     opacity: 1;
     transform: translateX(1px) scale(1.06);
   }
-  to {
+
+  100% {
     opacity: 1;
     transform: none;
   }
 }
 
 @keyframes rail-label-in {
-  from {
+  0% {
     opacity: 0;
     transform: translateX(-8px);
   }
-  to {
+
+  100% {
     opacity: 1;
     transform: none;
   }
