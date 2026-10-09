@@ -59,6 +59,9 @@ jobs:
         run: |
           corepack enable
           corepack prepare yarn@4.5.3 --activate
+          # Extension lockfiles reference the core archive built in this job.
+          # Its generated hash must refresh after rebuilding shared contracts.
+          yarn config set -H enableImmutableInstalls false
           make install-and-build
           make stub-resources app-icons
 
