@@ -177,7 +177,7 @@ pub struct AppState {
     /// Handles to the dynamic rows in the system tray menu (desktop only).
     /// Populated by `setup::setup_tray` when the tray is installed, consumed by
     /// `tray_status::update_tray_status` to re-render server / model / RAM.
-    #[cfg(desktop)]
+    #[cfg(feature = "desktop")]
     pub tray_handles: Arc<std::sync::Mutex<Option<crate::core::tray_status::TrayHandles>>>,
 }
 
