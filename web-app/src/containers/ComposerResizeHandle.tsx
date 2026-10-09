@@ -43,9 +43,12 @@ export function ComposerResizeHandle({ containerRef }: { containerRef: React.Ref
       onPointerMove={(event) => {
         const start = drag.current
         if (!start) return
+        // Never taller than most of the window, so the send button and the
+        // toolbar stay on screen however long the prompt gets.
+        const maxRows = Math.floor((window.innerHeight * 0.6) / ROW_PX)
         setSize(
           start.width + (event.clientX - start.x) * 2,
-          start.rows + (event.clientY - start.y) / ROW_PX
+          Math.min(maxRows, start.rows + (event.clientY - start.y) / ROW_PX)
         )
       }}
       onPointerUp={(event) => {

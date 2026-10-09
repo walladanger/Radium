@@ -3222,7 +3222,6 @@ const ChatInput = memo(function ChatInput({
                   </DropdownMenu>
 
                   <ComposerChips
-                    currentText={prompt}
                     onInsertPrompt={(text) => {
                       setPrompt(prompt ? `${prompt}\n${text}` : text)
                       requestAnimationFrame(() => textareaRef.current?.focus())
@@ -3454,7 +3453,7 @@ const ChatInput = memo(function ChatInput({
                     on, how hard it thinks — its panel holds the effort slider,
                     whose first stop switches thinking off, and leads into the
                     model list. */}
-                <DropdownModelProvider className="mb-1" />
+                <DropdownModelProvider className="mb-1 border-emerald-400/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300" />
 
                 {/* Beside Send, which is where users expect a microphone.
                     Note this cluster has no streaming guard of its own (the
