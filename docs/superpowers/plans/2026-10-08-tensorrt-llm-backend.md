@@ -98,7 +98,8 @@ The root-level prerequisites that blocked a zero-effort Linux install are not a 
 - [ ] **Step 4:** Test whether `CUDA_VISIBLE_DEVICES` selects a GPU under WSL2 (the guide says GPUs cannot be filtered by index).
 - [ ] **Step 5:** Check localhost reachability from Windows in NAT and mirrored networking; check whether killing `wsl.exe` leaves `trtllm-serve` running; check WSL's idle shutdown behaviour; confirm `/health` semantics and the stderr shape on OOM.
 - [ ] **Step 6:** Repeat Step 1 and the serve test with Docker Desktop + the NGC container and record download size, start time and any WSL2 errors, for comparison.
-- [ ] **Step 7:** Write the ADR with a go/no-go for Phase 1. No-go if it is not meaningfully faster than `llamacpp-upstream`, or if the install needs more than one consented admin step. Stop on no-go.
+- [ ] **Step 7:** Build the comparison matrix on the same model family and similar bit width: (A) `llamacpp-upstream` native Windows (the baseline Radium ships today), (B) TensorRT-LLM in the private WSL2 distro, (C) `llamacpp-upstream` inside the same WSL2 distro, (D) TensorRT-LLM via Docker Desktop. For each, record: model load time, prompt-processing tokens/s at 512 and 8k tokens, decode tokens/s at 1 concurrent request, aggregate decode tokens/s at 4 and 8 concurrent requests, peak VRAM, and idle VRAM and RAM. B vs C isolates TensorRT-LLM's gain from WSL2's cost; C vs A isolates WSL2's cost. Use current builds of both engines: the only head-to-head figures found (Jan, Mistral 7B, older builds, AWQ vs Q4_K_M) are not a basis for decisions.
+- [ ] **Step 8:** Write the ADR with a go/no-go for Phase 1. Go only if B beats A by a margin the user sets before the run (proposal: >= 30% on decode at 1 request, or >= 2x aggregate at 4-8 requests) on models Radium actually offers. No-go if the install needs more than one consented admin step. Stop on no-go.
 
 ---
 
@@ -254,17 +255,13 @@ Mirrors the MLX layout: a Rust plugin owns the process, a TS extension owns sett
 
 ## Open Decisions (yours, not mine)
 
-1. **Host for the runtime on Windows.**
-   (a) A private WSL2 distro that Radium creates and owns. No Docker, root inside the distro, one admin step only if WSL2 isn't enabled yet. Recommended.
-   (b) Docker Desktop + the NGC container. No host toolchain, but a separate large install, the WSL2 backend anyway, and Docker Desktop has paid tiers for larger organisations (not verified here).
-   (c) Only an External-endpoint mode, where you run `trtllm-serve` yourself. Least work, no zero-config.
-   Task 0 measures (a) and (b); I'll recommend from the numbers.
+1. **Host for the runtime on Windows. DECIDED (2026-10-09): a private WSL2 distro that Radium creates and owns.** No Docker, root inside the distro, one admin step only if WSL2 isn't enabled yet. Task 0 still measures Docker Desktop for comparison, but only to confirm the choice, not to reopen it.
 2. **Dual-GPU on WSL2.** Issue 2864 reports `tp_size 2` failing on WSL2. If Task 0 confirms it on your 3090s, do you accept one model per GPU as the fallback?
 3. **Naming.** AGENTS.md §4 forbids new `jan*` names but every extension is `@janhq/*`. Proposal: `@atomic/tensorrt-llm-extension` and crate `tauri-plugin-tensorrtllm`; needs your "ok" as new package names.
 4. **Whether to do this at all.** Gate on Task 0: if decode speed on the 3090s is not clearly above `llamacpp-upstream`, stop.
 5. **Consent for the download and the admin step.** "Just works" and a multi-GB distro plus a possible `wsl --install` and reboot pull against each other. Recommendation: chat never blocks, falls back to the standard engine, and asks once with size and admin/reboot disclosed. I advise against a silent install.
 6. **Auto-prefer TRT-LLM?** Recommendation: only for catalog models where Task 0 measured a clear win, never for GGUF-only models, and a per-model override always wins.
-7. **Rootfs source.** Pin Ubuntu 24.04 from Canonical, or mirror it in `atomic-chat-conf` like the llama.cpp builds (ADR 2026-08-13). I recommend the mirror, for the same signing reasons.
+7. **Rootfs source. DECIDED (2026-10-09): mirror Ubuntu 24.04 in `atomic-chat-conf`**, signed and sha256-pinned like the llama.cpp builds (ADR 2026-08-13). Task 2's resolver reads tag, URL and sha256 from the mirror, with Canonical as the fallback for an unmirrored version.
 
 ## Self-Review
 
