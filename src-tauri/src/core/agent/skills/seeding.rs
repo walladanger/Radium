@@ -331,7 +331,15 @@ mod tests {
         let result = seed_starter_skills(&source, &destination).unwrap();
 
         assert_eq!(result.installed, ["aa-broken", "bb-renamed", "zz-valid"]);
-        assert!(destination.join("zz/zz-valid/SKILL.md").is_file());
+        assert!(fs::read_to_string(destination.join("zz/zz-valid/SKILL.md"))
+            .unwrap()
+            .ends_with("valid"));
+        // The broken skill is installed as shipped, so the registry can report
+        // it as broken with the reason rather than it silently going missing.
+        assert_eq!(
+            fs::read_to_string(destination.join("aa-broken/SKILL.md")).unwrap(),
+            "no frontmatter"
+        );
     }
 
     #[test]
