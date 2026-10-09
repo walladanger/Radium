@@ -477,7 +477,9 @@ def main():
     r.set_defaults(fn=cmd_ready)
 
     b = sub.add_parser("run")
-    b.add_argument("--url", required=True, help="server root, e.g. http://<host>:8000")
+    b.add_argument(
+        "--url", required=True, help="server root URL: scheme, host and port"
+    )
     b.add_argument("--label", required=True, help="A, B, C or D")
     b.add_argument(
         "--engine", required=True, help="e.g. 'llama.cpp b6xyz CUDA' or 'trtllm 1.4.0'"
