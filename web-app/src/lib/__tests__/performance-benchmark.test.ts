@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   compareBenchmarkRuns,
   computeBenchmarkStats,
   noiseFloorFor,
+  runPerformanceBenchmarks,
   type BenchmarkRun,
 } from '../performance-benchmark'
 
@@ -51,4 +52,39 @@ describe('performance benchmark helpers', () => {
     expect(noiseFloorFor({ median: 100, stddev: 8, samples: 10 }))
       .toBeGreaterThan(noiseFloorFor({ median: 100, stddev: 0.5, samples: 10 }))
   })
+})
+
+describe('local API benchmark sampling', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it.each([[false, true, false], [true, false, true], [true, true, true]])(
+    'retains successful samples with failures %j, %j, %j',
+    async (...failures) => {
+      vi.stubGlobal('requestAnimationFrame', undefined)
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: true, json: async () => ({ data: [{ id: 'local' }] }),
+      })
+      for (const fails of failures) {
+        if (fails) fetchMock.mockRejectedValueOnce(new Error('sample failed'))
+        else fetchMock.mockResolvedValueOnce(new Response(
+          'data: {"choices":[{"delta":{"content":"hello"}}],"usage":{"completion_tokens":5}}\n\ndata: [DONE]\n\n'
+        ))
+      }
+      vi.stubGlobal('fetch', fetchMock)
+      const run = await runPerformanceBenchmarks({ sampleHardware: async () => ({}) })
+      const results = run.results.filter((result) => result.id.startsWith('inference.'))
+      const successes = failures.filter((failed) => !failed).length
+      expect(fetchMock).toHaveBeenCalledTimes(4)
+      for (const result of results) {
+        expect(result.samples).toBe(successes)
+        if (successes) {
+          expect(result.skipped).toBeFalsy()
+          expect(result.median).toBeTypeOf('number')
+        } else {
+          expect(result.skipped).toBe(true)
+          expect(result.reason).toBe('sample failed')
+        }
+      }
+    }
+  )
 })

@@ -92,7 +92,6 @@ import type { ServiceHub } from '@/services'
 import { ensureRemoteProviderReady } from '@/utils/ensureRemoteProviderReady'
 import {
   isLocalProvider as isLocalProviderName,
-  isLoopbackUrl,
   isSubscriptionProvider,
 } from '@/utils/registerRemoteProvider'
 import {
@@ -431,30 +430,49 @@ function rehydratePrivacyValue(value: unknown, state: PrivacyState): unknown {
  * the visible transcript or local tool execution. The remote provider never
  * receives the originals; rehydration happens only on the local stream.
  */
-function rehydratePrivacyUIStream(
+export function rehydratePrivacyUIStream(
   stream: ReadableStream<UIMessageChunk>,
   state: PrivacyState
 ): ReadableStream<UIMessageChunk> {
-  const reader = stream.getReader()
-  return new ReadableStream<UIMessageChunk>({
-    async pull(controller) {
-      try {
-        const { done, value } = await reader.read()
-        if (done) {
-          controller.close()
-          return
-        }
-        controller.enqueue(
-          rehydratePrivacyValue(value, state) as UIMessageChunk
+  const prefix = `[RDM_${state.requestId}_`
+  const pending = new Map<string, Extract<UIMessageChunk, { type: 'text-delta' }>>()
+  return stream.pipeThrough(new TransformStream<UIMessageChunk, UIMessageChunk>({
+    transform(chunk, controller) {
+      if (chunk.type === 'text-delta') {
+        const text = (pending.get(chunk.id)?.delta ?? '') + chunk.delta
+        const start = text.lastIndexOf('[')
+        const suffix = start < 0 ? '' : text.slice(start)
+        const hold = suffix && (
+          prefix.startsWith(suffix) ||
+          (suffix.startsWith(prefix) && !suffix.includes(']'))
         )
-      } catch (error) {
-        controller.error(error)
+        const ready = hold ? text.slice(0, start) : text
+        if (hold) {
+          pending.set(chunk.id, { ...chunk, delta: suffix })
+        } else {
+          pending.delete(chunk.id)
+        }
+        if (ready) {
+          controller.enqueue({ ...chunk, delta: rehydrateText(ready, state) })
+        }
+        return
       }
+      if (chunk.type === 'text-end') {
+        const buffered = pending.get(chunk.id)
+        if (buffered) {
+          controller.enqueue({ ...buffered, delta: rehydrateText(buffered.delta, state) })
+          pending.delete(chunk.id)
+        }
+      }
+      controller.enqueue(rehydratePrivacyValue(chunk, state) as UIMessageChunk)
     },
-    cancel() {
-      reader.cancel()
+    flush(controller) {
+      for (const buffered of pending.values()) {
+        controller.enqueue({ ...buffered, delta: rehydrateText(buffered.delta, state) })
+      }
+      pending.clear()
     },
-  })
+  }))
 }
 
 export class CustomChatTransport implements ChatTransport<UIMessage> {
@@ -1098,10 +1116,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
     // It is applied after all message preparation but before streamText sends
     // anything to a remote provider. Local providers remain untouched.
     const privacySettings = readPrivacyGateSettings()
-    const privacyStaysOnDevice =
-      isLocalProviderName(effectiveProviderName) ||
-      (!isSubscriptionProvider(effectiveProviderName) &&
-        isLoopbackUrl(provider.base_url))
+    const privacyStaysOnDevice = isLocalProviderName(effectiveProviderName)
     const privacyRequest =
       !privacyStaysOnDevice && privacySettings.enabled
         ? applyPrivacyGate({

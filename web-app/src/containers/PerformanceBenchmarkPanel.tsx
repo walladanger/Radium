@@ -34,8 +34,12 @@ export function PerformanceBenchmarkPanel() {
       const next = await runPerformanceBenchmarks({
         sampleHardware: () => serviceHub.hardware().getSystemUsage(),
       })
-      saveBenchmarkRun(next)
       setRun(next)
+      try {
+        saveBenchmarkRun(next)
+      } catch (error) {
+        console.warn('Failed to save benchmark run', error)
+      }
     } finally {
       setRunning(false)
     }

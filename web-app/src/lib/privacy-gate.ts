@@ -210,10 +210,9 @@ function redactValue<T>(value: T, state: PrivacyState): T {
     const output: Record<string, unknown> = {}
     for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
       if (
-        key === 'data' ||
+        (key === 'data' && 'mediaType' in value) ||
         key === 'image' ||
         key === 'mediaType' ||
-        key === 'type' ||
         key === 'toolCallId' ||
         key === 'toolName'
       ) {

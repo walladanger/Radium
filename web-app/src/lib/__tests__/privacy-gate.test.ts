@@ -80,3 +80,17 @@ describe('privacy gate', () => {
       .toBe('me@example.com [RDM_other_EMAIL_1]')
   })
 })
+
+it('redacts data and type in tool payloads while preserving media bytes', () => {
+  const input = {
+    data: { type: 'ops@example.com', data: ['ops@example.com'] },
+    media: { mediaType: 'application/pdf', data: 'ops@example.com' },
+    image: 'ops@example.com',
+  }
+  const { messages } = applyPrivacyGate({ messages: [input], requestId: 'keys' })
+  expect(messages[0].data).toEqual({
+    type: '[RDM_keys_EMAIL_1]', data: ['[RDM_keys_EMAIL_1]'],
+  })
+  expect(messages[0].media).toEqual(input.media)
+  expect(messages[0].image).toBe(input.image)
+})

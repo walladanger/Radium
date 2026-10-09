@@ -389,13 +389,19 @@ async function runLocalApiBenchmarks(
 
     const ttft: number[] = []
     const throughput: number[] = []
+    let lastError: unknown
     for (let index = 0; index < iterations; index += 1) {
-      const sample = await runLocalApiSample(baseUrl, model)
-      ttft.push(sample.ttftMs)
-      if (sample.tokensPerSecond !== null) {
-        throughput.push(sample.tokensPerSecond)
+      try {
+        const sample = await runLocalApiSample(baseUrl, model)
+        ttft.push(sample.ttftMs)
+        if (sample.tokensPerSecond !== null) {
+          throughput.push(sample.tokensPerSecond)
+        }
+      } catch (error) {
+        lastError = error
       }
     }
+    if (ttft.length === 0) throw lastError
 
     return [
       makeResult('inference.ttft', 'Local API TTFT', 'ms', false, ttft),

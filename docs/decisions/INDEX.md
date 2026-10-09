@@ -18,6 +18,7 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ## Load-bearing — read before touching platform / provider / agent code
 
+- **2026-10-09** — [Restrict privacy bypass to recognized local providers](2026-10-09-restrict-privacy-bypass-to-local-providers.md)
 - **2026-10-07** — [Port privacy, GPU telemetry, and benchmarking through Radium-native boundaries](2026-10-07-port-privacy-gpu-telemetry-and-benchmarking-through-radium-native-boundaries.md)
 - **2026-09-13** — [Gate every upstream sync on a Fork features impact report](2026-09-13-gate-every-upstream-sync-on-a-fork-features-impact-report.md)
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
