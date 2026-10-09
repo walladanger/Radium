@@ -313,7 +313,9 @@ const ToolTextBlock = memo(
                 <div
                   className={cn('hidden dark:block', HIGHLIGHT_SURFACE)}
                   // biome-ignore lint/security/noDangerouslySetInnerHtml: "Sanitized using DOMPurify."
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(darkHtml) }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(darkHtml),
+                  }}
                 />
               </>
             ) : (

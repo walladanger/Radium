@@ -47,7 +47,11 @@ const ADAPTER_OPTIONS: Array<{
   { id: 'replicate', label: 'Replicate', kind: 'remote_http' },
   { id: 'fal-ai', label: 'fal.ai', kind: 'remote_http' },
   { id: 'stability-ai', label: 'Stability AI', kind: 'remote_http' },
-  { id: 'openai-images', label: 'OpenAI-compatible images', kind: 'remote_http' },
+  {
+    id: 'openai-images',
+    label: 'OpenAI-compatible images',
+    kind: 'remote_http',
+  },
   { id: 'custom-http', label: 'Custom HTTP', kind: 'remote_http' },
 ]
 
@@ -125,8 +129,9 @@ export function ProviderList() {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
-  const [adapter, setAdapter] =
-    useState<MediaProviderAdapterId>('atomic-media-worker')
+  const [adapter, setAdapter] = useState<MediaProviderAdapterId>(
+    'atomic-media-worker'
+  )
   const [apiKey, setApiKey] = useState('')
 
   /**
@@ -219,7 +224,11 @@ export function ProviderList() {
   )
 
   return (
-    <Card title={t('media:providers.cardTitle', { defaultValue: 'Media providers' })}>
+    <Card
+      title={t('media:providers.cardTitle', {
+        defaultValue: 'Media providers',
+      })}
+    >
       <CardItem
         title={t('media:providers.listTitle', {
           defaultValue: 'Configured providers',
@@ -368,9 +377,7 @@ export function ProviderList() {
                     })}
                   </span>
                 </span>
-                {detail && (
-                  <span className="text-destructive">{detail}</span>
-                )}
+                {detail && <span className="text-destructive">{detail}</span>}
               </span>
             }
             actions={

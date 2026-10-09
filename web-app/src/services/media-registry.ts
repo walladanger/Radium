@@ -144,9 +144,7 @@ function sanitizeEntry(value: unknown): MediaProviderDescriptor | null {
     label: typeof entry.label === 'string' && entry.label ? entry.label : id,
     kind,
     adapter: adapter as MediaProviderAdapterId,
-    ...(typeof entry.base_url === 'string'
-      ? { base_url: entry.base_url }
-      : {}),
+    ...(typeof entry.base_url === 'string' ? { base_url: entry.base_url } : {}),
     auth,
     // A registry entry never arrives switched on. Adding a provider is the
     // user's act; the registry only offers one.

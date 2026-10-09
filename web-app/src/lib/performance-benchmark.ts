@@ -75,12 +75,7 @@ export function noiseFloorFor({
   stddev: number | null
   samples: number
 }): number {
-  if (
-    median === null ||
-    median === 0 ||
-    stddev === null ||
-    samples < 2
-  ) {
+  if (median === null || median === 0 || stddev === null || samples < 2) {
     return 5
   }
   const coefficientOfVariation = Math.abs(stddev / median) * 100
@@ -95,7 +90,9 @@ export function compareBenchmarkRuns(
   run: BenchmarkRun,
   baseline: BenchmarkRun
 ): Record<string, BenchmarkComparison> {
-  const baselineById = new Map(baseline.results.map((result) => [result.id, result]))
+  const baselineById = new Map(
+    baseline.results.map((result) => [result.id, result])
+  )
   const comparison: Record<string, BenchmarkComparison> = {}
 
   for (const result of run.results) {
@@ -355,7 +352,8 @@ async function runLocalApiSample(
   }
 
   const decodeSeconds = Math.max(0.001, (finished - firstTokenAt) / 1000)
-  const tokens = completionTokens ?? Math.max(1, Math.round(outputText.length / 4))
+  const tokens =
+    completionTokens ?? Math.max(1, Math.round(outputText.length / 4))
 
   return {
     ttftMs: firstTokenAt - started,

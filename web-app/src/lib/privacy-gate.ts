@@ -208,7 +208,9 @@ function redactValue<T>(value: T, state: PrivacyState): T {
   }
   if (value && typeof value === 'object') {
     const output: Record<string, unknown> = {}
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    for (const [key, entry] of Object.entries(
+      value as Record<string, unknown>
+    )) {
       if (
         key === 'data' ||
         key === 'image' ||
@@ -273,7 +275,9 @@ export function rehydrateText(text: string, state: PrivacyState): string {
  * Count validated matches per built-in rule without redacting the input.
  * Rules are scanned independently; custom private terms are not included.
  */
-export function scanSensitiveText(text: string): Array<{ type: string; count: number }> {
+export function scanSensitiveText(
+  text: string
+): Array<{ type: string; count: number }> {
   const full = String(text)
   const hits: Array<{ type: string; count: number }> = []
 
@@ -305,7 +309,9 @@ export function readPrivacyGateSettings(): PrivacyGateSettings {
     return {
       enabled: parsed.enabled === true,
       customTerms: Array.isArray(parsed.customTerms)
-        ? parsed.customTerms.filter((term): term is string => typeof term === 'string')
+        ? parsed.customTerms.filter(
+            (term): term is string => typeof term === 'string'
+          )
         : [],
       rehydrateResponses: parsed.rehydrateResponses !== false,
     }
@@ -320,5 +326,8 @@ export function readPrivacyGateSettings(): PrivacyGateSettings {
  */
 export function writePrivacyGateSettings(settings: PrivacyGateSettings): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(PRIVACY_GATE_STORAGE_KEY, JSON.stringify(settings))
+  window.localStorage.setItem(
+    PRIVACY_GATE_STORAGE_KEY,
+    JSON.stringify(settings)
+  )
 }

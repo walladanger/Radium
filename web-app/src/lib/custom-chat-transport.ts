@@ -409,7 +409,6 @@ function prependTextDeltaToUIStream(
   })
 }
 
-
 function rehydratePrivacyValue(value: unknown, state: PrivacyState): unknown {
   if (typeof value === 'string') return rehydrateText(value, state)
   if (Array.isArray(value)) {
@@ -1110,8 +1109,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
             customTerms: privacySettings.customTerms,
           })
         : null
-    const outboundModelMessages =
-      privacyRequest?.messages ?? finalModelMessages
+    const outboundModelMessages = privacyRequest?.messages ?? finalModelMessages
     const outboundSystemMessage =
       privacyRequest?.system ?? effectiveSystemMessage
 

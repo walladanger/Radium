@@ -14,16 +14,32 @@ vi.mock('@/containers/HeaderPage', () => ({
 }))
 
 vi.mock('@/containers/Card', () => ({
-  Card: ({ header, children }: { header?: React.ReactNode; children: React.ReactNode }) => (
+  Card: ({
+    header,
+    children,
+  }: {
+    header?: React.ReactNode
+    children: React.ReactNode
+  }) => (
     <div data-testid="card">
       {header && <div data-testid="card-header">{header}</div>}
       {children}
     </div>
   ),
-  CardItem: ({ title, description, actions }: { title?: string; description?: string; actions?: React.ReactNode }) => (
+  CardItem: ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: string
+    description?: string
+    actions?: React.ReactNode
+  }) => (
     <div data-testid="card-item" data-title={title}>
       {title && <div data-testid="card-item-title">{title}</div>}
-      {description && <div data-testid="card-item-description">{description}</div>}
+      {description && (
+        <div data-testid="card-item-description">{description}</div>
+      )}
       {actions && <div data-testid="card-item-actions">{actions}</div>}
     </div>
   ),
@@ -43,7 +59,13 @@ vi.mock('@/i18n/react-i18next-compat', () => ({
 }))
 
 vi.mock('@/components/ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) => (
+  Switch: ({
+    checked,
+    onCheckedChange,
+  }: {
+    checked: boolean
+    onCheckedChange: (checked: boolean) => void
+  }) => (
     <input
       data-testid="switch"
       type="checkbox"
@@ -120,7 +142,7 @@ describe('Privacy Settings Route', () => {
 
     const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
-    
+
     // Test that switch is interactive
     fireEvent.click(analyticsSwitch)
     expect(analyticsSwitch).toBeInTheDocument()
@@ -132,7 +154,7 @@ describe('Privacy Settings Route', () => {
 
     const analyticsSwitch = getAnalyticsSwitch()
     expect(analyticsSwitch).toBeInTheDocument()
-    
+
     // Test that switch is interactive
     fireEvent.click(analyticsSwitch)
     expect(analyticsSwitch).toBeInTheDocument()
@@ -144,7 +166,7 @@ describe('Privacy Settings Route', () => {
 
     const headerPage = screen.getByTestId('header-page')
     expect(headerPage).toBeInTheDocument()
-    
+
     const settingsMenu = screen.getByTestId('settings-menu')
     expect(settingsMenu).toBeInTheDocument()
   })
@@ -182,11 +204,11 @@ describe('Privacy Settings Route', () => {
     render(<Component />)
 
     const analyticsSwitch = getAnalyticsSwitch()
-    
+
     // Test that switch can be toggled
     fireEvent.click(analyticsSwitch)
     expect(analyticsSwitch).toBeInTheDocument()
-    
+
     // Test that switch can be toggled again
     fireEvent.click(analyticsSwitch)
     expect(analyticsSwitch).toBeInTheDocument()

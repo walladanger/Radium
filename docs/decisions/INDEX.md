@@ -13,7 +13,6 @@ decision is reversed, add a new one that says which record it supersedes.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
-
 ---
 
 ## Load-bearing — read before touching platform / provider / agent code
@@ -176,11 +175,11 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-07-23** — [Bound Windows GPU detection and bypass it in fast development](2026-07-23-bound-windows-gpu-detection-and-bypass-it-in-fast-development.md)
 - **2026-07-14** — [Bundle every upstream Windows DLL, repair incomplete installs, and isolate provider backend preferences (ATO-294)](2026-07-14-bundle-every-upstream-windows-dll-repair-incomplete-installs.md)
 - **2026-07-07** — [Make llama-server readiness detection version-independent (log-line broadening + `/health` HTTP poll) in both `llamacpp-upstream` and `llamacpp` (turboquant) plugins](2026-07-07-make-llama-server-readiness-detection-version-independent-log.md)
-- **2026-07-01** — [Fix `llamacpp-upstream` hot-swap race: persist `version_backend` *before* unloading, not after (Windows "optimal backend selected but still running on CPU" bug)](2026-07-01-fix-llamacpp-upstream-hot-swap-race-persist-version-backend.md)
+- **2026-07-01** — [Fix `llamacpp-upstream` hot-swap race: persist `version_backend` _before_ unloading, not after (Windows "optimal backend selected but still running on CPU" bug)](2026-07-01-fix-llamacpp-upstream-hot-swap-race-persist-version-backend.md)
 - **2026-06-26** — [Fix Linux/Vulkan GPU backend 404 → infinite spinner when manifest tag is stale or CDN asset is missing (ATO-233)](2026-06-26-fix-linux-vulkan-gpu-backend-404-infinite-spinner-when-manifest.md)
 - **2026-06-24** — [Add a "Find optimal backend" button + a once-ever post-first-launch popup to the TurboQuant `llamacpp` provider on Windows/Linux (clean-id optimal detection, provider-aware `useBackendUpdater`)](2026-06-24-add-a-find-optimal-backend-button-a-once-ever-post-first-launch.md)
 - **2026-06-23** — [Ship the TurboQuant `llamacpp` provider on Windows + Linux as a second provider (side-by-side with `llamacpp-upstream`), resolving the backend index from a static `atomic-chat-conf` turboquant manifest (per-backend tag) and downloading GPU variants at runtime from the `AtomicBot-ai/atomic-llama-cpp-turboquant` releases CDN](2026-06-23-ship-the-turboquant-llamacpp-provider-on-windows-linux-as-a.md)
-- **2026-06-17** — [Resolve the `llamacpp-upstream` backend *index* from a static `atomic-chat-conf` manifest (raw.githubusercontent.com) instead of the rate-limited `api.github.com` (ATO-199)](2026-06-17-resolve-the-llamacpp-upstream-backend-index-from-a-static.md)
+- **2026-06-17** — [Resolve the `llamacpp-upstream` backend _index_ from a static `atomic-chat-conf` manifest (raw.githubusercontent.com) instead of the rate-limited `api.github.com` (ATO-199)](2026-06-17-resolve-the-llamacpp-upstream-backend-index-from-a-static.md)
 - **2026-06-17** — [Recover the poisoned Metal backend + surface a clear OOM message after a GPU compute error, instead of retrying 3× into a dead backend (ATO-197)](2026-06-17-recover-the-poisoned-metal-backend-surface-a-clear-oom-message.md)
 - **2026-06-16** — [Treat empty/incomplete `llamacpp-upstream` backend folders as not-installed, fall back to a compatible installed backend on load, and sweep orphan folders at startup (ATO-179)](2026-06-16-treat-empty-incomplete-llamacpp-upstream-backend-folders-as-not.md)
 - **2026-06-16** — [Tiered graceful backend fallback when a pinned `llamacpp-upstream` tag 404s / the ggml-org release stream is unreachable (ATO-178; extends ATO-179)](2026-06-16-tiered-graceful-backend-fallback-when-a-pinned-llamacpp.md)
@@ -255,6 +254,7 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-09** — [Add zero-PII Sentry crash/error tracking to both the React frontend and the Rust/Tauri desktop, gated behind `productAnalytic` (ATO-113)](2026-06-09-add-zero-pii-sentry-crash-error-tracking-to-both-the-react.md)
 
 ## Packaging, installers, autostart & platform policy (16)
+
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
 - **2026-09-12** — [Radium never auto-updates: remove the updater rather than repoint it](2026-09-12-radium-never-auto-updates.md)
 - **2026-09-04** — [Sanitize the AppImage environment before launching host processes](2026-09-04-sanitize-appimage-environment-before-launching-host-processes.md)

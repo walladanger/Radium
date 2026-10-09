@@ -41,11 +41,15 @@ export function createMediaAdapter(
     case 'a1111':
       return createA1111Adapter(descriptor)
     case 'replicate':
-      return createReplicateAdapter(descriptor, { resolveSecret: readMediaSecret })
+      return createReplicateAdapter(descriptor, {
+        resolveSecret: readMediaSecret,
+      })
     case 'fal-ai':
       return createFalAiAdapter(descriptor, { resolveSecret: readMediaSecret })
     case 'stability-ai':
-      return createStabilityAiAdapter(descriptor, { resolveSecret: readMediaSecret })
+      return createStabilityAiAdapter(descriptor, {
+        resolveSecret: readMediaSecret,
+      })
     case 'openai-images':
     case 'custom-http':
       // The credential is fetched per request, from the OS credential store,

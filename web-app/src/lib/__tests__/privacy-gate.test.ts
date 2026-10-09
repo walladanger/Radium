@@ -10,7 +10,8 @@ import {
 describe('privacy gate', () => {
   it('redacts sensitive values with request-scoped collision-resistant tokens', () => {
     const state = createPrivacyState([], 'abc123')
-    const input = 'Email chef@example.com and use sk-abcdefghijklmnopqrstuvwxyz123456'
+    const input =
+      'Email chef@example.com and use sk-abcdefghijklmnopqrstuvwxyz123456'
     const redacted = redactText(input, state)
 
     expect(redacted).not.toContain('chef@example.com')
@@ -70,13 +71,16 @@ describe('privacy gate', () => {
 
     expect(JSON.stringify(result.messages)).not.toContain('ops@example.com')
     expect(result.system).not.toContain('10.1.2.3')
-    expect(JSON.stringify(result.messages)).toContain('data:image/png;base64,AAAA')
+    expect(JSON.stringify(result.messages)).toContain(
+      'data:image/png;base64,AAAA'
+    )
   })
 
   it('rehydrates only tokens created by this request', () => {
     const state = createPrivacyState([], 'safe')
     const redacted = redactText('me@example.com', state)
-    expect(rehydrateText(redacted + ' [RDM_other_EMAIL_1]', state))
-      .toBe('me@example.com [RDM_other_EMAIL_1]')
+    expect(rehydrateText(redacted + ' [RDM_other_EMAIL_1]', state)).toBe(
+      'me@example.com [RDM_other_EMAIL_1]'
+    )
   })
 })

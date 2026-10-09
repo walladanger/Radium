@@ -1,6 +1,6 @@
 ---
 date: 2026-10-08
-title: "Consolidate current PRs through one verified integration"
+title: 'Consolidate current PRs through one verified integration'
 ---
 
 # 2026-10-08 — Consolidate current PRs through one verified integration

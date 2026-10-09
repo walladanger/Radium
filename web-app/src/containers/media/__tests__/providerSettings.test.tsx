@@ -46,9 +46,9 @@ import { useMediaProviderStore } from '@/stores/media-provider-store'
 // instance. The assertions below therefore check the English a user actually
 // sees, and prove every `media:` key resolves. Recorded as decision D18.
 vi.mock('@/i18n/react-i18next-compat', async () => {
-  const setup = await vi.importActual<{ default: { t: (k: string, o?: Record<string, unknown>) => string } }>(
-    '@/i18n/setup'
-  )
+  const setup = await vi.importActual<{
+    default: { t: (k: string, o?: Record<string, unknown>) => string }
+  }>('@/i18n/setup')
   return {
     useTranslation: () => ({ t: setup.default.t, i18n: setup.default }),
   }
@@ -201,16 +201,27 @@ describe('adding a provider', () => {
     async (adapter) => {
       render(<ProviderList />)
       fireEvent.click(screen.getByRole('button', { name: 'Add provider' }))
-      fireEvent.change(screen.getByLabelText('Adapter'), { target: { value: adapter } })
+      fireEvent.change(screen.getByLabelText('Adapter'), {
+        target: { value: adapter },
+      })
       expect(screen.getByLabelText('Adapter')).toHaveValue(adapter)
-      await waitFor(() => expect(screen.getByLabelText('API key')).toHaveAttribute('type', 'password'))
+      await waitFor(() =>
+        expect(screen.getByLabelText('API key')).toHaveAttribute(
+          'type',
+          'password'
+        )
+      )
     }
   )
 
   it('offers AUTOMATIC1111 as a local provider', async () => {
-    await act(async () => { render(<ProviderList />) })
+    await act(async () => {
+      render(<ProviderList />)
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Add provider' }))
-    expect(screen.getByRole('option', { name: 'AUTOMATIC1111' })).toHaveValue('a1111')
+    expect(screen.getByRole('option', { name: 'AUTOMATIC1111' })).toHaveValue(
+      'a1111'
+    )
   })
   it('adds a custom provider and shows it in the list', async () => {
     seedStore([providerFor('bundled', 'Radium Media Worker')])
@@ -498,9 +509,7 @@ describe('the remote registry', () => {
     )
 
     await waitFor(() => {
-      expect(
-        useMediaProviderStore.getState().registryLoading
-      ).toBe(false)
+      expect(useMediaProviderStore.getState().registryLoading).toBe(false)
     })
 
     const kept = useMediaProviderStore
