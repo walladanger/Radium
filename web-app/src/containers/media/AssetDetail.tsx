@@ -20,7 +20,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { getServiceHub } from '@/hooks/useServiceHub'
 import { useTranslation } from '@/i18n/react-i18next-compat'
-import { suggestedFileName, type MediaAsset } from '@/services/media/assets'
+import type { MediaAsset } from '@/services/media/assets'
+import { saveMediaAssetAs } from '@/services/media/saveAs'
 import { useMediaLibraryStore } from '@/stores/media-library-store'
 
 /** What the studio needs to run a generation again. */
@@ -41,20 +42,6 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-/** Save a copy wherever the user chooses, under a name they can edit. */
-export async function saveMediaAssetAs(asset: MediaAsset): Promise<string | null> {
-  const hub = getServiceHub()
-  const fileName = suggestedFileName(asset)
-  const extension = fileName.split('.').pop() ?? ''
-  const destination = await hub.dialog().save({
-    defaultPath: fileName,
-    filters: extension ? [{ name: extension.toUpperCase(), extensions: [extension] }] : undefined,
-  })
-  if (!destination) return null
-  await hub.core().invoke('copy_file', { src: asset.path, dest: destination })
-  return destination
 }
 
 export function AssetDetail({ asset, onReRun, onDelete }: AssetDetailProps) {

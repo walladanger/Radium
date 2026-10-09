@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { STARTER_PROMPTS, useSavedPrompts } from '../saved-prompts-store'
 import { overallDownloadProgress, useDownloadDrawer } from '../download-drawer-store'
-import { promptVariables } from '@/routes/settings/prompts'
+import { promptVariables } from '@/lib/promptVariables'
 
 describe('saved prompts', () => {
   beforeEach(() => useSavedPrompts.setState({ prompts: STARTER_PROMPTS }))

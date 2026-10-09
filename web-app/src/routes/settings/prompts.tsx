@@ -10,6 +10,7 @@ import { route } from '@/constants/routes'
 import HeaderPage from '@/containers/HeaderPage'
 import SettingsMenu from '@/containers/SettingsMenu'
 import { useTranslation } from '@/i18n/react-i18next-compat'
+import { promptVariables } from '@/lib/promptVariables'
 import { cn } from '@/lib/utils'
 import {
   useSavedPrompts,
@@ -23,11 +24,6 @@ export const Route = createFileRoute(route.settings.prompts as any)({
 })
 
 type Filter = 'all' | PromptCategory
-
-/** `{{repo}}`-style placeholders in a body, in order, without repeats. */
-export function promptVariables(body: string): string[] {
-  return [...new Set([...body.matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map((m) => m[1]!))]
-}
 
 function PromptRow({
   prompt,
