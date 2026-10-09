@@ -31,6 +31,10 @@ const HISTORY_KEY = 'radium.performance-benchmark.history.v1'
 const BASELINE_KEY = 'radium.performance-benchmark.baseline.v1'
 const MAX_HISTORY = 20
 
+/**
+ * Compute the upper median, nearest-rank P95, extrema, and population standard deviation.
+ * Return null statistics for an empty sample without mutating the input.
+ */
 export function computeBenchmarkStats(values: number[]) {
   if (values.length === 0) {
     return {
@@ -58,6 +62,10 @@ export function computeBenchmarkStats(values: number[]) {
   }
 }
 
+/**
+ * Return a percentage noise threshold from twice the relative standard deviation.
+ * Clamp it to 1–20%, or use 5% when the supplied statistics are insufficient.
+ */
 export function noiseFloorFor({
   median,
   stddev,
@@ -79,6 +87,10 @@ export function noiseFloorFor({
   return Math.min(20, Math.max(1, coefficientOfVariation * 2))
 }
 
+/**
+ * Compare matching result medians against the baseline and its noise threshold.
+ * Skip missing or null medians and zero baselines; respect each metric’s preferred direction.
+ */
 export function compareBenchmarkRuns(
   run: BenchmarkRun,
   baseline: BenchmarkRun
@@ -114,6 +126,9 @@ export function compareBenchmarkRuns(
   return comparison
 }
 
+/**
+ * Combine a metric’s metadata and raw samples with its computed statistics.
+ */
 function makeResult(
   id: string,
   name: string,
@@ -133,6 +148,9 @@ function makeResult(
   }
 }
 
+/**
+ * Represent an unavailable metric with a reason, no samples, and null statistics.
+ */
 function skippedResult(
   id: string,
   name: string,
@@ -157,6 +175,10 @@ function skippedResult(
   }
 }
 
+/**
+ * Measure sequential hardware sampler calls in milliseconds.
+ * Propagate sampler failures so the caller can mark the metric unavailable.
+ */
 async function runHardwareIpcBenchmark(
   sampleHardware: () => Promise<unknown>,
   iterations = 8
@@ -176,6 +198,10 @@ async function runHardwareIpcBenchmark(
   )
 }
 
+/**
+ * Measure animation-frame intervals in milliseconds, starting at scheduling time.
+ * Return a skipped result when requestAnimationFrame is unavailable.
+ */
 async function runRendererFrameBenchmark(
   frameCount = 30
 ): Promise<BenchmarkResult> {
@@ -220,6 +246,9 @@ type LocalApiSample = {
   tokensPerSecond: number | null
 }
 
+/**
+ * Extract nonempty data lines from complete SSE records and retain the unfinished suffix.
+ */
 function extractSsePayloads(buffer: string): {
   payloads: string[]
   remainder: string
@@ -234,6 +263,10 @@ function extractSsePayloads(buffer: string): {
   return { payloads, remainder }
 }
 
+/**
+ * Request the first advertised model ID with a 2.5-second timeout.
+ * Return null for HTTP failures or no model; fetch and parsing errors propagate.
+ */
 async function resolveLocalModel(baseUrl: string): Promise<string | null> {
   const response = await fetch(`${baseUrl}/models`, {
     signal: AbortSignal.timeout(2500),
@@ -245,6 +278,11 @@ async function resolveLocalModel(baseUrl: string): Promise<string | null> {
   return payload.data?.find((item) => item.id)?.id ?? null
 }
 
+/**
+ * Stream a fixed prompt to measure first-text latency and decode throughput.
+ * Prefer reported completion tokens, falling back to an estimate from text length.
+ * Throw for failed HTTP responses, missing text, or request/stream errors.
+ */
 async function runLocalApiSample(
   baseUrl: string,
   model: string
@@ -325,6 +363,10 @@ async function runLocalApiSample(
   }
 }
 
+/**
+ * Sample the first advertised local model repeatedly for latency and throughput.
+ * Return skipped results for both metrics if model discovery or any sample fails.
+ */
 async function runLocalApiBenchmarks(
   baseUrl: string,
   iterations = 3
@@ -383,6 +425,11 @@ async function runLocalApiBenchmarks(
   }
 }
 
+/**
+ * Run hardware IPC, renderer, and inference benchmarks sequentially with a timestamp.
+ * The API URL defaults to loopback; callers supplying an override must keep it local.
+ * Hardware and inference failures become skipped results.
+ */
 export async function runPerformanceBenchmarks({
   sampleHardware,
   baseUrl = 'http://127.0.0.1:1337/v1',
@@ -416,6 +463,9 @@ export async function runPerformanceBenchmarks({
   }
 }
 
+/**
+ * Load stored benchmark history, returning an empty list for unavailable or invalid storage.
+ */
 export function loadBenchmarkHistory(): BenchmarkRun[] {
   if (typeof window === 'undefined') return []
   try {
@@ -427,12 +477,19 @@ export function loadBenchmarkHistory(): BenchmarkRun[] {
   }
 }
 
+/**
+ * Prepend a run to local history and retain at most 20 entries.
+ * Do nothing outside the browser; storage write errors propagate.
+ */
 export function saveBenchmarkRun(run: BenchmarkRun): void {
   if (typeof window === 'undefined') return
   const history = [run, ...loadBenchmarkHistory()].slice(0, MAX_HISTORY)
   window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
 }
 
+/**
+ * Read the saved baseline, returning null when storage is unavailable or JSON is invalid.
+ */
 export function loadBenchmarkBaseline(): BenchmarkRun | null {
   if (typeof window === 'undefined') return null
   try {
@@ -443,6 +500,10 @@ export function loadBenchmarkBaseline(): BenchmarkRun | null {
   }
 }
 
+/**
+ * Persist the selected baseline in local storage; do nothing outside the browser.
+ * Storage write errors propagate to the caller.
+ */
 export function saveBenchmarkBaseline(run: BenchmarkRun): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(BASELINE_KEY, JSON.stringify(run))

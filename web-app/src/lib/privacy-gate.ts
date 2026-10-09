@@ -27,7 +27,7 @@ export interface PrivacyGateResult<T> {
   counts: Record<string, number>
 }
 
-export const PRIVACY_GATE_STORAGE_KEY = 'radium.privacy-gate.v1'
+export const PRIVACY_GATE_STORAGE_KEY = 'privacy-gate'
 
 export const DEFAULT_PRIVACY_GATE_SETTINGS: PrivacyGateSettings = {
   enabled: false,
@@ -43,6 +43,9 @@ type PrivacyRule = {
   validate?: (match: string, context: RuleContext) => boolean
 }
 
+/**
+ * Check the Luhn checksum of a string containing only decimal digits.
+ */
 export function luhn(digits: string): boolean {
   let sum = 0
   let alternate = false
@@ -108,10 +111,16 @@ export const PRIVACY_RULES: PrivacyRule[] = [
   },
 ]
 
+/**
+ * Escape a custom term so it can be matched literally in a regular expression.
+ */
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * Create a short placeholder namespace using a UUID or a time/random fallback.
+ */
 function makeRequestId(): string {
   const cryptoObject = globalThis.crypto
   if (cryptoObject?.randomUUID) {
@@ -121,6 +130,9 @@ function makeRequestId(): string {
   return `${Date.now().toString(36)}${random}`.slice(0, 12)
 }
 
+/**
+ * Create request-local placeholder maps and counts, trimming and dropping empty terms.
+ */
 export function createPrivacyState(
   customTerms: string[] = [],
   requestId = makeRequestId()
@@ -134,6 +146,10 @@ export function createPrivacyState(
   }
 }
 
+/**
+ * Reuse or allocate a placeholder by type and key, retaining the first original value.
+ * Counts track distinct keys, not the number of occurrences.
+ */
 function tokenFor(
   type: string,
   original: string,
@@ -151,6 +167,10 @@ function tokenFor(
   return token
 }
 
+/**
+ * Replace built-in sensitive values and case-insensitive custom terms with placeholders.
+ * Mutates the request maps and counts; leaves data and blob URLs unchanged.
+ */
 export function redactText(text: string, state: PrivacyState): string {
   if (!text) return text
   if (/^(?:data|blob):/i.test(text)) return text
@@ -175,6 +195,10 @@ export function redactText(text: string, state: PrivacyState): string {
   return output
 }
 
+/**
+ * Copy nested message values while redacting strings with the shared request state.
+ * Preserve media payloads and structural fields such as tool names and call IDs.
+ */
 function redactValue<T>(value: T, state: PrivacyState): T {
   if (typeof value === 'string') {
     return redactText(value, state) as T
@@ -203,6 +227,10 @@ function redactValue<T>(value: T, state: PrivacyState): T {
   return value
 }
 
+/**
+ * Redact messages and optional system text using one fresh request state.
+ * Return the redacted copies, restoration map, and counts of distinct replacements.
+ */
 export function applyPrivacyGate<T>({
   messages,
   system,
@@ -228,6 +256,10 @@ export function applyPrivacyGate<T>({
   }
 }
 
+/**
+ * Restore complete placeholders using their first recorded originals.
+ * Unknown tokens and partial placeholders are left unchanged.
+ */
 export function rehydrateText(text: string, state: PrivacyState): string {
   if (!text || state.reverse.size === 0) return text
   let output = text
@@ -237,6 +269,10 @@ export function rehydrateText(text: string, state: PrivacyState): string {
   return output
 }
 
+/**
+ * Count validated matches per built-in rule without redacting the input.
+ * Rules are scanned independently; custom private terms are not included.
+ */
 export function scanSensitiveText(text: string): Array<{ type: string; count: number }> {
   const full = String(text)
   const hits: Array<{ type: string; count: number }> = []
@@ -256,6 +292,10 @@ export function scanSensitiveText(text: string): Array<{ type: string; count: nu
   return hits
 }
 
+/**
+ * Read local settings, filtering non-string custom terms and applying defaults.
+ * Return defaults when storage is unavailable, missing, or cannot be parsed.
+ */
 export function readPrivacyGateSettings(): PrivacyGateSettings {
   if (typeof window === 'undefined') return DEFAULT_PRIVACY_GATE_SETTINGS
   try {
@@ -274,6 +314,10 @@ export function readPrivacyGateSettings(): PrivacyGateSettings {
   }
 }
 
+/**
+ * Persist privacy settings in local storage; do nothing outside the browser.
+ * Storage write errors propagate to the caller.
+ */
 export function writePrivacyGateSettings(settings: PrivacyGateSettings): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(PRIVACY_GATE_STORAGE_KEY, JSON.stringify(settings))
