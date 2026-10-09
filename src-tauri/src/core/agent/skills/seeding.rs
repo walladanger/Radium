@@ -4,7 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::manifest::parse_skill_file;
+use super::{
+    discovery::{discover_skill_folders, DiscoveredSkill},
+    manifest::parse_skill_file,
+    organization::{BUNDLED_CATALOG_FILE, INSTALLED_CATALOG_FILE},
+};
 
 const REMOVED_STARTER_SKILLS: &[&str] = &["ddgr-web-search", "exa-web-search"];
 
@@ -14,20 +18,59 @@ pub struct SeedStarterSkillsResult {
     pub removed: Vec<String>,
 }
 
-pub fn list_starter_skill_names(source_root: &Path) -> BTreeSet<String> {
-    let Ok(entries) = fs::read_dir(source_root) else {
-        return BTreeSet::new();
+/// The bundled skills, flat or in category folders, each by name with its
+/// path below `source_root`. When two bundled folders share a name only the
+/// first (nearest the root, then by path) is kept, and the other is logged.
+pub fn list_starter_skills(source_root: &Path) -> Vec<DiscoveredSkill> {
+    let Ok(discovery) = discover_skill_folders(source_root) else {
+        return Vec::new();
     };
-    entries
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().join("SKILL.md").is_file())
-        .map(|entry| entry.file_name().to_string_lossy().to_string())
+    let mut seen = BTreeSet::new();
+    discovery
+        .skills
+        .into_iter()
+        .filter(|skill| {
+            let first = seen.insert(skill.folder_name.clone());
+            if !first {
+                log::warn!(
+                    "Bundled skill `{}` at `{}` duplicates another bundled skill's name and is skipped",
+                    skill.folder_name,
+                    skill.relative_path()
+                );
+            }
+            first
+        })
+        .collect()
+}
+
+pub fn list_starter_skill_names(source_root: &Path) -> BTreeSet<String> {
+    list_starter_skills(source_root)
+        .into_iter()
+        .map(|skill| skill.folder_name)
         .collect()
 }
 
 pub fn seed_starter_skills(
     source_root: &Path,
     destination_root: &Path,
+) -> Result<SeedStarterSkillsResult, String> {
+    seed_starter_skills_following(source_root, destination_root, &BTreeSet::new())
+}
+
+/// Install the bundled skills into the data folder at the same relative
+/// paths they have in the bundle, so category folders carry over.
+///
+/// `previously_bundled` is the name list the last launch recorded. A bundled
+/// skill already installed somewhere else in the data folder - because the
+/// user moved it into a category folder of their own, or because it sat at
+/// another path in an older bundle - is updated where it is, so a user's
+/// arrangement survives updates and no duplicate appears. Folders the user
+/// made are never touched unless they sit exactly where a bundled skill is
+/// installed, which is how seeding has always behaved.
+pub fn seed_starter_skills_following(
+    source_root: &Path,
+    destination_root: &Path,
+    previously_bundled: &BTreeSet<String>,
 ) -> Result<SeedStarterSkillsResult, String> {
     fs::create_dir_all(destination_root)
         .map_err(|error| format!("Failed to create agent skills directory: {error}"))?;
@@ -46,39 +89,60 @@ pub fn seed_starter_skills(
             removed,
         });
     }
-    let mut names = list_starter_skill_names(source_root)
-        .into_iter()
-        .collect::<Vec<_>>();
-    names.sort();
+    let existing = discover_skill_folders(destination_root)
+        .map(|discovery| discovery.skills)
+        .unwrap_or_default();
     let mut installed = Vec::new();
-    for name in names {
-        let source = source_root.join(&name);
+    for skill in list_starter_skills(source_root) {
+        let name = skill.folder_name.clone();
+        let relative = previously_bundled
+            .contains(&name)
+            .then(|| {
+                existing
+                    .iter()
+                    .find(|installed| installed.folder_name == name)
+                    .map(DiscoveredSkill::relative_path)
+            })
+            .flatten()
+            .unwrap_or_else(|| skill.relative_path());
         // One bad bundled skill must not stop the rest from being seeded: the
-        // set is installed alphabetically, so aborting here left every skill
-        // after the first invalid one (the mirrored catalog has 91 refused and
-        // 10 whose `name` differs from the folder) missing from the data
-        // folder. It is installed anyway; the registry reports it as broken,
-        // with the reason, like any other invalid skill folder.
-        match fs::read_to_string(source.join("SKILL.md")) {
-            Ok(manifest_content) => match parse_skill_file(&manifest_content) {
+        // set is installed in order, so aborting here left every skill after
+        // the first invalid one missing from the data folder. It is installed
+        // anyway and the registry reports it as broken, with the reason.
+        match fs::read_to_string(skill.path.join("SKILL.md")) {
+            Ok(content) => match parse_skill_file(&content) {
                 Ok(parsed) if parsed.manifest.name != name => log::warn!(
-                    "Bundled skill `{name}` declares name `{}`",
+                    "Bundled skill `{relative}` declares name `{}`",
                     parsed.manifest.name
                 ),
                 Ok(_) => {}
-                Err(error) => log::warn!("Invalid bundled skill `{name}`: {error}"),
+                Err(error) => log::warn!("Invalid bundled skill `{relative}`: {error}"),
             },
-            Err(error) => log::warn!("Failed to read bundled skill `{name}`: {error}"),
+            Err(error) => log::warn!("Failed to read bundled skill `{relative}`: {error}"),
         }
-        let destination = destination_root.join(&name);
+        let destination = destination_root.join(&relative);
         let temporary = temporary_seed_path(destination_root, &name);
         if temporary.exists() {
             fs::remove_dir_all(&temporary).map_err(|error| {
                 format!("Failed to clear temporary starter skill `{name}`: {error}")
             })?;
         }
-        copy_tree(&source, &temporary)?;
+        copy_tree(&skill.path, &temporary)?;
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                format!("Failed to create category folder for starter skill `{name}`: {error}")
+            })?;
+        }
         if destination.exists() {
+            // A category folder of the user's that happens to share a bundled
+            // skill's name holds their skills: never replace it.
+            if !destination.join("SKILL.md").exists() {
+                log::warn!(
+                    "Bundled skill `{name}` was not installed: `{relative}` is a category folder"
+                );
+                let _ = fs::remove_dir_all(&temporary);
+                continue;
+            }
             fs::remove_dir_all(&destination)
                 .map_err(|error| format!("Failed to replace starter skill `{name}`: {error}"))?;
         }
@@ -86,7 +150,26 @@ pub fn seed_starter_skills(
             .map_err(|error| format!("Failed to install starter skill `{name}`: {error}"))?;
         installed.push(name);
     }
+    installed.sort();
+    install_catalog(source_root, destination_root);
     Ok(SeedStarterSkillsResult { installed, removed })
+}
+
+/// Copy the bundled `_catalog.json` next to the installed skills, where the
+/// registry reads it. A bundle without one removes a stale copy.
+fn install_catalog(source_root: &Path, destination_root: &Path) {
+    let source = source_root.join(BUNDLED_CATALOG_FILE);
+    let destination = destination_root.join(INSTALLED_CATALOG_FILE);
+    let result = if source.is_file() {
+        fs::copy(&source, &destination).map(|_| ())
+    } else if destination.exists() {
+        fs::remove_file(&destination)
+    } else {
+        Ok(())
+    };
+    if let Err(error) = result {
+        log::warn!("Failed to install the bundled skills catalog: {error}");
+    }
 }
 
 fn temporary_seed_path(root: &Path, name: &str) -> PathBuf {
@@ -156,7 +239,82 @@ mod tests {
     }
 
     #[test]
-    fn an_invalid_bundled_skill_does_not_stop_the_rest_from_seeding() {
+    fn prunes_explicit_tombstones() {
+        let temp = TempDir::new().unwrap();
+        let source = temp.path().join("source");
+        let destination = temp.path().join("destination");
+        fs::create_dir_all(&source).unwrap();
+        write_skill(&destination, REMOVED_STARTER_SKILLS[0], "old");
+        let result = seed_starter_skills(&source, &destination).unwrap();
+        assert_eq!(result.removed, [REMOVED_STARTER_SKILLS[0]]);
+        assert!(!destination.join(REMOVED_STARTER_SKILLS[0]).exists());
+    }
+
+    #[test]
+    fn seeds_nested_bundled_skills_at_their_relative_paths() {
+        let temp = TempDir::new().unwrap();
+        let source = temp.path().join("source");
+        let destination = temp.path().join("destination");
+        write_skill(&source, "flat-skill", "flat");
+        write_skill(&source.join("graphics"), "logo-maker", "logo");
+        write_skill(&source.join("code/rust"), "cargo-helper", "cargo");
+        fs::write(
+            source.join(BUNDLED_CATALOG_FILE),
+            r#"{"version":1,"skills":{}}"#,
+        )
+        .unwrap();
+
+        let result = seed_starter_skills(&source, &destination).unwrap();
+
+        assert_eq!(
+            result.installed,
+            ["cargo-helper", "flat-skill", "logo-maker"]
+        );
+        assert!(destination.join("graphics/logo-maker/SKILL.md").is_file());
+        assert!(destination
+            .join("code/rust/cargo-helper/SKILL.md")
+            .is_file());
+        assert!(destination.join("flat-skill/SKILL.md").is_file());
+        assert!(destination.join(INSTALLED_CATALOG_FILE).is_file());
+        assert!(!destination.join(BUNDLED_CATALOG_FILE).exists());
+    }
+
+    #[test]
+    fn a_bundled_skill_the_user_moved_is_updated_where_it_is() {
+        let temp = TempDir::new().unwrap();
+        let source = temp.path().join("source");
+        let destination = temp.path().join("destination");
+        write_skill(&source, "starter", "new");
+        write_skill(&destination.join("my-tools"), "starter", "old");
+        let previously = BTreeSet::from(["starter".to_string()]);
+
+        seed_starter_skills_following(&source, &destination, &previously).unwrap();
+
+        assert!(
+            fs::read_to_string(destination.join("my-tools/starter/SKILL.md"))
+                .unwrap()
+                .ends_with("new")
+        );
+        assert!(!destination.join("starter").exists());
+    }
+
+    #[test]
+    fn never_replaces_a_category_folder_that_shares_a_bundled_name() {
+        let temp = TempDir::new().unwrap();
+        let source = temp.path().join("source");
+        let destination = temp.path().join("destination");
+        write_skill(&source, "github", "bundled");
+        write_skill(&destination.join("github"), "my-pr-helper", "mine");
+
+        let result = seed_starter_skills(&source, &destination).unwrap();
+
+        assert!(result.installed.is_empty());
+        assert!(destination.join("github/my-pr-helper/SKILL.md").is_file());
+        assert!(!destination.join("github/SKILL.md").exists());
+    }
+
+    #[test]
+    fn invalid_bundled_skills_do_not_stop_seeding() {
         let temp = TempDir::new().unwrap();
         let source = temp.path().join("source");
         let destination = temp.path().join("destination");
@@ -168,28 +326,61 @@ mod tests {
             "---\nname: other-name\ndescription: Test\n---\nbody",
         )
         .unwrap();
-        write_skill(&source, "zz-valid", "valid");
+        write_skill(&source.join("zz"), "zz-valid", "valid");
+
         let result = seed_starter_skills(&source, &destination).unwrap();
+
         assert_eq!(result.installed, ["aa-broken", "bb-renamed", "zz-valid"]);
-        assert!(fs::read_to_string(destination.join("zz-valid/SKILL.md"))
-            .unwrap()
-            .ends_with("valid"));
-        assert_eq!(
-            fs::read_to_string(destination.join("aa-broken/SKILL.md")).unwrap(),
-            "no frontmatter"
-        );
+        assert!(destination.join("zz/zz-valid/SKILL.md").is_file());
     }
 
     #[test]
-    fn prunes_explicit_tombstones() {
+    fn duplicate_bundled_names_install_once() {
         let temp = TempDir::new().unwrap();
         let source = temp.path().join("source");
         let destination = temp.path().join("destination");
-        fs::create_dir_all(&source).unwrap();
-        write_skill(&destination, REMOVED_STARTER_SKILLS[0], "old");
+        write_skill(&source, "twin", "root copy");
+        write_skill(&source.join("nested"), "twin", "nested copy");
+
         let result = seed_starter_skills(&source, &destination).unwrap();
-        assert_eq!(result.removed, [REMOVED_STARTER_SKILLS[0]]);
-        assert!(!destination.join(REMOVED_STARTER_SKILLS[0]).exists());
+
+        assert_eq!(result.installed, ["twin"]);
+        assert!(fs::read_to_string(destination.join("twin/SKILL.md"))
+            .unwrap()
+            .ends_with("root copy"));
+        assert!(!destination.join("nested/twin").exists());
+    }
+
+    /// Every bundled skill is placed in the fixed category list with a
+    /// creator, by `_catalog.json`, so a newly bundled skill cannot land in
+    /// "Other / Unknown" unnoticed. Entries for skills not bundled (yet) are
+    /// allowed: the catalog may run ahead of an open pull request.
+    #[test]
+    fn every_bundled_skill_has_a_catalog_entry_in_a_known_category() {
+        use crate::core::agent::skills::organization::{SkillCatalog, SKILL_CATEGORIES};
+
+        let source = bundled_skills_root();
+        let catalog_path = source.join(BUNDLED_CATALOG_FILE);
+        let content = fs::read_to_string(&catalog_path).unwrap();
+        let catalog: SkillCatalog = serde_json::from_str(&content).unwrap();
+        assert_eq!(catalog.version, 1);
+
+        let missing: Vec<String> = list_starter_skill_names(&source)
+            .into_iter()
+            .filter(|name| !catalog.skills.contains_key(name))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "bundled skills without a `{BUNDLED_CATALOG_FILE}` entry: {missing:?}"
+        );
+        for (name, entry) in &catalog.skills {
+            assert!(
+                SKILL_CATEGORIES.contains(&entry.category.as_str()),
+                "`{name}` has category `{}`, which is not in SKILL_CATEGORIES",
+                entry.category
+            );
+            assert!(!entry.creator.trim().is_empty(), "`{name}` has no creator");
+        }
     }
 
     /// The bundled skills this repository added and reviewed one at a time.
