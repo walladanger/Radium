@@ -337,39 +337,41 @@ jobs:
           TAR_NAME="Radium.app.tar.gz"
           ZIP_NAME="radium-mac-universal-${VERSION}.zip"
 
-          echo "mac_sig=${MAC_SIG}" >> "$GITHUB_OUTPUT"
-          echo "tar_name=${TAR_NAME}" >> "$GITHUB_OUTPUT"
-          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          {
+            echo "mac_sig=${MAC_SIG}"
+            echo "tar_name=${TAR_NAME}"
+            echo "zip_name=${ZIP_NAME}"
+          } >> "$GITHUB_OUTPUT"
 
           cd ../../bundle/dmg
-          DMG_NAME=$(ls *.dmg | head -1)
+          # First *.dmg in name order (empty if none), like `ls *.dmg | head -1`.
+          shopt -s nullglob
+          DMG_FILES=(*.dmg)
+          DMG_NAME="${DMG_FILES[0]:-}"
           echo "dmg_name=${DMG_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload .zip to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.metadata.outputs.zip_name }}
           asset_name: ${{ steps.metadata.outputs.zip_name }}
           asset_content_type: application/zip
 
       - name: Upload .dmg to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/universal-apple-darwin/release/bundle/dmg/${{ steps.metadata.outputs.dmg_name }}
           asset_name: ${{ steps.metadata.outputs.dmg_name }}
           asset_content_type: application/octet-stream
 
       - name: Upload .tar.gz (for updater) to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.metadata.outputs.tar_name }}
           asset_name: ${{ steps.metadata.outputs.tar_name }}
@@ -700,31 +702,36 @@ jobs:
         run: |
           cd src-tauri/target/release/bundle
 
+          # First match in name order (empty if none), like `ls *.ext | head -1`.
+          shopt -s nullglob
+
           cd nsis
-          EXE_NAME=$(ls *.exe | head -1)
+          EXE_FILES=(*.exe)
+          EXE_NAME="${EXE_FILES[0]:-}"
           WIN_SIG=$(cat "${EXE_NAME}.sig" 2>/dev/null || echo "")
-          echo "exe_name=${EXE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "win_sig=${WIN_SIG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "exe_name=${EXE_NAME}"
+            echo "win_sig=${WIN_SIG}"
+          } >> "$GITHUB_OUTPUT"
 
           cd ../msi
-          MSI_NAME=$(ls *.msi | head -1)
+          MSI_FILES=(*.msi)
+          MSI_NAME="${MSI_FILES[0]:-}"
           echo "msi_name=${MSI_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload NSIS installer to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/nsis/${{ steps.metadata.outputs.exe_name }}
           asset_name: ${{ steps.metadata.outputs.exe_name }}
           asset_content_type: application/octet-stream
 
       - name: Upload MSI installer to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/msi/${{ steps.metadata.outputs.msi_name }}
           asset_name: ${{ steps.metadata.outputs.msi_name }}
@@ -732,10 +739,9 @@ jobs:
 
       - name: Upload NSIS updater signature to release
         if: steps.metadata.outputs.win_sig != ''
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/nsis/${{ steps.metadata.outputs.exe_name }}.sig
           asset_name: ${{ steps.metadata.outputs.exe_name }}.sig
@@ -1004,7 +1010,10 @@ jobs:
           cd src-tauri/target/release/bundle/appimage
           echo "=== bundle/appimage/ contents ==="
           ls -la
-          APPIMAGE_NAME=$(ls *.AppImage | head -1)
+          # First *.AppImage in name order (empty if none), like `ls *.AppImage | head -1`.
+          shopt -s nullglob
+          APPIMAGE_FILES=(*.AppImage)
+          APPIMAGE_NAME="${APPIMAGE_FILES[0]:-}"
           if [ -z "$APPIMAGE_NAME" ]; then
             echo "ERROR: no .AppImage produced"
             exit 1
@@ -1015,14 +1024,15 @@ jobs:
           else
             echo "Warning: no ${APPIMAGE_NAME}.sig (Tauri updater signature missing)"
           fi
-          echo "appimage_name=${APPIMAGE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "linux_sig=${LINUX_SIG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "appimage_name=${APPIMAGE_NAME}"
+            echo "linux_sig=${LINUX_SIG}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload .AppImage to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/appimage/${{ steps.metadata.outputs.appimage_name }}
           asset_name: ${{ steps.metadata.outputs.appimage_name }}
@@ -1030,10 +1040,9 @@ jobs:
 
       - name: Upload .AppImage updater signature to release
         if: steps.metadata.outputs.linux_sig != ''
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/appimage/${{ steps.metadata.outputs.appimage_name }}.sig
           asset_name: ${{ steps.metadata.outputs.appimage_name }}.sig
@@ -1114,10 +1123,9 @@ jobs:
           cat latest.json
 
       - name: Upload latest.json to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./latest.json
           asset_name: latest.json
