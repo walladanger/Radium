@@ -1,6 +1,6 @@
 ---
 date: 2026-10-09
-title: "Organize skills by creator and category, with nested folders"
+title: 'Organize skills by creator and category, with nested folders'
 ---
 
 # 2026-10-09 — Organize skills by creator and category, with nested folders
@@ -12,7 +12,7 @@ title: "Organize skills by creator and category, with nested folders"
   way to see who made a skill, what it is for or how big it is.
 - **Decision:** Read skills from nested category folders and describe every
   skill with a creator, a category and tags.
-  - *Disk layout.* Both the bundled set and the user's skills folder may nest
+  - _Disk layout._ Both the bundled set and the user's skills folder may nest
     `agent-skills/<category>/.../<skill>/SKILL.md` up to 3 category levels; the
     flat layout keeps working. A folder holding `SKILL.md` is a skill (its
     sub-folders are its resources and are never searched for more skills); a
@@ -23,27 +23,27 @@ title: "Organize skills by creator and category, with nested folders"
     bundled skill at its relative path, updates a bundled skill in place where
     the user moved it, never touches a category folder that shares a bundled
     name, and never moves the user's files.
-  - *Metadata.* Only keys the Agent Skills spec already allows are read:
+  - _Metadata._ Only keys the Agent Skills spec already allows are read:
     `metadata.creator` (else `metadata.author`, else top-level `author`/`owner`),
     `metadata.category`, and `metadata.tags` plus top-level `tags` (a list or a
     comma-separated string). These never fail a skill. Creators are normalised
     (`nvidia` → `NVIDIA`, `anthropic` → `Anthropic`, `x.ai`/`grok` → `xAI`).
-  - *Fallbacks.* Creator: catalog (bundled skills only) → frontmatter →
+  - _Fallbacks._ Creator: catalog (bundled skills only) → frontmatter →
     `Unknown` for bundled, `User` for the user's own. Category: catalog →
     `metadata.category` → the first category folder → `Other`. Categories that
     match the fixed list (or an alias such as `dev`, `ml`, `design`) are
     normalised to it; any other wording is kept as a custom category.
-  - *Catalog.* The bundled set is described by
+  - _Catalog._ The bundled set is described by
     `src-tauri/resources/agent-skills/_catalog.json` (`version`, then
     `skills.<name> = { creator, category, tags }`), copied to `.catalog.json`
     in the user's skills folder and applied only to Radium's own skill names, so
     a user skill cannot borrow a bundled label. Discovery only looks at
     folders, so the file is never mistaken for a skill. A Rust test requires every bundled skill to have an entry in a
     known category.
-  - *Fixed categories:* Code & Dev, AI & Machine Learning, Data & Science,
+  - _Fixed categories:_ Code & Dev, AI & Machine Learning, Data & Science,
     Infrastructure & Hardware, Robotics & Simulation, Health & Life Sciences,
     Graphics & Design, Media, Writing & Communication, Productivity, Other.
-  - *Size* (bytes and file count of the skill folder) is computed in the
+  - _Size_ (bytes and file count of the skill folder) is computed in the
     backend while fingerprinting, along with an "added" time from the folder.
 - **Consequences:** The Skills page can group by creator, category, source or
   folder and sort by name, size, creator, category or recently added, with the
