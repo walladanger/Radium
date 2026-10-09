@@ -380,7 +380,7 @@ def rows_for(result):
 def print_summary(results):
     labels = [r["meta"]["label"] for r in results]
     width = 36
-    print("\n" + "metric".ljust(width) + "".join(l.rjust(12) for l in labels))
+    print("\n" + "metric".ljust(width) + "".join(name.rjust(12) for name in labels))
     all_rows = [rows_for(r) for r in results]
     for i, (name, _) in enumerate(all_rows[0]):
         cells = []
