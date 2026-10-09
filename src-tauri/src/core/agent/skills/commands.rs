@@ -8,7 +8,8 @@ use super::{
         create_custom_skill, export_skill_archive, import_custom_skill, update_custom_skill,
         CreateAgentSkillRequest, UpdateAgentSkillRequest,
     },
-    global_skills_dir, load_registry, SkillListEntry,
+    discovery::{parse_category_path, MAX_CATEGORY_DEPTH},
+    global_skills_dir, load_registry, SkillListEntry, SkillRegistry,
 };
 use crate::core::app::commands::get_jan_data_folder_path;
 
@@ -52,9 +53,7 @@ pub async fn agent_get_skill<R: Runtime>(
     let data_folder = get_jan_data_folder_path(app_handle);
     let registry = load_registry(&data_folder)?;
     let entry = registry
-        .list_all()
-        .into_iter()
-        .find(|entry| entry.name == name)
+        .entry(&name)
         .ok_or_else(|| format!("Skill `{name}` was not found"))?;
     let record = registry.get(&name);
     let files = match record {
@@ -131,7 +130,7 @@ pub async fn agent_update_skill<R: Runtime>(
         .get(&name)
         .ok_or_else(|| format!("Skill `{name}` was not found or is invalid"))?;
     ensure_skill_can_be_edited(&name, record.reserved)?;
-    let skill_dir = resolve_skill_directory(&data_folder, &name).await?;
+    let skill_dir = resolve_skill_directory(&data_folder, &record.relative_path, &name).await?;
     tokio::task::spawn_blocking(move || update_custom_skill(&skill_dir, request))
         .await
         .map_err(|error| format!("Agent skill update task failed: {error}"))??;
@@ -146,45 +145,119 @@ pub async fn agent_export_skill<R: Runtime>(
 ) -> Result<(), String> {
     let data_folder = get_jan_data_folder_path(app_handle);
     let registry = load_registry(&data_folder)?;
-    if registry.get(&name).is_none() {
-        return Err(format!("Skill `{name}` was not found or is invalid"));
-    }
-    let skill_dir = resolve_skill_directory(&data_folder, &name).await?;
+    let record = registry
+        .get(&name)
+        .ok_or_else(|| format!("Skill `{name}` was not found or is invalid"))?;
+    let skill_dir = resolve_skill_directory(&data_folder, &record.relative_path, &name).await?;
     let target = PathBuf::from(target_path);
     tokio::task::spawn_blocking(move || export_skill_archive(&skill_dir, &target))
         .await
         .map_err(|error| format!("Agent skill export task failed: {error}"))?
 }
 
+/// Delete a skill folder. `path` (its folder below the skills root, as listed)
+/// picks one copy when two folders share a name; without it the loaded copy,
+/// or else the only one, is deleted.
 #[tauri::command]
 pub async fn agent_delete_skill<R: Runtime>(
     app_handle: AppHandle<R>,
     name: String,
+    path: Option<String>,
 ) -> Result<(), String> {
     let data_folder = get_jan_data_folder_path(app_handle);
     let registry = load_registry(&data_folder)?;
-    let entry = registry
-        .list_all()
-        .into_iter()
-        .find(|entry| entry.name == name)
-        .ok_or_else(|| format!("Skill `{name}` was not found"))?;
+    let entry = match path.as_deref() {
+        Some(path) => registry.entry_at(path).filter(|entry| entry.name == name),
+        None => registry.entry(&name),
+    }
+    .ok_or_else(|| format!("Skill `{name}` was not found"))?;
     ensure_skill_can_be_deleted(&name, entry.reserved)?;
-    if !is_direct_child_name(&name) {
-        return Err("Skill deletion target must be a direct child name".into());
-    }
-    let root = global_skills_dir(&data_folder);
-    let canonical_root = tokio::fs::canonicalize(&root)
+    let target = resolve_skill_directory(&data_folder, &entry.path, &name).await?;
+    tokio::fs::remove_dir_all(&target)
         .await
+        .map_err(|error| format!("Failed to delete skill `{name}`: {error}"))?;
+    remove_empty_category_folders(&global_skills_dir(&data_folder), &target);
+    Ok(())
+}
+
+/// Move a skill into a category folder (`graphics`, `graphics/logos`) below
+/// the skills root, or back to the root with an empty `category`. Identity,
+/// on/off state and review all follow the name, and the review fingerprint
+/// covers paths inside the skill only, so nothing has to be allowed again.
+/// Bundled skills can be moved too: seeding updates them where they are.
+#[tauri::command]
+pub async fn agent_move_skill<R: Runtime>(
+    app_handle: AppHandle<R>,
+    name: String,
+    category: String,
+) -> Result<AgentSkillDetail, String> {
+    let data_folder = get_jan_data_folder_path(app_handle.clone());
+    let registry = load_registry(&data_folder)?;
+    let moved_name = name.clone();
+    tokio::task::spawn_blocking(move || move_skill(&registry, &moved_name, &category))
+        .await
+        .map_err(|error| format!("Agent skill move task failed: {error}"))??;
+    agent_get_skill(app_handle, name).await
+}
+
+fn move_skill(registry: &SkillRegistry, name: &str, category: &str) -> Result<(), String> {
+    let record = registry
+        .get(name)
+        .ok_or_else(|| format!("Skill `{name}` was not found or is invalid"))?;
+    let folder = parse_category_path(category)?;
+    if folder == record.folder {
+        return Ok(());
+    }
+    let root = registry.root();
+    let canonical_root = std::fs::canonicalize(root)
         .map_err(|error| format!("Failed to resolve Agent skills directory: {error}"))?;
-    let canonical_target = tokio::fs::canonicalize(root.join(&name))
-        .await
-        .map_err(|error| format!("Failed to resolve skill `{name}`: {error}"))?;
-    if canonical_target.parent() != Some(canonical_root.as_path()) {
-        return Err("Skill deletion target is not a direct child of the skills root".into());
+    let source = canonical_skill_directory(&canonical_root, &record.relative_path, name)?;
+    // Each folder on the way must be a category: a folder holding SKILL.md is
+    // a skill, and a skill inside a skill is never discovered.
+    let mut destination_parent = canonical_root.clone();
+    for part in &folder {
+        destination_parent.push(part);
+        match std::fs::symlink_metadata(&destination_parent) {
+            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => {
+                return Err(format!("`{part}` exists and is not a category folder"));
+            }
+            Ok(_) if destination_parent.join("SKILL.md").exists() => {
+                return Err(format!("`{part}` is a skill, not a category folder"));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("Failed to inspect `{part}`: {error}")),
+        }
     }
-    tokio::fs::remove_dir_all(&canonical_target)
-        .await
-        .map_err(|error| format!("Failed to delete skill `{name}`: {error}"))
+    let destination = destination_parent.join(name);
+    if destination.exists() {
+        return Err(format!(
+            "A folder named `{name}` already exists in that category"
+        ));
+    }
+    std::fs::create_dir_all(&destination_parent)
+        .map_err(|error| format!("Failed to create category folder: {error}"))?;
+    std::fs::rename(&source, &destination)
+        .map_err(|error| format!("Failed to move skill `{name}`: {error}"))?;
+    remove_empty_category_folders(&canonical_root, &source);
+    Ok(())
+}
+
+/// After a skill folder leaves, remove the category folders it left empty,
+/// innermost first, never the skills root itself.
+fn remove_empty_category_folders(root: &Path, removed: &Path) {
+    let mut current = removed.parent();
+    for _ in 0..MAX_CATEGORY_DEPTH {
+        let Some(directory) = current else { break };
+        if directory == root || !directory.starts_with(root) {
+            break;
+        }
+        // Fails, and stops, as soon as a folder still has something in it.
+        if std::fs::remove_dir(directory).is_err() {
+            break;
+        }
+        current = directory.parent();
+    }
 }
 
 /// Code the skill can run: what a reviewer must see before allowing it.
@@ -197,7 +270,16 @@ fn is_runnable_preview_file(relative: &str) -> bool {
                 .map(str::to_ascii_lowercase)
                 .as_deref(),
             Some(
-                "sh" | "bash" | "ps1" | "py" | "js" | "mjs" | "cjs" | "ts" | "cmd" | "bat" | "rb"
+                "sh" | "bash"
+                    | "ps1"
+                    | "py"
+                    | "js"
+                    | "mjs"
+                    | "cjs"
+                    | "ts"
+                    | "cmd"
+                    | "bat"
+                    | "rb"
                     | "pl"
             )
         )
@@ -280,9 +362,42 @@ fn collect_preview_entries(
     Ok(())
 }
 
-fn is_direct_child_name(name: &str) -> bool {
-    let mut components = Path::new(name).components();
-    matches!(components.next(), Some(Component::Normal(_))) && components.next().is_none()
+/// A listed skill path: plain folder names (no `..`, no root, no prefix),
+/// at most one skill below MAX_CATEGORY_DEPTH category folders, ending in the
+/// skill's own name.
+fn is_skill_relative_path(relative: &str, name: &str) -> bool {
+    let components = Path::new(relative).components().collect::<Vec<_>>();
+    !components.is_empty()
+        && components.len() <= MAX_CATEGORY_DEPTH + 1
+        && components
+            .iter()
+            .all(|component| matches!(component, Component::Normal(_)))
+        && components
+            .last()
+            .is_some_and(|last| last.as_os_str() == name)
+}
+
+/// Resolve a listed skill folder and prove it is where the listing says: the
+/// canonical path must be the canonical root plus exactly those folder names,
+/// so neither `..` nor a link or junction anywhere on the way can point a
+/// delete, edit or move outside the skills root.
+fn canonical_skill_directory(
+    canonical_root: &Path,
+    relative: &str,
+    name: &str,
+) -> Result<PathBuf, String> {
+    if !is_skill_relative_path(relative, name) {
+        return Err("Skill target must be a folder inside the skills root".into());
+    }
+    let expected = relative
+        .split('/')
+        .fold(canonical_root.to_path_buf(), |path, part| path.join(part));
+    let canonical_target = std::fs::canonicalize(&expected)
+        .map_err(|error| format!("Failed to resolve skill `{name}`: {error}"))?;
+    if canonical_target != expected || canonical_target == canonical_root {
+        return Err("Skill target is not inside the skills root".into());
+    }
+    Ok(canonical_target)
 }
 
 fn ensure_skill_can_be_deleted(name: &str, reserved: bool) -> Result<(), String> {
@@ -301,21 +416,22 @@ fn ensure_skill_can_be_edited(name: &str, reserved: bool) -> Result<(), String> 
     }
 }
 
-async fn resolve_skill_directory(data_folder: &Path, name: &str) -> Result<PathBuf, String> {
-    if !is_direct_child_name(name) {
-        return Err("Skill target must be a direct child name".into());
-    }
+async fn resolve_skill_directory(
+    data_folder: &Path,
+    relative: &str,
+    name: &str,
+) -> Result<PathBuf, String> {
     let root = global_skills_dir(data_folder);
     let canonical_root = tokio::fs::canonicalize(&root)
         .await
         .map_err(|error| format!("Failed to resolve Agent skills directory: {error}"))?;
-    let canonical_target = tokio::fs::canonicalize(root.join(name))
-        .await
-        .map_err(|error| format!("Failed to resolve skill `{name}`: {error}"))?;
-    if canonical_target.parent() != Some(canonical_root.as_path()) {
-        return Err("Skill target is not a direct child of the skills root".into());
-    }
-    Ok(canonical_target)
+    let relative = relative.to_string();
+    let name = name.to_string();
+    tokio::task::spawn_blocking(move || {
+        canonical_skill_directory(&canonical_root, &relative, &name)
+    })
+    .await
+    .map_err(|error| format!("Agent skill lookup task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -374,7 +490,11 @@ Body",
     fn preview_shows_runnable_files_even_when_data_files_exceed_the_cap() {
         let temp = tempfile::TempDir::new().unwrap();
         let root = temp.path();
-        std::fs::write(root.join("SKILL.md"), "---\nname: x\ndescription: y\n---\nBody").unwrap();
+        std::fs::write(
+            root.join("SKILL.md"),
+            "---\nname: x\ndescription: y\n---\nBody",
+        )
+        .unwrap();
         std::fs::create_dir_all(root.join("canvas-fonts")).unwrap();
         for index in 0..PREVIEW_MAX_FILES + 20 {
             std::fs::write(
@@ -412,9 +532,106 @@ Body",
     }
 
     #[test]
-    fn deletion_names_must_be_direct_children() {
-        assert!(is_direct_child_name("custom-skill"));
-        assert!(!is_direct_child_name("../custom-skill"));
-        assert!(!is_direct_child_name("nested/custom-skill"));
+    fn skill_paths_must_stay_inside_the_root_and_end_in_the_name() {
+        assert!(is_skill_relative_path("custom-skill", "custom-skill"));
+        assert!(is_skill_relative_path(
+            "graphics/custom-skill",
+            "custom-skill"
+        ));
+        assert!(!is_skill_relative_path("../custom-skill", "custom-skill"));
+        assert!(!is_skill_relative_path(
+            "graphics/../custom-skill",
+            "custom-skill"
+        ));
+        assert!(!is_skill_relative_path("/custom-skill", "custom-skill"));
+        assert!(!is_skill_relative_path(
+            "graphics/other-skill",
+            "custom-skill"
+        ));
+        assert!(!is_skill_relative_path(
+            "a/b/c/d/custom-skill",
+            "custom-skill"
+        ));
+        assert!(!is_skill_relative_path("", "custom-skill"));
+    }
+
+    fn write_skill(root: &Path, relative: &str) {
+        let directory = root.join(relative);
+        std::fs::create_dir_all(&directory).unwrap();
+        let name = directory.file_name().unwrap().to_string_lossy().to_string();
+        std::fs::write(
+            directory.join("SKILL.md"),
+            format!("---\nname: {name}\ndescription: Test\n---\nBody"),
+        )
+        .unwrap();
+    }
+
+    fn load(root: &Path) -> SkillRegistry {
+        SkillRegistry::load(
+            root,
+            &std::collections::BTreeSet::new(),
+            &std::collections::BTreeSet::new(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn moves_a_skill_into_a_category_and_back_keeping_its_review() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path().join("skills");
+        write_skill(&root, "logo-maker");
+        let mut registry = load(&root);
+        registry.approve("logo-maker").unwrap();
+
+        move_skill(&registry, "logo-maker", "graphics/logos").unwrap();
+        let registry = load(&root);
+        let record = registry.get("logo-maker").unwrap();
+        assert_eq!(record.relative_path, "graphics/logos/logo-maker");
+        assert!(record.reviewed, "moving must not ask for review again");
+
+        move_skill(&registry, "logo-maker", "").unwrap();
+        let registry = load(&root);
+        assert_eq!(
+            registry.get("logo-maker").unwrap().relative_path,
+            "logo-maker"
+        );
+        // The category folders it left empty are tidied away.
+        assert!(!root.join("graphics").exists());
+    }
+
+    #[test]
+    fn refuses_to_move_into_a_skill_or_onto_an_existing_folder() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path().join("skills");
+        write_skill(&root, "mover");
+        write_skill(&root, "host-skill");
+        write_skill(&root, "taken/mover-copy");
+        std::fs::create_dir_all(root.join("taken/mover")).unwrap();
+        let registry = load(&root);
+
+        assert!(move_skill(&registry, "mover", "host-skill")
+            .unwrap_err()
+            .contains("is a skill"));
+        assert!(move_skill(&registry, "mover", "taken")
+            .unwrap_err()
+            .contains("already exists"));
+        assert!(move_skill(&registry, "mover", "../outside").is_err());
+        assert!(root.join("mover/SKILL.md").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_category_cannot_redirect_a_skill_target() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path().join("skills");
+        std::fs::create_dir_all(&root).unwrap();
+        write_skill(temp.path(), "outside/victim");
+        symlink(temp.path().join("outside"), root.join("linked")).unwrap();
+        let canonical_root = std::fs::canonicalize(&root).unwrap();
+
+        assert!(canonical_skill_directory(&canonical_root, "linked/victim", "victim").is_err());
+        assert!(temp.path().join("outside/victim/SKILL.md").is_file());
     }
 }
