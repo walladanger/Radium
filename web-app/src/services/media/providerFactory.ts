@@ -11,6 +11,10 @@ import { createAtomicWorkerAdapter } from './adapters/atomicWorker'
 import { createBuiltinEngineAdapter } from './adapters/builtinEngine'
 import { createComfyUiAdapter } from './adapters/comfyui'
 import { createRemoteHttpAdapter } from './adapters/remoteHttp'
+import { createA1111Adapter } from './adapters/a1111'
+import { createReplicateAdapter } from './adapters/replicate'
+import { createFalAiAdapter } from './adapters/falAi'
+import { createStabilityAiAdapter } from './adapters/stabilityAi'
 import { readMediaSecret } from './secrets'
 import type { MediaProviderAdapter, MediaProviderDescriptor } from './contract'
 
@@ -34,6 +38,14 @@ export function createMediaAdapter(
       return createAtomicWorkerAdapter(descriptor)
     case 'comfyui':
       return createComfyUiAdapter(descriptor)
+    case 'a1111':
+      return createA1111Adapter(descriptor)
+    case 'replicate':
+      return createReplicateAdapter(descriptor, { resolveSecret: readMediaSecret })
+    case 'fal-ai':
+      return createFalAiAdapter(descriptor, { resolveSecret: readMediaSecret })
+    case 'stability-ai':
+      return createStabilityAiAdapter(descriptor, { resolveSecret: readMediaSecret })
     case 'openai-images':
     case 'custom-http':
       // The credential is fetched per request, from the OS credential store,

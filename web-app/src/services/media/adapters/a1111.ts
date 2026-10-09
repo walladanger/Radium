@@ -5,6 +5,7 @@ import type {
   MediaJobHandle,
   MediaJobSnapshot,
   MediaOutputRef,
+  MediaParamSpec,
   MediaProviderAdapter,
   MediaProviderDescriptor,
   MediaProviderHealth,
@@ -43,6 +44,15 @@ export type A1111AdapterOptions = {
 }
 
 const isDataUrl = (value: unknown): value is string => typeof value === "string" && value.startsWith("data:");
+
+const GENERATION_PARAMS: MediaParamSpec[] = [
+  { id: 'prompt', type: 'text', label: 'Prompt', required: true },
+  { id: 'negative_prompt', type: 'text', label: 'Negative prompt' },
+  { id: 'resolution', type: 'string', label: 'Resolution (WIDTHxHEIGHT)' },
+  { id: 'steps', type: 'int', label: 'Steps', min: 1 },
+  { id: 'guidance_scale', type: 'float', label: 'Guidance scale' },
+  { id: 'seed', type: 'seed', label: 'Seed' },
+]
 
 export function createA1111Adapter(
   descriptor: MediaProviderDescriptor,
@@ -139,7 +149,17 @@ export function createA1111Adapter(
           local_id: m.model_name,
           provider_id: descriptor.id,
           label: m.title,
-          tasks: [MEDIA_TASK.TEXT_TO_IMAGE, MEDIA_TASK.IMAGE_TO_IMAGE], params: { [MEDIA_TASK.TEXT_TO_IMAGE]: [], [MEDIA_TASK.IMAGE_TO_IMAGE]: [] }, outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: "image" }, [MEDIA_TASK.IMAGE_TO_IMAGE]: { media_type: "image" } }, install: { installed: true, installable: false }
+          tasks: [MEDIA_TASK.TEXT_TO_IMAGE, MEDIA_TASK.IMAGE_TO_IMAGE],
+          params: {
+            [MEDIA_TASK.TEXT_TO_IMAGE]: GENERATION_PARAMS,
+            [MEDIA_TASK.IMAGE_TO_IMAGE]: [
+              ...GENERATION_PARAMS,
+              { id: 'init_image', type: 'text', label: 'Input image data URL', required: true },
+              { id: 'strength', type: 'float', label: 'Denoising strength', min: 0, max: 1 },
+            ],
+          },
+          outputs: { [MEDIA_TASK.TEXT_TO_IMAGE]: { media_type: 'image' }, [MEDIA_TASK.IMAGE_TO_IMAGE]: { media_type: 'image' } },
+          install: { installed: true, installable: false }
         })),
         tasks: [
           {

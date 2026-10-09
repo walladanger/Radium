@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev \
+          sudo apt-get install -y libwebkit2gtk-4.1-dev \
             build-essential \
             curl \
             wget \
@@ -45,7 +45,22 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            pkg-config
+            libsoup-3.0-dev \
+            libasound2-dev \
+            pkg-config \
+            unzip
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #@v4
+        with:
+          node-version: "20"
+
+      - name: Prepare repository resources
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.3 --activate
+          make install-and-build
+          make stub-resources app-icons
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af #@v1
@@ -59,10 +74,12 @@ jobs:
         run: cargo install clippy-sarif sarif-fmt
 
       - name: Run rust-clippy
+        env:
+          TAURI_CONFIG: '{"bundle":{"icon":["icons/icon.png"]}}'
         run: |
-          cd src-tauri
-          cargo clippy --all-features --message-format=json | clippy-sarif | tee ../rust-clippy-results.sarif | sarif-fmt
-        continue-on-error: true
+          cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets --no-default-features --features test-tauri --message-format=json -- -D warnings > rust-clippy.json
+          clippy-sarif < rust-clippy.json > rust-clippy-results.sarif
+          sarif-fmt < rust-clippy-results.sarif
 
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52 #@v3

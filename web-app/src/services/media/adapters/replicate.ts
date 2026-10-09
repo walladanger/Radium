@@ -273,14 +273,11 @@ export function createReplicateAdapter(
 
     async cancel(handle: MediaJobHandle): Promise<void> {
         if (!handle.provider_job_id) return
-        try {
-            await transport(`${base}/predictions/${handle.provider_job_id}/cancel`, {
+        const response = await transport(`${base}/predictions/${handle.provider_job_id}/cancel`, {
                 method: 'POST',
                 headers: { ...(await authorization()) }
             })
-        } catch {
-            // Ignored
-        }
+        if (!response.ok) throw await errorFor(response)
     }
   }
 }

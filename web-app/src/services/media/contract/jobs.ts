@@ -22,6 +22,10 @@ export type MediaProviderAdapterId =
   | 'comfyui'
   | 'openai-images'
   | 'custom-http'
+  | 'a1111'
+  | 'replicate'
+  | 'fal-ai'
+  | 'stability-ai'
 
 export type MediaProviderDescriptor = {
   id: string

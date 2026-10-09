@@ -187,8 +187,9 @@ mod windows_impl {
                 *lib.get::<Adl2AdapterAdapterInfoGet>(b"ADL2_Adapter_AdapterInfo_Get\0")?;
             let get_adapter_active =
                 *lib.get::<Adl2AdapterActiveGet>(b"ADL2_Adapter_Active_Get\0")?;
-            let get_dedicated_vram_usage = *lib
-                .get::<Adl2AdapterDedicatedVramUsageGet>(b"ADL2_Adapter_DedicatedVRAMUsage_Get\0")?;
+            let get_dedicated_vram_usage = *lib.get::<Adl2AdapterDedicatedVramUsageGet>(
+                b"ADL2_Adapter_DedicatedVRAMUsage_Get\0",
+            )?;
 
             Ok(Self {
                 _lib: lib,

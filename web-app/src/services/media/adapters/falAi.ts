@@ -210,7 +210,7 @@ export function createFalAiAdapter(
         ...(await authorization()),
       }
 
-      const response = await transport(`https://queue.fal.run/${localId}/requests/${requestId}/status`, {
+      const response = await transport(`${base}/${localId}/requests/${requestId}/status`, {
         headers,
         signal,
       })
@@ -222,7 +222,7 @@ export function createFalAiAdapter(
       } else if (statusPayload.status === 'IN_PROGRESS') {
         return snapshotOf(handle, handle.provider_job_id, 'running')
       } else if (statusPayload.status === 'COMPLETED') {
-        const resultResponse = await transport(`https://queue.fal.run/${localId}/requests/${requestId}`, {
+        const resultResponse = await transport(`${base}/${localId}/requests/${requestId}`, {
           headers,
           signal,
         })

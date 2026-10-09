@@ -63,6 +63,16 @@ afterEach(() => {
 })
 
 describe('the seven failure modes', () => {
+  it.each(['a1111', 'replicate', 'fal-ai', 'stability-ai'])(
+    'accepts the bundled %s adapter from the registry',
+    async (adapter) => {
+      vi.stubGlobal('fetch', respondWith(manifest([
+        remoteProvider({ id: adapter, adapter }),
+      ])))
+      const result = await getMediaProvidersOrFallback({ url: URL })
+      expect(result.providers).toContainEqual(expect.objectContaining({ id: adapter, adapter }))
+    }
+  )
   it('fetch succeeds: returns remote and caches it', async () => {
     vi.stubGlobal('fetch', respondWith(manifest([remoteProvider()])))
 

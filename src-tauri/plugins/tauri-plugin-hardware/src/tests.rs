@@ -14,7 +14,6 @@ fn test_system_usage() {
     println!("System Usage Info: {:?}", usage);
 }
 
-
 #[test]
 fn test_unsupported_gpu_usage_is_explicitly_unavailable() {
     let gpu = GpuInfo {

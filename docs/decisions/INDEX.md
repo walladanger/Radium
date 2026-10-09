@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-257 records, 2026-05-19 → 2026-10-07.
+258 records, 2026-05-19 → 2026-10-08.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -316,6 +316,8 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
 ## Other (14)
+
+- **2026-10-08** — [Consolidate current PRs through one verified integration](2026-10-08-consolidate-current-prs-through-one-verified-integration.md)
 
 - **2026-09-19** — [`secret-service` uses the pure-Rust crypto backend, on the tokio runtime](2026-09-19-secret-service-uses-the-pure-rust-crypto-backend.md)
 - **2026-09-16** — [Structural provenance on `chunks`, document metadata on `files`; RAG assets get their own root](2026-09-16-rag-chunk-provenance-on-chunks-document-metadata-on-files.md)

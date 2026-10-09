@@ -58,6 +58,10 @@ const KNOWN_ADAPTERS: ReadonlySet<string> = new Set<MediaProviderAdapterId>([
   'comfyui',
   'openai-images',
   'custom-http',
+  'a1111',
+  'replicate',
+  'fal-ai',
+  'stability-ai',
 ])
 
 const KNOWN_KINDS: ReadonlySet<string> = new Set<MediaProviderKind>([

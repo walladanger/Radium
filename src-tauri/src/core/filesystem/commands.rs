@@ -305,10 +305,8 @@ fn get_scoped_path<R: Runtime>(
     path: &str,
 ) -> Result<std::path::PathBuf, String> {
     let jan_data_folder = crate::core::app::commands::get_jan_data_folder_path(app.clone());
-    let resolved_path = redirect_for_app(
-        app,
-        &jan_utils::normalize_path(&jan_data_folder.join(path)),
-    );
+    let resolved_path =
+        redirect_for_app(app, &jan_utils::normalize_path(&jan_data_folder.join(path)));
     if !is_within_app_folders(
         &resolved_path,
         &jan_data_folder,
@@ -323,7 +321,6 @@ fn get_scoped_path<R: Runtime>(
     Ok(resolved_path)
 }
 
-
 #[tauri::command]
 pub fn write_yaml<R: Runtime>(
     app: tauri::AppHandle<R>,
@@ -331,11 +328,7 @@ pub fn write_yaml<R: Runtime>(
     save_path: &str,
 ) -> Result<(), String> {
     let save_path = get_scoped_path(&app, save_path).map_err(|e| {
-        // preserve exact old error message format for save path if needed,
-        // though the helper uses "path" instead of "save path". Let's look at the helper error message.
-        // Actually, the old error message was "Error: save path {} is not under jan_data_folder {}".
-        // The helper uses "Error: path {} is not under jan_data_folder {}".
-        // Let's replace the string to preserve exact text.
+        // Preserve the existing write command's error text.
         e.replace("Error: path", "Error: save path")
     })?;
     let file = fs::File::create(&save_path).map_err(|e| e.to_string())?;

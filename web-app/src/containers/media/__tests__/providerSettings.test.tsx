@@ -20,7 +20,7 @@
  * store already uses, so stubbing it exercises the real store, the real
  * descriptors and the real components - not a parallel implementation.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MediaGenerationForm } from '../MediaGenerationForm'
@@ -196,6 +196,22 @@ beforeEach(() => {
 })
 
 describe('adding a provider', () => {
+  it.each(['replicate', 'fal-ai', 'stability-ai'])(
+    'offers %s with an OS credential field',
+    async (adapter) => {
+      render(<ProviderList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Add provider' }))
+      fireEvent.change(screen.getByLabelText('Adapter'), { target: { value: adapter } })
+      expect(screen.getByLabelText('Adapter')).toHaveValue(adapter)
+      await waitFor(() => expect(screen.getByLabelText('API key')).toHaveAttribute('type', 'password'))
+    }
+  )
+
+  it('offers AUTOMATIC1111 as a local provider', async () => {
+    await act(async () => { render(<ProviderList />) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add provider' }))
+    expect(screen.getByRole('option', { name: 'AUTOMATIC1111' })).toHaveValue('a1111')
+  })
   it('adds a custom provider and shows it in the list', async () => {
     seedStore([providerFor('bundled', 'Radium Media Worker')])
     stubAdapter('bundled')

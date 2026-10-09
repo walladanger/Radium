@@ -43,6 +43,10 @@ const ADAPTER_OPTIONS: Array<{
     kind: 'local_worker',
   },
   { id: 'comfyui', label: 'ComfyUI', kind: 'local_comfy' },
+  { id: 'a1111', label: 'AUTOMATIC1111', kind: 'local_worker' },
+  { id: 'replicate', label: 'Replicate', kind: 'remote_http' },
+  { id: 'fal-ai', label: 'fal.ai', kind: 'remote_http' },
+  { id: 'stability-ai', label: 'Stability AI', kind: 'remote_http' },
   { id: 'openai-images', label: 'OpenAI-compatible images', kind: 'remote_http' },
   { id: 'custom-http', label: 'Custom HTTP', kind: 'remote_http' },
 ]
@@ -51,6 +55,9 @@ const ADAPTER_OPTIONS: Array<{
 const NEEDS_KEY: ReadonlySet<MediaProviderAdapterId> = new Set([
   'openai-images',
   'custom-http',
+  'replicate',
+  'fal-ai',
+  'stability-ai',
 ])
 
 /**
