@@ -16,6 +16,7 @@ Subcommands:
 
 See docs/superpowers/plans/2026-10-09-tensorrt-llm-spike-checklist.md.
 """
+
 import argparse
 import json
 import os
@@ -37,6 +38,7 @@ FILLER = (
 
 
 # --------------------------------------------------------------------- HTTP
+
 
 def _nonce():
     # Unique prefix so prefix/KV-cache reuse cannot make repeat prompts free.
@@ -120,12 +122,14 @@ def stream_chat(base, model, prompt, max_tokens, timeout=900):
 
 # --------------------------------------------------------------------- VRAM
 
+
 class VramSampler:
     """Polls nvidia-smi; reports per-GPU peak MiB. Disabled if nvidia-smi fails."""
 
     def __init__(self, nvidia_smi):
         self.cmd = [
-            nvidia_smi, "--query-gpu=memory.used",
+            nvidia_smi,
+            "--query-gpu=memory.used",
             "--format=csv,noheader,nounits",
         ]
         self.peak = []
@@ -167,6 +171,7 @@ class VramSampler:
 
 # ------------------------------------------------------------------- phases
 
+
 def med(values):
     values = [v for v in values if v is not None]
     return statistics.median(values) if values else None
@@ -200,17 +205,32 @@ def phase_decode(base, model, runs, max_tokens):
         "decode_tps_cv": cv([r["decode_tps"] for r in rows]),
         "ttft_s_median": med([r["ttft_s"] for r in rows]),
         "runs": [
-            {k: r[k] for k in (
-                "decode_tps", "ttft_s", "completion_tokens", "finish_reason",
-                "approx_tokens", "sample")} for r in rows
+            {
+                k: r[k]
+                for k in (
+                    "decode_tps",
+                    "ttft_s",
+                    "completion_tokens",
+                    "finish_reason",
+                    "approx_tokens",
+                    "sample",
+                )
+            }
+            for r in rows
         ],
     }
 
 
 def phase_prompt(base, model, target_tokens, runs):
-    rows = [stream_chat(base, model, sized_prompt(target_tokens), 1) for _ in range(runs)]
+    rows = [
+        stream_chat(base, model, sized_prompt(target_tokens), 1) for _ in range(runs)
+    ]
     tps = [
-        (r["prompt_tokens"] / r["ttft_s"]) if r["prompt_tokens"] and r["ttft_s"] else None
+        (
+            (r["prompt_tokens"] / r["ttft_s"])
+            if r["prompt_tokens"] and r["ttft_s"]
+            else None
+        )
         for r in rows
     ]
     return {
@@ -243,7 +263,10 @@ def phase_concurrency(base, model, n, runs, max_tokens):
             agg.append(sum(r["completion_tokens"] for r in ok) / wall)
             per_req.append(med([r["decode_tps"] for r in ok]))
         if len(ok) != n:
-            print(f"  warning: {n - len(ok)}/{n} concurrent requests failed", file=sys.stderr)
+            print(
+                f"  warning: {n - len(ok)}/{n} concurrent requests failed",
+                file=sys.stderr,
+            )
     return {
         "concurrency": n,
         "aggregate_tps_median": med(agg),
@@ -253,6 +276,7 @@ def phase_concurrency(base, model, n, runs, max_tokens):
 
 # ----------------------------------------------------------------- commands
 
+
 def cmd_ready(args):
     start = time.perf_counter()
     while time.perf_counter() - start < args.timeout:
@@ -260,7 +284,9 @@ def cmd_ready(args):
             try:
                 with urllib.request.urlopen(args.url + path, timeout=3) as resp:
                     if resp.status == 200:
-                        print(f"ready after {time.perf_counter() - start:.1f}s ({path})")
+                        print(
+                            f"ready after {time.perf_counter() - start:.1f}s ({path})"
+                        )
                         return 0
             except (urllib.error.URLError, OSError):
                 pass
@@ -310,7 +336,8 @@ def cmd_run(args):
             for n in (4, 8):
                 print(f"decode, {n} concurrent requests...")
                 result[f"concurrency_{n}"] = phase_concurrency(
-                    base, model, n, 3, args.max_tokens)
+                    base, model, n, 3, args.max_tokens
+                )
     result["vram_peak_mib"] = sampler.peak or None
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
@@ -338,8 +365,14 @@ def rows_for(result):
         ("TTFT s (short prompt)", d.get("ttft_s_median")),
         ("prompt proc tok/s @512", result.get("prompt_512", {}).get("pp_tps_median")),
         ("prompt proc tok/s @8k", result.get("prompt_8192", {}).get("pp_tps_median")),
-        ("aggregate tok/s, 4 req", result.get("concurrency_4", {}).get("aggregate_tps_median")),
-        ("aggregate tok/s, 8 req", result.get("concurrency_8", {}).get("aggregate_tps_median")),
+        (
+            "aggregate tok/s, 4 req",
+            result.get("concurrency_4", {}).get("aggregate_tps_median"),
+        ),
+        (
+            "aggregate tok/s, 8 req",
+            result.get("concurrency_8", {}).get("aggregate_tps_median"),
+        ),
         ("VRAM added at peak, MiB (all GPUs)", used),
     ]
 
@@ -378,21 +411,29 @@ def cmd_compare(args):
     print("\nconfigurations (check these are a fair pair):")
     for r in results:
         m = r["meta"]
-        print(f"  {m['label']}: engine={m['engine']!r} model={m['model_id']!r} "
-              f"quant={m['quant']!r} notes={m['notes']!r}")
+        print(
+            f"  {m['label']}: engine={m['engine']!r} model={m['model_id']!r} "
+            f"quant={m['quant']!r} notes={m['notes']!r}"
+        )
 
     warnings = []
     for r in results:
         label = r["meta"]["label"]
         d = r.get("decode_c1", {})
         if (d.get("decode_tps_cv") or 0) > 0.05:
-            warnings.append(f"{label}: decode run-to-run CV above 5%, rerun on a quiet machine")
+            warnings.append(
+                f"{label}: decode run-to-run CV above 5%, rerun on a quiet machine"
+            )
         runs = d.get("runs", [])
         short = [x for x in runs if x.get("finish_reason") != "length"]
         if runs and len(short) / len(runs) > 0.2:
-            warnings.append(f"{label}: >20% of decode runs ended before max_tokens; rates are less reliable")
+            warnings.append(
+                f"{label}: >20% of decode runs ended before max_tokens; rates are less reliable"
+            )
         if any(x.get("approx_tokens") for x in runs):
-            warnings.append(f"{label}: server sent no token usage; counts are streamed chunks (approximate)")
+            warnings.append(
+                f"{label}: server sent no token usage; counts are streamed chunks (approximate)"
+            )
     for w in warnings:
         print("WARNING:", w)
 
@@ -400,26 +441,34 @@ def cmd_compare(args):
         return (by.get(label, {}).get("decode_c1") or {}).get("decode_tps_median")
 
     print()
-    for num, den, what in (("B", "A", "TensorRT-LLM in WSL2 vs llama.cpp native Windows (THE BAR)"),
-                           ("B", "C", "TensorRT-LLM vs llama.cpp, both in WSL2 (engine gain)"),
-                           ("C", "A", "llama.cpp in WSL2 vs native Windows (WSL2 cost)"),
-                           ("D", "B", "Docker vs private distro")):
+    for num, den, what in (
+        ("B", "A", "TensorRT-LLM in WSL2 vs llama.cpp native Windows (THE BAR)"),
+        ("B", "C", "TensorRT-LLM vs llama.cpp, both in WSL2 (engine gain)"),
+        ("C", "A", "llama.cpp in WSL2 vs native Windows (WSL2 cost)"),
+        ("D", "B", "Docker vs private distro"),
+    ):
         if dec(num) and dec(den):
             print(f"{num}/{den} decode ratio: {dec(num) / dec(den):.3f}  {what}")
 
     if dec("A") and dec("B"):
         gain = dec("B") / dec("A") - 1
         verdict = "GO" if gain >= args.bar else "NO-GO"
-        print(f"\nB beats A by {gain * 100:.1f}% at 1 request; bar is {args.bar * 100:.0f}% -> {verdict}")
-        print("(Verdict is only as fair as the A/B pair above. Aggregate, prompt-processing,"
-              " load time and VRAM are reported but do not change it.)")
+        print(
+            f"\nB beats A by {gain * 100:.1f}% at 1 request; bar is {args.bar * 100:.0f}% -> {verdict}"
+        )
+        print(
+            "(Verdict is only as fair as the A/B pair above. Aggregate, prompt-processing,"
+            " load time and VRAM are reported but do not change it.)"
+        )
     else:
         print("\nNeed results for labels A and B to apply the bar.")
     return 0
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("ready")
@@ -428,24 +477,38 @@ def main():
     r.set_defaults(fn=cmd_ready)
 
     b = sub.add_parser("run")
-    b.add_argument("--url", required=True, help="server root, e.g. http://127.0.0.1:8000")
+    b.add_argument(
+        "--url", required=True, help="server root, e.g. http://127.0.0.1:8000"
+    )
     b.add_argument("--label", required=True, help="A, B, C or D")
-    b.add_argument("--engine", required=True, help="e.g. 'llama.cpp b6xyz CUDA' or 'trtllm 1.4.0'")
+    b.add_argument(
+        "--engine", required=True, help="e.g. 'llama.cpp b6xyz CUDA' or 'trtllm 1.4.0'"
+    )
     b.add_argument("--quant", required=True, help="e.g. 'Q4_K_M', 'AWQ-INT4', 'BF16'")
     b.add_argument("--model-id", help="override the id from /v1/models")
-    b.add_argument("--notes", default="", help="launch flags, tp_size, ctx, anything unusual")
+    b.add_argument(
+        "--notes", default="", help="launch flags, tp_size, ctx, anything unusual"
+    )
     b.add_argument("--runs", type=int, default=5)
     b.add_argument("--max-tokens", type=int, default=256)
     b.add_argument("--skip-concurrency", action="store_true")
-    b.add_argument("--only-concurrency", action="store_true",
-                   help="for llama.cpp relaunched with --parallel 8; merged by compare")
+    b.add_argument(
+        "--only-concurrency",
+        action="store_true",
+        help="for llama.cpp relaunched with --parallel 8; merged by compare",
+    )
     b.add_argument("--nvidia-smi", default="nvidia-smi")
     b.add_argument("--out", required=True)
     b.set_defaults(fn=cmd_run)
 
     c = sub.add_parser("compare")
     c.add_argument("files", nargs="+")
-    c.add_argument("--bar", type=float, default=0.30, help="required B-over-A decode gain (default 0.30)")
+    c.add_argument(
+        "--bar",
+        type=float,
+        default=0.30,
+        help="required B-over-A decode gain (default 0.30)",
+    )
     c.set_defaults(fn=cmd_compare)
 
     args = p.parse_args()
