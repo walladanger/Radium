@@ -194,6 +194,87 @@ pub fn write_file_sync<R: Runtime>(
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Decode `data_base64` and write it to `path`, creating parent folders.
+///
+/// The media library saves generated images and video through this. There was
+/// no binary write at all before: the frontend called a `writeBlob` that no
+/// Rust command backed, so every generation failed to save and the Library
+/// stayed empty. Base64 rather than a JSON number array keeps a multi-megabyte
+/// image from ballooning on its way over IPC.
+///
+/// Absolute paths only, because the user can point media at any folder they
+/// own, and a relative path would silently land in the process's cwd.
+#[tauri::command]
+pub fn write_binary_file<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    path: String,
+    data_base64: String,
+) -> Result<(), String> {
+    use base64::Engine;
+
+    if path.is_empty() {
+        return Err("write_binary_file error: Invalid argument".to_string());
+    }
+    let target = resolve_path(app_handle, &path);
+    if !target.is_absolute() {
+        return Err("write_binary_file error: path must be absolute".to_string());
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data_base64.as_bytes())
+        .map_err(|e| format!("write_binary_file error: bad base64: {e}"))?;
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&target, bytes).map_err(|e| e.to_string())
+}
+
+/// Copy a file to a path the user picked in a save dialog ("Save as…").
+///
+/// Refuses to overwrite a directory and creates missing parent folders. The
+/// source must be an existing regular file.
+#[tauri::command]
+pub fn copy_file<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    src: String,
+    dest: String,
+) -> Result<(), String> {
+    if src.is_empty() || dest.is_empty() {
+        return Err("copy_file error: source and destination required".to_string());
+    }
+    let source = resolve_path(app_handle.clone(), &src);
+    let destination = resolve_path(app_handle, &dest);
+    if !source.is_file() {
+        return Err("copy_file error: source is not a file".to_string());
+    }
+    if !destination.is_absolute() || destination.is_dir() {
+        return Err("copy_file error: destination must be an absolute file path".to_string());
+    }
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(&source, &destination)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Delete one file. Unlike `rm` it is not limited to the app's own folders,
+/// because a generation can live in a media folder the user chose - but it only
+/// ever removes a single regular file, never a directory.
+#[tauri::command]
+pub fn remove_file<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    path: String,
+) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("remove_file error: Invalid argument".to_string());
+    }
+    let target = resolve_path(app_handle, &path);
+    if !target.is_absolute() || !target.is_file() {
+        return Err("remove_file error: not an existing file".to_string());
+    }
+    fs::remove_file(&target).map_err(|e| e.to_string())
+}
+
 /// Returns the current OS user's real home directory (e.g. `/Users/<name>` or
 /// `C:\Users\<name>`), NOT the Jan data folder. Used by the local-model scanner
 /// to locate other apps' model stores (Ollama / LM Studio / HF cache / Unsloth).

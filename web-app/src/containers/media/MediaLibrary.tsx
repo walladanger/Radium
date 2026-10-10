@@ -58,8 +58,8 @@ function Tile({
       onClick={onSelect}
       className={
         selected
-          ? 'flex flex-col gap-1 rounded-md border border-primary p-2 text-left'
-          : 'flex flex-col gap-1 rounded-md border border-border/60 p-2 text-left'
+          ? 'flex flex-col gap-1 rounded-xl border border-primary p-2 text-left'
+          : 'flex flex-col gap-1 rounded-xl border border-border/60 p-2 text-left'
       }
     >
       {missing ? (
@@ -69,17 +69,28 @@ function Tile({
         >
           {t('media:library.fileMissing', { defaultValue: 'File missing' })}
         </span>
+      ) : asset.media_type === 'video' && !asset.thumb_path ? (
+        // No thumbnail was captured, so show the clip's own first frame rather
+        // than an <img> pointed at an .mp4, which can only ever render broken.
+        <video
+          data-testid="media-library-thumb"
+          className="h-24 w-full rounded-lg object-cover"
+          src={convertFileSrc(asset.path)}
+          preload="metadata"
+          muted
+          onError={() => setMissing(true)}
+        />
       ) : (
         <img
           data-testid="media-library-thumb"
-          className="h-24 w-full rounded object-cover"
+          className="h-24 w-full rounded-lg object-cover"
           src={thumbSourceOf(asset)}
           alt={asset.provenance.model_label}
           onError={() => setMissing(true)}
         />
       )}
       <span className="truncate text-xs font-medium">
-        {asset.provenance.model_label}
+        {asset.name ?? asset.provenance.model_label}
       </span>
       <span className="truncate text-[11px] text-muted-foreground">
         {asset.provenance.task}

@@ -16,6 +16,7 @@ export const route = {
     interface: '/settings/interface',
     privacy: '/settings/privacy',
     shortcuts: '/settings/shortcuts',
+    prompts: '/settings/prompts',
     extensions: '/settings/extensions',
     local_api_server: '/settings/local-api-server',
     mcp_servers: '/settings/mcp-servers',
