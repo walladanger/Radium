@@ -30,7 +30,8 @@ import {
   type RecordedRequest,
 } from './httpFakes'
 
-const API_KEY = 'sk-TESTstabilityKEY0123456789abcdefABCDEFghij'
+// Deliberately low-entropy so it can never be mistaken for a real key.
+const API_KEY = 'sk-test-stability-xxxxxxxxxxxxxxxx'
 const BASE = 'https://api.stability.ai'
 
 const descriptor: MediaProviderDescriptor = {

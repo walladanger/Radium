@@ -111,7 +111,7 @@ const BASIC_UNAUTHORISED = {
   errors: '401: Incorrect username or password',
 }
 
-function progressIn(state: MediaJobState) {
+function progressBodyFor(state: MediaJobState) {
   const base = { live_preview: null, id_live_preview: -1 }
   switch (state) {
     case 'queued':
@@ -243,7 +243,7 @@ function transport(input: string, init: RequestInit = {}): Promise<Response> {
       state.states.length > 1 ? state.states.shift()! : state.states[0]!
     if (next === 'succeeded' || next === 'failed' || next === 'cancelled')
       settleGeneration(next)
-    return Promise.resolve(jsonResponse(200, progressIn(next)))
+    return Promise.resolve(jsonResponse(200, progressBodyFor(next)))
   }
   if (path.startsWith('/sdapi/v1/progress')) {
     const busy = state.states[0] === 'running'
