@@ -1,6 +1,6 @@
 ---
 date: 2026-10-07
-title: "Port privacy, GPU telemetry, and benchmarking through Radium-native boundaries"
+title: 'Port privacy, GPU telemetry, and benchmarking through Radium-native boundaries'
 ---
 
 # 2026-10-07 — Port privacy, GPU telemetry, and benchmarking through Radium-native boundaries

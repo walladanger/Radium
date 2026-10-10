@@ -13,12 +13,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslation } from '@/i18n/react-i18next-compat'
+import {
+  EMPTY_SKILL_ORGANIZATION,
+  SKILL_CATEGORIES,
+  organizationRequest,
+} from '@/lib/skill-organization'
 import type { CreateAgentSkillRequest } from '@/services/agent/skills'
+import { AgentSkillOrganizationFields } from './AgentSkillOrganizationFields'
 
 type AgentSkillCreateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreate: (request: CreateAgentSkillRequest) => Promise<void>
+  /** Category suggestions; defaults to the fixed list. */
+  categories?: string[]
 }
 
 function normalizeSkillName(value: string) {
@@ -33,11 +41,13 @@ export function AgentSkillCreateDialog({
   open,
   onOpenChange,
   onCreate,
+  categories = [...SKILL_CATEGORIES],
 }: AgentSkillCreateDialogProps) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [instructions, setInstructions] = useState('')
+  const [organization, setOrganization] = useState(EMPTY_SKILL_ORGANIZATION)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -45,6 +55,7 @@ export function AgentSkillCreateDialog({
       setName('')
       setDescription('')
       setInstructions('')
+      setOrganization(EMPTY_SKILL_ORGANIZATION)
       setSubmitting(false)
     }
   }, [open])
@@ -57,6 +68,7 @@ export function AgentSkillCreateDialog({
         name: normalizedName,
         description: description.trim(),
         instructions: instructions.trim(),
+        ...organizationRequest(organization, 'create'),
       })
       onOpenChange(false)
     } catch (reason) {
@@ -100,6 +112,13 @@ export function AgentSkillCreateDialog({
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
+          <AgentSkillOrganizationFields
+            idPrefix="agent-skill"
+            value={organization}
+            categories={categories}
+            disabled={submitting}
+            onChange={setOrganization}
+          />
           <div className="space-y-2">
             <Label htmlFor="agent-skill-instructions">
               {t('common:instructions')}

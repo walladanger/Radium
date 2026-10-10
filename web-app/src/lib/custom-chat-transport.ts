@@ -97,8 +97,7 @@ import {
 import {
   applyPrivacyGate,
   readPrivacyGateSettings,
-  rehydrateText,
-  type PrivacyState,
+  rehydrateUIMessageStream,
 } from '@/lib/privacy-gate'
 
 /// Local inference backends (mlx, llamacpp, llamacpp-upstream,
@@ -406,73 +405,6 @@ function prependTextDeltaToUIStream(
       reader.cancel()
     },
   })
-}
-
-
-function rehydratePrivacyValue(value: unknown, state: PrivacyState): unknown {
-  if (typeof value === 'string') return rehydrateText(value, state)
-  if (Array.isArray(value)) {
-    return value.map((entry) => rehydratePrivacyValue(entry, state))
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-        key,
-        rehydratePrivacyValue(entry, state),
-      ])
-    )
-  }
-  return value
-}
-
-/**
- * Restores request-scoped privacy placeholders before provider output reaches
- * the visible transcript or local tool execution. The remote provider never
- * receives the originals; rehydration happens only on the local stream.
- */
-export function rehydratePrivacyUIStream(
-  stream: ReadableStream<UIMessageChunk>,
-  state: PrivacyState
-): ReadableStream<UIMessageChunk> {
-  const prefix = `[RDM_${state.requestId}_`
-  const pending = new Map<string, Extract<UIMessageChunk, { type: 'text-delta' }>>()
-  return stream.pipeThrough(new TransformStream<UIMessageChunk, UIMessageChunk>({
-    transform(chunk, controller) {
-      if (chunk.type === 'text-delta') {
-        const text = (pending.get(chunk.id)?.delta ?? '') + chunk.delta
-        const start = text.lastIndexOf('[')
-        const suffix = start < 0 ? '' : text.slice(start)
-        const hold = suffix && (
-          prefix.startsWith(suffix) ||
-          (suffix.startsWith(prefix) && !suffix.includes(']'))
-        )
-        const ready = hold ? text.slice(0, start) : text
-        if (hold) {
-          pending.set(chunk.id, { ...chunk, delta: suffix })
-        } else {
-          pending.delete(chunk.id)
-        }
-        if (ready) {
-          controller.enqueue({ ...chunk, delta: rehydrateText(ready, state) })
-        }
-        return
-      }
-      if (chunk.type === 'text-end') {
-        const buffered = pending.get(chunk.id)
-        if (buffered) {
-          controller.enqueue({ ...buffered, delta: rehydrateText(buffered.delta, state) })
-          pending.delete(chunk.id)
-        }
-      }
-      controller.enqueue(rehydratePrivacyValue(chunk, state) as UIMessageChunk)
-    },
-    flush(controller) {
-      for (const buffered of pending.values()) {
-        controller.enqueue({ ...buffered, delta: rehydrateText(buffered.delta, state) })
-      }
-      pending.clear()
-    },
-  }))
 }
 
 export class CustomChatTransport implements ChatTransport<UIMessage> {
@@ -989,8 +921,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
         }
         this.lastChatTemplateKwargs =
           effectiveReasoningOverride.chat_template_kwargs as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
       } catch (error) {
         console.error('Failed to create model:', error)
         throw new Error(
@@ -1125,8 +1056,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
             customTerms: privacySettings.customTerms,
           })
         : null
-    const outboundModelMessages =
-      privacyRequest?.messages ?? finalModelMessages
+    const outboundModelMessages = privacyRequest?.messages ?? finalModelMessages
     const outboundSystemMessage =
       privacyRequest?.system ?? effectiveSystemMessage
 
@@ -1199,8 +1129,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
         if (part.type === 'finish-step') {
           const pm = part.providerMetadata?.providerMetadata as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
           tokensPerSecond = (pm?.tokensPerSecond as number) || 0
           draftTokensTotal = (pm?.draftTokensTotal as number) ?? null
           draftTokensAccepted = (pm?.draftTokensAccepted as number) ?? null
@@ -1290,8 +1219,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
         // Call the token usage callback with usage data when stream completes
         if (responseMessage) {
           const metadata = responseMessage.metadata as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
           const usage = metadata?.usage as LanguageModelUsage | undefined
           if (usage) {
             this.onTokenUsage?.(usage, responseMessage.id)
@@ -1302,7 +1230,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
     const uiStream =
       privacyRequest && privacySettings.rehydrateResponses
-        ? rehydratePrivacyUIStream(providerUiStream, privacyRequest.state)
+        ? rehydrateUIMessageStream(providerUiStream, privacyRequest.state)
         : providerUiStream
 
     // When continuing a truncated response, inject the partial content as the

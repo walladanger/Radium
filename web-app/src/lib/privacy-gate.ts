@@ -199,6 +199,19 @@ export function redactText(text: string, state: PrivacyState): string {
  * Copy nested message values while redacting strings with the shared request state.
  * Preserve media payloads and structural fields such as tool names and call IDs.
  */
+const CONTENT_PART_FIELDS = new Map<string, string[]>([
+  ['text', ['text', 'value']],
+  ['image', ['image']],
+  ['file', ['data']],
+  ['reasoning', ['text']],
+  ['tool-call', ['toolCallId']],
+  ['tool-result', ['output']],
+  ['json', ['value']],
+  ['error-text', ['value']],
+  ['error-json', ['value']],
+  ['content', ['value']],
+])
+
 function redactValue<T>(value: T, state: PrivacyState): T {
   if (typeof value === 'string') {
     return redactText(value, state) as T
@@ -208,8 +221,16 @@ function redactValue<T>(value: T, state: PrivacyState): T {
   }
   if (value && typeof value === 'object') {
     const output: Record<string, unknown> = {}
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    for (const [key, entry] of Object.entries(
+      value as Record<string, unknown>
+    )) {
+      // Preserve actual SDK discriminators, including when a custom term
+      // matches "text" or "json". Arbitrary user fields named type still redact.
+      const partFields = key === 'type' && typeof entry === 'string'
+        ? CONTENT_PART_FIELDS.get(entry)
+        : undefined
       if (
+        partFields?.some((field) => field in value) ||
         (key === 'data' && 'mediaType' in value) ||
         key === 'image' ||
         key === 'mediaType' ||
@@ -272,7 +293,9 @@ export function rehydrateText(text: string, state: PrivacyState): string {
  * Count validated matches per built-in rule without redacting the input.
  * Rules are scanned independently; custom private terms are not included.
  */
-export function scanSensitiveText(text: string): Array<{ type: string; count: number }> {
+export function scanSensitiveText(
+  text: string
+): Array<{ type: string; count: number }> {
   const full = String(text)
   const hits: Array<{ type: string; count: number }> = []
 
@@ -304,7 +327,9 @@ export function readPrivacyGateSettings(): PrivacyGateSettings {
     return {
       enabled: parsed.enabled === true,
       customTerms: Array.isArray(parsed.customTerms)
-        ? parsed.customTerms.filter((term): term is string => typeof term === 'string')
+        ? parsed.customTerms.filter(
+            (term): term is string => typeof term === 'string'
+          )
         : [],
       rehydrateResponses: parsed.rehydrateResponses !== false,
     }
@@ -319,5 +344,172 @@ export function readPrivacyGateSettings(): PrivacyGateSettings {
  */
 export function writePrivacyGateSettings(settings: PrivacyGateSettings): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(PRIVACY_GATE_STORAGE_KEY, JSON.stringify(settings))
+  window.localStorage.setItem(
+    PRIVACY_GATE_STORAGE_KEY,
+    JSON.stringify(settings)
+  )
+}
+
+/**
+ * Rehydrates text that arrives in pieces.
+ *
+ * A streamed reply delivers a placeholder such as `[RDM_ab12_EMAIL_1]` split
+ * across deltas (`[RDM_ab` + `12_EMAIL_1]`), so restoring each delta on its own
+ * leaves the token visible. This keeps back only a tail that could still grow
+ * into a known placeholder and releases everything else at once.
+ */
+export class StreamingRehydrator {
+  private pending = ''
+
+  constructor(private readonly state: PrivacyState) {}
+
+  /** Add a delta; returns the text that is now safe to show. */
+  push(delta: string): string {
+    const text = this.pending + delta
+    const holdFrom = this.partialTokenStart(text)
+    this.pending = text.slice(holdFrom)
+    return rehydrateText(text.slice(0, holdFrom), this.state)
+  }
+
+  /** Release whatever is held back (the part ended; it was not a token). */
+  flush(): string {
+    const rest = this.pending
+    this.pending = ''
+    return rehydrateText(rest, this.state)
+  }
+
+  /**
+   * Index of the earliest `[` whose suffix is a proper prefix of a placeholder
+   * this request created, or the text length when nothing needs holding.
+   */
+  private partialTokenStart(text: string): number {
+    let longest = 0
+    for (const token of this.state.reverse.keys()) {
+      longest = Math.max(longest, token.length)
+    }
+    const searchFrom = Math.max(0, text.length - longest + 1)
+    for (let index = searchFrom; index < text.length; index += 1) {
+      if (text[index] !== '[') continue
+      const tail = text.slice(index)
+      for (const token of this.state.reverse.keys()) {
+        if (tail.length < token.length && token.startsWith(tail)) return index
+      }
+    }
+    return text.length
+  }
+}
+
+type StreamChunk = { type: string } & Record<string, unknown>
+
+/** Which streamed field carries a delta, keyed by chunk type. */
+const DELTA_FIELDS: Record<
+  string,
+  { idField: string; deltaField: string; endTypes: string[] }
+> = {
+  'text-delta': { idField: 'id', deltaField: 'delta', endTypes: ['text-end'] },
+  'reasoning-delta': {
+    idField: 'id',
+    deltaField: 'delta',
+    endTypes: ['reasoning-end'],
+  },
+  'tool-input-delta': {
+    idField: 'toolCallId',
+    deltaField: 'inputTextDelta',
+    endTypes: ['tool-input-available', 'tool-input-error'],
+  },
+}
+
+function rehydrateValue(value: unknown, state: PrivacyState): unknown {
+  if (typeof value === 'string') return rehydrateText(value, state)
+  if (Array.isArray(value)) {
+    return value.map((entry) => rehydrateValue(entry, state))
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key,
+        rehydrateValue(entry, state),
+      ])
+    )
+  }
+  return value
+}
+
+/**
+ * Restores request-scoped placeholders in a UI message stream before it
+ * reaches the transcript or local tool execution.
+ *
+ * Deltas are buffered per part so a placeholder split across chunks is still
+ * restored; the held-back tail is released just before the part's end chunk
+ * (or when the stream ends), so no text is lost or reordered. Whole-value
+ * chunks (tool input, tool output, metadata) are restored in one go.
+ */
+export function rehydrateUIMessageStream<T extends { type: string }>(
+  stream: ReadableStream<T>,
+  state: PrivacyState
+): ReadableStream<T> {
+  const open = new Map<
+    string,
+    { rehydrator: StreamingRehydrator; chunk: StreamChunk; deltaField: string }
+  >()
+  const keyFor = (kind: string, id: unknown) => `${kind}:${String(id)}`
+
+  const release = (
+    key: string,
+    controller: TransformStreamDefaultController<T>
+  ) => {
+    const part = open.get(key)
+    if (!part) return
+    open.delete(key)
+    const rest = part.rehydrator.flush()
+    if (rest) {
+      controller.enqueue({ ...part.chunk, [part.deltaField]: rest } as T)
+    }
+  }
+
+  return stream.pipeThrough(
+    new TransformStream<T, T>({
+      transform(input, controller) {
+        const chunk = input as unknown as StreamChunk
+        const delta = DELTA_FIELDS[chunk.type]
+        if (delta) {
+          const key = keyFor(delta.deltaField, chunk[delta.idField])
+          let part = open.get(key)
+          if (!part) {
+            part = {
+              rehydrator: new StreamingRehydrator(state),
+              chunk,
+              deltaField: delta.deltaField,
+            }
+            open.set(key, part)
+          }
+          part.chunk = chunk
+          const text = part.rehydrator.push(String(chunk[delta.deltaField]))
+          if (text)
+            controller.enqueue({ ...chunk, [delta.deltaField]: text } as T)
+          return
+        }
+
+        for (const [type, fields] of Object.entries(DELTA_FIELDS)) {
+          if (fields.endTypes.includes(chunk.type)) {
+            release(
+              keyFor(DELTA_FIELDS[type].deltaField, chunk[fields.idField]),
+              controller
+            )
+          }
+        }
+        if (
+          chunk.type === 'finish' ||
+          chunk.type === 'error' ||
+          chunk.type === 'abort'
+        ) {
+          for (const key of [...open.keys()]) release(key, controller)
+        }
+        controller.enqueue(rehydrateValue(chunk, state) as T)
+      },
+      flush(controller) {
+        for (const key of [...open.keys()]) release(key, controller)
+      },
+    })
+  )
 }

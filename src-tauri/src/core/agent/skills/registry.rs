@@ -7,7 +7,14 @@ use std::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use super::manifest::{parse_skill_file, SkillManifest, SkillPlatform};
+use super::{
+    discovery::{discover_skill_folders, folder_size, relative_path, DiscoveredSkill},
+    manifest::{parse_skill_file, SkillManifest, SkillPlatform},
+    organization::{
+        resolve_organization, DeclaredOrganization, SkillCatalog, SkillOrganization, SkillSource,
+        INSTALLED_CATALOG_FILE,
+    },
+};
 
 #[cfg(windows)]
 use std::os::windows::ffi::OsStrExt;
@@ -30,6 +37,17 @@ pub struct SkillRecord {
     /// Allowed by the user at exactly this fingerprint. Only a reviewed skill
     /// is offered to the AI, whether or not it is bundled.
     pub reviewed: bool,
+    /// Path below the skills root with `/` separators, e.g. `graphics/logo`.
+    pub relative_path: String,
+    /// Category folders between the root and the skill, outermost first.
+    pub folder: Vec<String>,
+    /// What the SKILL.md itself declares for organizing.
+    pub declared: DeclaredOrganization,
+    /// Creator, category and tags as shown (see `organization`).
+    pub organization: SkillOrganization,
+    pub size_bytes: u64,
+    pub file_count: usize,
+    pub added_at: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,6 +67,26 @@ pub struct SkillListEntry {
     /// Added or changed since the user last allowed it; not offered to the AI.
     pub needs_review: bool,
     pub error: Option<String>,
+    /// Folder below the skills root, `/`-separated: `logo` or `graphics/logo`.
+    pub path: String,
+    /// The category folders around it, `/`-separated; empty at the root.
+    pub folder: String,
+    pub creator: String,
+    pub category: String,
+    pub tags: Vec<String>,
+    pub source: SkillSource,
+    /// What the SKILL.md declares itself (`metadata.creator`/`author`), so an
+    /// edit form can tell a declared value from a derived one.
+    pub declared_creator: Option<String>,
+    pub declared_category: Option<String>,
+    pub declared_tags: Vec<String>,
+    /// Total bytes of the skill folder.
+    pub size_bytes: u64,
+    pub file_count: usize,
+    /// Length of the SKILL.md instructions, in characters.
+    pub instructions_chars: usize,
+    /// When the folder appeared, in ms since the Unix epoch, if known.
+    pub added_at: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +94,11 @@ pub struct SkillDiagnostic {
     pub name: String,
     pub error: String,
     pub reserved: bool,
+    pub path: String,
+    pub folder: Vec<String>,
+    pub organization: SkillOrganization,
+    pub size_bytes: u64,
+    pub file_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +123,11 @@ struct ReviewedSkillsState {
 }
 
 impl SkillRegistry {
+    /// Load every skill under `root`, flat or in category folders (see
+    /// `discovery`). A skill's identity is its folder name, which must equal
+    /// its manifest `name`, wherever the folder sits; two folders with the same
+    /// name are both shown, the one nearer the root is used and the other is
+    /// reported as a duplicate.
     pub fn load(
         root: impl Into<PathBuf>,
         reserved_names: &BTreeSet<String>,
@@ -88,144 +136,142 @@ impl SkillRegistry {
         let root = root.into();
         fs::create_dir_all(&root)
             .map_err(|error| format!("Failed to create agent skills directory: {error}"))?;
-        let canonical_root = root
-            .canonicalize()
-            .map_err(|error| format!("Failed to resolve agent skills directory: {error}"))?;
         let disabled = read_disabled_state(&root)?;
         let reviewed = read_reviewed_state(&root);
-        let mut entries = fs::read_dir(&root)
-            .map_err(|error| format!("Failed to scan agent skills directory: {error}"))?
-            .filter_map(Result::ok)
-            .collect::<Vec<_>>();
-        entries.sort_by_key(|entry| entry.file_name());
-        let mut records = BTreeMap::new();
+        let catalog = SkillCatalog::read(&root.join(INSTALLED_CATALOG_FILE));
+        let discovery = discover_skill_folders(&root)?;
+        let mut records: BTreeMap<String, SkillRecord> = BTreeMap::new();
         let mut diagnostics = Vec::new();
-        for entry in entries {
-            let folder_name = entry.file_name().to_string_lossy().to_string();
-            if folder_name.starts_with('.') {
-                continue;
+        let diagnostic = |name: String, folder: Vec<String>, error: String| {
+            let reserved = reserved_names.contains(&name);
+            let path = relative_path(&folder, &name);
+            let (size_bytes, file_count) = folder_size(&root.join(&path));
+            let organization = resolve_organization(
+                &name,
+                reserved,
+                &folder,
+                &DeclaredOrganization::default(),
+                &catalog,
+            );
+            SkillDiagnostic {
+                name,
+                error,
+                reserved,
+                path,
+                folder,
+                organization,
+                size_bytes,
+                file_count,
             }
+        };
+        for problem in discovery.problems {
+            diagnostics.push(diagnostic(
+                problem.folder_name,
+                problem.folder,
+                problem.error,
+            ));
+        }
+        for found in discovery.skills {
+            let relative = found.relative_path();
+            let DiscoveredSkill {
+                folder_name,
+                path: skill_root,
+                folder,
+            } = found;
             let reserved = reserved_names.contains(&folder_name);
-            let file_type = match entry.file_type() {
-                Ok(file_type) => file_type,
-                Err(error) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: format!("Failed to inspect skill directory: {error}"),
-                        reserved,
-                    });
-                    continue;
-                }
-            };
-            if !file_type.is_dir() {
-                continue;
-            }
-            let skill_root = entry.path();
             let canonical_skill_root = match skill_root.canonicalize() {
-                Ok(path) if path.parent() == Some(canonical_root.as_path()) => path,
-                Ok(_) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: "Skill directory resolves outside the global skills root"
-                            .to_string(),
-                        reserved,
-                    });
-                    continue;
-                }
+                Ok(path) => path,
                 Err(error) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: format!("Failed to resolve skill directory: {error}"),
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(
+                        folder_name,
+                        folder,
+                        format!("Failed to resolve skill directory: {error}"),
+                    ));
                     continue;
                 }
             };
             let skill_path = canonical_skill_root.join("SKILL.md");
             let canonical_skill_path = match fs::symlink_metadata(&skill_path) {
                 Ok(metadata) if metadata.file_type().is_symlink() => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: "SKILL.md must not be a symbolic link".to_string(),
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(
+                        folder_name,
+                        folder,
+                        "SKILL.md must not be a symbolic link".to_string(),
+                    ));
                     continue;
                 }
                 Ok(metadata) if !metadata.is_file() => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: "SKILL.md must be a regular file".to_string(),
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(
+                        folder_name,
+                        folder,
+                        "SKILL.md must be a regular file".to_string(),
+                    ));
                     continue;
                 }
                 Ok(_) => match skill_path.canonicalize() {
                     Ok(path) if path.parent() == Some(canonical_skill_root.as_path()) => path,
                     Ok(_) => {
-                        diagnostics.push(SkillDiagnostic {
-                            name: folder_name,
-                            error: "SKILL.md resolves outside its skill directory".to_string(),
-                            reserved,
-                        });
+                        diagnostics.push(diagnostic(
+                            folder_name,
+                            folder,
+                            "SKILL.md resolves outside its skill directory".to_string(),
+                        ));
                         continue;
                     }
                     Err(error) => {
-                        diagnostics.push(SkillDiagnostic {
-                            name: folder_name,
-                            error: format!("Failed to resolve SKILL.md: {error}"),
-                            reserved,
-                        });
+                        diagnostics.push(diagnostic(
+                            folder_name,
+                            folder,
+                            format!("Failed to resolve SKILL.md: {error}"),
+                        ));
                         continue;
                     }
                 },
                 Err(error) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: format!("Failed to inspect SKILL.md: {error}"),
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(
+                        folder_name,
+                        folder,
+                        format!("Failed to inspect SKILL.md: {error}"),
+                    ));
                     continue;
                 }
             };
             let content = match fs::read_to_string(&canonical_skill_path) {
                 Ok(content) => content,
                 Err(error) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error: format!("Failed to read SKILL.md: {error}"),
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(
+                        folder_name,
+                        folder,
+                        format!("Failed to read SKILL.md: {error}"),
+                    ));
                     continue;
                 }
             };
             let parsed = match parse_skill_file(&content) {
                 Ok(parsed) => parsed,
                 Err(error) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name: folder_name,
-                        error,
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(folder_name, folder, error));
                     continue;
                 }
             };
             if parsed.manifest.name != folder_name {
-                diagnostics.push(SkillDiagnostic {
-                    name: folder_name,
-                    error: format!(
+                diagnostics.push(diagnostic(
+                    folder_name,
+                    folder,
+                    format!(
                         "Manifest name `{}` does not match its directory",
                         parsed.manifest.name
                     ),
-                    reserved,
-                });
+                ));
                 continue;
             }
-            if records.contains_key(&parsed.manifest.name) {
-                diagnostics.push(SkillDiagnostic {
-                    name: parsed.manifest.name,
-                    error: "Duplicate skill name".to_string(),
-                    reserved,
-                });
+            if let Some(kept) = records.get(&parsed.manifest.name) {
+                let error = format!(
+                    "Duplicate skill name: `{}` is already loaded from `{}`, so this copy is ignored. \
+                     Rename or remove one of them",
+                    parsed.manifest.name, kept.relative_path
+                );
+                diagnostics.push(diagnostic(folder_name, folder, error));
                 continue;
             }
             let compatible = is_platform_compatible(
@@ -240,21 +286,22 @@ impl SkillRegistry {
                 .map(|tool| format!("Required tool `{tool}` is unavailable"))
                 .collect();
             let name = parsed.manifest.name.clone();
-            let fingerprint = match skill_fingerprint(&canonical_skill_root) {
-                Ok(fingerprint) => fingerprint,
+            let footprint = match skill_fingerprint(&canonical_skill_root) {
+                Ok(footprint) => footprint,
                 Err(error) => {
-                    diagnostics.push(SkillDiagnostic {
-                        name,
-                        error,
-                        reserved,
-                    });
+                    diagnostics.push(diagnostic(name, folder, error));
                     continue;
                 }
             };
             // Every skill - bundled, from Anthropic, written in Radium or
             // uploaded - must have been allowed by the user exactly as it is
-            // now (the user's rule, 2026-09-14; Task 28, D36).
-            let is_reviewed = reviewed.get(&name) == Some(&fingerprint);
+            // now (the user's rule, 2026-09-14; Task 28, D36). The fingerprint
+            // covers paths inside the skill folder only, so moving a skill
+            // into a category folder does not ask for review again.
+            let is_reviewed = reviewed.get(&name) == Some(&footprint.fingerprint);
+            let organization =
+                resolve_organization(&name, reserved, &folder, &parsed.organization, &catalog);
+            let added_at = added_at(&canonical_skill_root);
             records.insert(
                 name.clone(),
                 SkillRecord {
@@ -265,8 +312,15 @@ impl SkillRegistry {
                     compatible,
                     reserved,
                     unavailable_reasons,
-                    fingerprint,
+                    fingerprint: footprint.fingerprint,
                     reviewed: is_reviewed,
+                    relative_path: relative,
+                    folder,
+                    declared: parsed.organization,
+                    organization,
+                    size_bytes: footprint.bytes,
+                    file_count: footprint.files,
+                    added_at,
                 },
             );
         }
@@ -321,6 +375,19 @@ impl SkillRegistry {
                 unavailable_reasons: record.unavailable_reasons.clone(),
                 needs_review: !record.reviewed,
                 error: None,
+                path: record.relative_path.clone(),
+                folder: record.folder.join("/"),
+                creator: record.organization.creator.clone(),
+                category: record.organization.category.clone(),
+                tags: record.organization.tags.clone(),
+                source: record.organization.source,
+                declared_creator: record.declared.creator.clone(),
+                declared_category: record.declared.category.clone(),
+                declared_tags: record.declared.tags.clone(),
+                size_bytes: record.size_bytes,
+                file_count: record.file_count,
+                instructions_chars: record.body.chars().count(),
+                added_at: record.added_at,
             })
             .collect::<Vec<_>>();
         entries.extend(self.diagnostics.iter().map(|diagnostic| SkillListEntry {
@@ -337,9 +404,46 @@ impl SkillRegistry {
             unavailable_reasons: Vec::new(),
             needs_review: false,
             error: Some(diagnostic.error.clone()),
+            path: diagnostic.path.clone(),
+            folder: diagnostic.folder.join("/"),
+            creator: diagnostic.organization.creator.clone(),
+            category: diagnostic.organization.category.clone(),
+            tags: diagnostic.organization.tags.clone(),
+            source: diagnostic.organization.source,
+            declared_creator: None,
+            declared_category: None,
+            declared_tags: Vec::new(),
+            size_bytes: diagnostic.size_bytes,
+            file_count: diagnostic.file_count,
+            instructions_chars: 0,
+            added_at: None,
         }));
-        entries.sort_by(|left, right| left.name.cmp(&right.name));
+        entries.sort_by(|left, right| {
+            left.name
+                .cmp(&right.name)
+                .then_with(|| left.path.cmp(&right.path))
+        });
         entries
+    }
+
+    /// The listing row for `name`. When a broken copy shares the name with a
+    /// loaded skill, the loaded one is returned.
+    pub fn entry(&self, name: &str) -> Option<SkillListEntry> {
+        let entries = self.list_all();
+        entries
+            .iter()
+            .find(|entry| entry.name == name && entry.error.is_none())
+            .or_else(|| entries.iter().find(|entry| entry.name == name))
+            .cloned()
+    }
+
+    /// The listing row for the skill folder at `path` (relative, `/`-separated).
+    pub fn entry_at(&self, path: &str) -> Option<SkillListEntry> {
+        self.list_all().into_iter().find(|entry| entry.path == path)
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 
     pub fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<(), String> {
@@ -388,13 +492,23 @@ impl SkillRegistry {
     }
 }
 
+struct SkillFootprint {
+    fingerprint: String,
+    /// Bytes of every regular file in the folder.
+    bytes: u64,
+    files: usize,
+}
+
 /// SHA-256 over every file in a skill's folder - its relative path and its
 /// contents, in a fixed order - so any change to the instructions or to a
-/// bundled script shows up. A symbolic link counts by where it points.
-fn skill_fingerprint(skill_root: &Path) -> Result<String, String> {
+/// bundled script shows up. A symbolic link counts by where it points. The
+/// same pass totals the folder's size for the skills page.
+fn skill_fingerprint(skill_root: &Path) -> Result<SkillFootprint, String> {
     let mut files = Vec::new();
     collect_relative_files(skill_root, skill_root, &mut files)?;
     files.sort();
+    let file_count = files.len();
+    let mut bytes = 0u64;
     let mut hasher = Sha256::new();
     for relative in files {
         let path = skill_root.join(&relative);
@@ -410,12 +524,28 @@ fn skill_fingerprint(skill_root: &Path) -> Result<String, String> {
         } else {
             let content = fs::read(&path)
                 .map_err(|error| format!("Failed to read skill file for review: {error}"))?;
+            bytes = bytes.saturating_add(content.len() as u64);
             hasher.update((content.len() as u64).to_le_bytes());
             hasher.update(&content);
         }
         hasher.update([0u8]);
     }
-    Ok(hex::encode(hasher.finalize()))
+    Ok(SkillFootprint {
+        fingerprint: hex::encode(hasher.finalize()),
+        bytes,
+        files: file_count,
+    })
+}
+
+/// When the skill folder was created (or, where the platform does not record
+/// that, last modified), in milliseconds since the Unix epoch. Bundled skills
+/// are re-copied on every update, so for them this is the install time.
+fn added_at(skill_root: &Path) -> Option<u64> {
+    let metadata = fs::metadata(skill_root).ok()?;
+    let time = metadata.created().or_else(|_| metadata.modified()).ok()?;
+    time.duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
 }
 
 fn collect_relative_files(
@@ -775,6 +905,133 @@ mod tests {
         let error = registry.set_enabled("added-skill", true).unwrap_err();
         assert!(error.contains("review"), "{error}");
         registry.set_enabled("added-skill", false).unwrap();
+    }
+
+    #[test]
+    fn loads_nested_skills_with_their_paths_and_keeps_flat_ones_working() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().join("skills");
+        write_reviewable_skill(&root, "flat-skill", "Body");
+        write_reviewable_skill(&root.join("graphics"), "logo-maker", "Draw");
+        write_reviewable_skill(&root.join("code/rust"), "cargo-helper", "Build");
+
+        let mut registry = SkillRegistry::load(&root, &BTreeSet::new(), &read_tool()).unwrap();
+        registry.approve("cargo-helper").unwrap();
+
+        let paths = registry
+            .list_all()
+            .into_iter()
+            .map(|entry| (entry.name, entry.path, entry.folder, entry.category))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            paths,
+            [
+                (
+                    "cargo-helper".to_string(),
+                    "code/rust/cargo-helper".to_string(),
+                    "code/rust".to_string(),
+                    "Code & Dev".to_string()
+                ),
+                (
+                    "flat-skill".to_string(),
+                    "flat-skill".to_string(),
+                    String::new(),
+                    "Other".to_string()
+                ),
+                (
+                    "logo-maker".to_string(),
+                    "graphics/logo-maker".to_string(),
+                    "graphics".to_string(),
+                    "Graphics & Design".to_string()
+                ),
+            ]
+        );
+        // Identity is the name alone: review, state and lookup ignore the folder.
+        let reloaded = SkillRegistry::load(&root, &BTreeSet::new(), &read_tool()).unwrap();
+        assert!(reloaded.get_enabled("cargo-helper").is_some());
+        assert_eq!(
+            reloaded.get("cargo-helper").unwrap().root,
+            root.join("code/rust/cargo-helper").canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn reports_duplicate_names_across_folders_instead_of_dropping_them() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().join("skills");
+        write_reviewable_skill(&root, "twin", "Root copy");
+        write_reviewable_skill(&root.join("archive"), "twin", "Nested copy");
+
+        let registry = SkillRegistry::load(&root, &BTreeSet::new(), &read_tool()).unwrap();
+
+        assert!(registry.get("twin").unwrap().body.contains("Root copy"));
+        let rows = registry
+            .list_all()
+            .into_iter()
+            .filter(|entry| entry.name == "twin")
+            .collect::<Vec<_>>();
+        assert_eq!(rows.len(), 2);
+        let duplicate = rows.iter().find(|entry| entry.error.is_some()).unwrap();
+        assert_eq!(duplicate.path, "archive/twin");
+        let error = duplicate.error.as_deref().unwrap();
+        assert!(error.contains("Duplicate skill name"), "{error}");
+        assert!(error.contains("`twin`"), "{error}");
+        // Lookups by name return the copy that loaded.
+        assert!(registry.entry("twin").unwrap().error.is_none());
+        assert!(registry.entry_at("archive/twin").unwrap().error.is_some());
+    }
+
+    #[test]
+    fn organizes_by_catalog_metadata_and_folder_and_measures_size() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().join("skills");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join(INSTALLED_CATALOG_FILE),
+            r#"{"version":1,"skills":{"bundled-one":{"creator":"NVIDIA","category":"AI & Machine Learning","tags":["tao"]}}}"#,
+        )
+        .unwrap();
+        write_reviewable_skill(&root, "bundled-one", "Body");
+        let declared = root.join("media").join("declared");
+        fs::create_dir_all(&declared).unwrap();
+        fs::write(
+            declared.join("SKILL.md"),
+            "---\nname: declared\ndescription: Test\nmetadata:\n  creator: Ada\n  category: writing\n  tags: [notes]\n---\n12345",
+        )
+        .unwrap();
+        fs::write(declared.join("extra.txt"), "abc").unwrap();
+        fs::create_dir_all(root.join("broken")).unwrap();
+        fs::write(root.join("broken/SKILL.md"), "# no frontmatter").unwrap();
+        let reserved = BTreeSet::from(["bundled-one".to_string(), "broken".to_string()]);
+
+        let registry = SkillRegistry::load(&root, &reserved, &read_tool()).unwrap();
+        let rows = registry.list_all();
+        let row = |name: &str| rows.iter().find(|entry| entry.name == name).unwrap();
+
+        let bundled = row("bundled-one");
+        assert_eq!(bundled.creator, "NVIDIA");
+        assert_eq!(bundled.category, "AI & Machine Learning");
+        assert_eq!(bundled.tags, ["tao"]);
+        assert_eq!(bundled.source, SkillSource::Bundled);
+
+        // Declared metadata beats the folder it sits in.
+        let declared_row = row("declared");
+        assert_eq!(declared_row.creator, "Ada");
+        assert_eq!(declared_row.category, "Writing & Communication");
+        assert_eq!(declared_row.declared_category.as_deref(), Some("writing"));
+        assert_eq!(declared_row.tags, ["notes"]);
+        assert_eq!(declared_row.source, SkillSource::User);
+        assert_eq!(declared_row.file_count, 2);
+        let manifest_len = fs::metadata(declared.join("SKILL.md")).unwrap().len();
+        assert_eq!(declared_row.size_bytes, manifest_len + 3);
+        assert_eq!(declared_row.instructions_chars, 5);
+
+        // A broken bundled skill is still placed and measured.
+        let broken = row("broken");
+        assert!(broken.error.is_some());
+        assert_eq!(broken.creator, "Unknown");
+        assert_eq!(broken.source, SkillSource::Bundled);
+        assert_eq!(broken.size_bytes, "# no frontmatter".len() as u64);
     }
 
     #[test]

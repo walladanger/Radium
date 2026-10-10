@@ -1,6 +1,5 @@
-import { createPrivacyState, redactText, writePrivacyGateSettings } from '../privacy-gate'
 import type { UIMessage } from '@ai-sdk/react'
-import type { LanguageModel, UIMessageChunk } from 'ai'
+import type { LanguageModel } from 'ai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAppState } from '@/hooks/useAppState'
@@ -8,10 +7,10 @@ import { useGeneralSetting } from '@/hooks/useGeneralSetting'
 import { useModelProvider } from '@/hooks/useModelProvider'
 import { useToolAvailable } from '@/hooks/useToolAvailable'
 import { seedServiceHub } from '@/test/service-hub'
+import { writePrivacyGateSettings } from '../privacy-gate'
 import {
   CustomChatTransport,
   resolveTokenSpeed,
-  rehydratePrivacyUIStream,
 } from '../custom-chat-transport'
 import { loadChatSkillDetails } from '../chat-skill-injection'
 import { ModelFactory } from '../model-factory'
@@ -965,70 +964,63 @@ describe('CustomChatTransport grammar-safe tool schemas', () => {
   })
 })
 
-describe('privacy stream rehydration', () => {
-  const state = createPrivacyState([], 'stream')
-  const token = redactText('ops@example.com', state)
-  const collect = async (chunks: UIMessageChunk[]) => readChunks(
-    rehydratePrivacyUIStream(new ReadableStream({
-      start(controller) {
-        chunks.forEach((chunk) => controller.enqueue(chunk))
-        controller.close()
-      },
-    }), state) as ReadableStream<Record<string, unknown>>
-  )
-
-  it.each(Array.from({ length: token.length - 1 }, (_, i) => i + 1))(
-    'restores a placeholder split at %i before text-end', async (split) => {
-      expect(await collect([
-        { type: 'text-delta', id: 'a', delta: 'Hello ' + token.slice(0, split) },
-        { type: 'text-delta', id: 'a', delta: token.slice(split) },
-        { type: 'text-end', id: 'a' },
-      ])).toEqual([
-        { type: 'text-delta', id: 'a', delta: 'Hello ' },
-        { type: 'text-delta', id: 'a', delta: 'ops@example.com' },
-        { type: 'text-end', id: 'a' },
-      ])
-    }
-  )
-
-  it('isolates ids and flushes incomplete suffixes at text-end and stream end', async () => {
-    expect(await collect([
-      { type: 'text-delta', id: 'a', delta: '[RDM_' },
-      { type: 'text-delta', id: 'b', delta: token },
-      { type: 'text-end', id: 'a' },
-      { type: 'text-delta', id: 'c', delta: 'tail [' },
-    ])).toEqual([
-      { type: 'text-delta', id: 'b', delta: 'ops@example.com' },
-      { type: 'text-delta', id: 'a', delta: '[RDM_' },
-      { type: 'text-end', id: 'a' },
-      { type: 'text-delta', id: 'c', delta: 'tail ' },
-      { type: 'text-delta', id: 'c', delta: '[' },
-    ])
-  })
-})
-
 describe('privacy provider boundary', () => {
-  it.each(['openai', 'chatgpt', 'mlx'])(
-    'applies the gate according to provider identity for %s on loopback', async (provider) => {
-      writePrivacyGateSettings({ enabled: true, customTerms: [], rehydrateResponses: true })
+  it.each([
+    ['openai', false],
+    ['chatgpt', false],
+    ['custom-proxy', false],
+    ['mlx', true],
+    ['llamacpp-upstream', true],
+  ] as const)(
+    'uses provider identity for %s on loopback',
+    async (provider, local) => {
+      writePrivacyGateSettings({
+        enabled: true,
+        customTerms: [],
+        rehydrateResponses: true,
+      })
       try {
         useModelProvider.setState((state) => ({
           selectedProvider: provider,
-          providers: [{ ...state.providers[0], provider, base_url: 'http://127.0.0.1:1337/v1' }],
+          providers: [
+            {
+              ...state.providers[0],
+              provider,
+              base_url: 'http://127.0.0.1:1337/v1',
+            },
+          ],
         }))
         const model = fakeStreamingModel([
           { type: 'stream-start', warnings: [] },
-          { type: 'finish', finishReason: 'stop', usage: { inputTokens: 1, outputTokens: 0, totalTokens: 1 } },
+          {
+            type: 'finish',
+            finishReason: 'stop',
+            usage: { inputTokens: 1, outputTokens: 0, totalTokens: 1 },
+          },
         ])
         vi.spyOn(ModelFactory, 'createModel').mockResolvedValue(model)
         const transport = new CustomChatTransport()
-        await readChunks(await transport.sendMessages({
-          chatId: 'privacy', trigger: 'submit-message', messageId: undefined,
-          messages: [{ ...userMessage, parts: [{ type: 'text', text: 'ops@example.com' }] }],
-        }) as ReadableStream<Record<string, unknown>>)
-        const prompt = JSON.stringify(vi.mocked((model as Exclude<LanguageModel, string>).doStream).mock.calls[0][0])
-        if (provider === 'mlx') expect(prompt).toContain('ops@example.com')
-        else {
+        await readChunks(
+          (await transport.sendMessages({
+            chatId: 'privacy',
+            trigger: 'submit-message',
+            messageId: undefined,
+            abortSignal: undefined,
+            messages: [
+              {
+                ...userMessage,
+                parts: [{ type: 'text', text: 'ops@example.com' }],
+              },
+            ],
+          })) as ReadableStream<Record<string, unknown>>
+        )
+        const prompt = JSON.stringify(
+          vi.mocked((model as Exclude<LanguageModel, string>).doStream)
+            .mock.calls[0][0]
+        )
+        if (local) {
+          expect(prompt).toContain('ops@example.com')
+        } else {
           expect(prompt).not.toContain('ops@example.com')
           expect(prompt).toContain('[RDM_')
         }

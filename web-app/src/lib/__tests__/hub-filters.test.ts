@@ -167,6 +167,16 @@ describe('hub filter persistence', () => {
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
   })
+
+  it('returns defaults and tolerates writes outside a browser', () => {
+    vi.stubGlobal('window', undefined)
+    try {
+      expect(readHubFilters()).toEqual(DEFAULT_HUB_FILTERS)
+      expect(() => writeHubFilters(DEFAULT_HUB_FILTERS)).not.toThrow()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
 
 describe('filterByFormats', () => {
@@ -292,6 +302,12 @@ describe('sortModels', () => {
       'a/top',
       'a/fresh',
     ])
+  })
+
+  it('preserves the order of entries with equally unknown download sizes', () => {
+    const unknown = [gguf('org/first', 'unknown'), gguf('org/second', 'unknown')]
+    expect(sortModels(unknown, 'size-asc')).toEqual(unknown)
+    expect(sortModels(unknown, 'size-desc')).toEqual(unknown)
   })
 
   it('sorts by downloads descending', () => {

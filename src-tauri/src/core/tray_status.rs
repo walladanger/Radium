@@ -9,10 +9,10 @@
 //! a 5 s cadence so all state (server status, active models, hardware usage) can stay in
 //! a single place without introducing a new Rust polling loop.
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 use std::sync::Mutex;
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 use tauri::{
     image::Image,
     menu::{IconMenuItem, MenuItem},
@@ -27,7 +27,7 @@ use tauri::{
 /// a disabled "Model" header above its value to mirror Pico's section labels;
 /// the RAM block uses a text caption above a segmented bar so the bar — not
 /// the longest text — drives the menu width.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 pub struct TrayHandles {
     pub server: IconMenuItem<Wry>,
     pub server_url_row: IconMenuItem<Wry>,
@@ -50,7 +50,7 @@ pub struct TrayHandles {
     pub is_running: Mutex<bool>,
 }
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 #[derive(Debug, serde::Deserialize)]
 pub struct TrayStatusPayload {
     pub server_running: bool,
@@ -69,7 +69,7 @@ pub struct TrayStatusPayload {
 /// metadata via `initWithData:` and treats the bitmap as a Retina asset,
 /// so soft-edged shapes (the server dot, the doc-on-doc copy glyph) stay crisp
 /// instead of being upscaled 1:2 by the OS the way a raw 1× RGBA buffer is.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const SCALE: u32 = 2;
 /// Logical point height of the menu-icon slot. **muda forces every
 /// `IconMenuItem` icon to exactly this height** via
@@ -78,51 +78,51 @@ const SCALE: u32 = 2;
 /// `Some(18.0)` for menu items). Bitmap dimensions only control
 /// supersampling quality; we cannot make an icon shorter than 18 pt — only
 /// _appear_ shorter by drawing into a larger transparent canvas.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const MENU_ICON_SLOT_PT: u32 = 18;
 /// Visible diameter of the server-status dot in points. Matches the in-app
 /// active-model indicator (Tailwind `size-2` = 8 px, `bg-green-500`) used in
 /// `ModelInfoHoverCard.tsx`. The dot is drawn centred inside a square
 /// `MENU_ICON_SLOT_PT × MENU_ICON_SLOT_PT` canvas so the surrounding
 /// transparent padding shrinks it down from muda's forced 18 pt slot.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const DOT_VISIBLE_PT: u32 = 8;
 /// Extra oversampling specifically for the dot. At an 8 pt diameter the
 /// anti-aliasing band is a large fraction of the glyph, so we render at
 /// 4× density and let muda downsample — the resulting circle reads as crisp
 /// as the sub-pixel-rendered CSS `bg-green-500 rounded-full` chip in the UI.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const DOT_OVERSAMPLE: u32 = SCALE * 2;
 /// Logical canvas size of the copy glyph. The glyph is drawn edge-to-edge in
 /// this canvas so muda's forced 18 pt slot is filled — keeping the icon at
 /// the same visual weight as the row text, matching what the user prefers
 /// over the shrunk-with-padding variant used for the status dot.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const COPY_ICON_SIZE_PT: u32 = 16;
 /// Logical width of the stand-alone RAM bar row. Picked so the bar — not the
 /// longest piece of text — caps the menu width, mirroring Pico AI Server's
 /// compact panel.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const BAR_WIDTH_PT: u32 = 240;
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const BAR_HEIGHT_PT: u32 = 12;
 /// Number of segments in the Pico-style memory bar. 24 segments at 240 pt give
 /// ~8 pt wide pills with 2 pt gaps — chunky enough to read at a glance, dense
 /// enough to feel like a continuous gauge.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const SEGMENTS: u32 = 24;
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const SEGMENT_GAP_PT: u32 = 2;
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const SEGMENT_RADIUS_PT: f32 = 1.5;
 
 /// Maximum length, in characters, allowed for the URL and model rows before
 /// the value is truncated with an ellipsis. Sized so the resulting text does
 /// not exceed the bar width and keep menu width stable.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 const ROW_MAX_CHARS: usize = 32;
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 #[inline]
 // Accepted rather than restructured. These are private pixel helpers where
 // positional colour channels are idiomatic, and the lint is a heuristic about
@@ -141,7 +141,7 @@ fn put_pixel(buf: &mut [u8], x: u32, y: u32, width: u32, r: u8, g: u8, b: u8, a:
 /// Premultiplied straight-alpha source-over compositing. Used by the copy icon
 /// so the back rectangle visibly "peeks out" from behind the front one without
 /// fully obscuring it.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 #[inline]
 // Accepted rather than restructured. These are private pixel helpers where
 // positional colour channels are idiomatic, and the lint is a heuristic about
@@ -180,7 +180,7 @@ fn blend_pixel(buf: &mut [u8], x: u32, y: u32, width: u32, r: u8, g: u8, b: u8, 
 /// `scale = 2` displays at 16 pt — but uses all 32 source pixels on Retina,
 /// producing crisp edges instead of the 1:2 bilinear upscale you get from a
 /// raw 16×16 RGBA buffer through `Image::new_owned`.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 fn encode_hidpi_png(rgba: Vec<u8>, width: u32, height: u32, scale: u32) -> Image<'static> {
     // 1 inch = 0.0254 m → 72 dpi ≈ 2835 ppm. Round to the nearest integer for
     // each scale so the pHYs values match the canonical Apple @Nx encoding.
@@ -231,7 +231,7 @@ fn encode_hidpi_png(rgba: Vec<u8>, width: u32, height: u32, scale: u32) -> Image
 /// at 18 pt, the transparent padding shrinks the dot to roughly
 /// `DOT_VISIBLE_PT` on screen. Buffer is oversampled `DOT_OVERSAMPLE`× so the
 /// edge stays crisp after muda's downscale.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 pub fn render_dot(running: bool) -> Image<'static> {
     let (r, g, b) = if running {
         (0x22, 0xc5, 0x5e) // tailwind green-500
@@ -274,7 +274,7 @@ pub fn render_dot(running: bool) -> Image<'static> {
 /// AA-rounded-rect fill into `buf`. `(x, y, w, h)` is the rectangle origin and
 /// size in pixels; `radius` is the corner radius. Uses straight-alpha blending
 /// so the helper composes cleanly with other shapes already drawn into `buf`.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 // Accepted rather than restructured. These are private pixel helpers where
 // positional colour channels are idiomatic, and the lint is a heuristic about
 // API shape. Grouping them would mean reshaping untested tray-icon drawing
@@ -323,7 +323,7 @@ fn draw_rounded_rect(
 /// canvas so muda's forced 18 pt slot is filled — same visual weight as the
 /// row text. Rendered at `SCALE`× density so the rounded corners stay crisp
 /// after muda's downscale.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 pub fn render_copy_icon() -> Image<'static> {
     let size = COPY_ICON_SIZE_PT * SCALE;
     let mut buf = vec![0u8; (size * size * 4) as usize];
@@ -366,7 +366,7 @@ pub fn render_copy_icon() -> Image<'static> {
 /// gray rails. Logical size is `BAR_WIDTH_PT × BAR_HEIGHT_PT` (240×12 pt) but
 /// rasterised at `SCALE`× and emitted as an @2x PNG so the pill corners stay
 /// crisp on Retina menus.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 pub fn render_segmented_bar(percent: u8) -> Image<'static> {
     let pct = (percent.min(100)) as f32 / 100.0;
     let canvas_w = BAR_WIDTH_PT * SCALE;
@@ -444,7 +444,7 @@ pub fn render_segmented_bar(percent: u8) -> Image<'static> {
 /// Truncate a string to at most `max_chars` graphemes, appending an ellipsis
 /// when truncated. Counts Unicode chars (not bytes) so multi-byte names don't
 /// produce broken glyphs at the boundary.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 fn truncate_tail(s: &str, max_chars: usize) -> String {
     let chars: Vec<char> = s.chars().collect();
     if chars.len() <= max_chars {
@@ -456,7 +456,7 @@ fn truncate_tail(s: &str, max_chars: usize) -> String {
 
 // ---------- Command -------------------------------------------------------------------
 
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 #[tauri::command]
 pub async fn update_tray_status(app: AppHandle, payload: TrayStatusPayload) -> Result<(), String> {
     let state = app.state::<crate::core::state::AppState>();
@@ -570,7 +570,7 @@ pub async fn update_tray_status(app: AppHandle, payload: TrayStatusPayload) -> R
 
 /// No-op on mobile — the frontend hook is gated to Tauri desktop but we keep the
 /// symbol registered so `generate_handler!` lists stay aligned.
-#[cfg(not(desktop))]
+#[cfg(not(feature = "desktop"))]
 #[tauri::command]
 pub async fn update_tray_status(_payload: serde_json::Value) -> Result<(), String> {
     Ok(())
@@ -584,7 +584,7 @@ pub async fn update_tray_status(_payload: serde_json::Value) -> Result<(), Strin
 /// `tauri-plugin-clipboard-manager` purely for this one feature. On other
 /// desktops the tray is env-gated and currently opt-in, so this path stays
 /// a best-effort fallback there.
-#[cfg(desktop)]
+#[cfg(feature = "desktop")]
 pub fn write_clipboard(text: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {

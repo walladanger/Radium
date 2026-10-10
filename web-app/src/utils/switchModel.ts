@@ -128,7 +128,10 @@ function emitModelLoad(
     // ATO-468: successes were never throttled, so a stop/start oscillation
     // that keeps working emitted without limit. One device produced 62.9% of
     // every `model_load` event in the project.
-    if (status === 'success' && !shouldEmitModelLoadSuccess(args.modelId, backend))
+    if (
+      status === 'success' &&
+      !shouldEmitModelLoadSuccess(args.modelId, backend)
+    )
       return
     const props: Record<string, unknown> = {
       // NOT `status`. PostHog types a property globally by its observed values,
@@ -453,13 +456,22 @@ async function isTargetModelAlreadyServing(params: {
   if (isLocalEngineProvider(providerName)) {
     const [serverRunning, providerActive, otherProviderActive] =
       await Promise.all([
-        serviceHub.app().getServerStatus().catch(() => false),
-        serviceHub.models().getActiveModels(providerName).catch(() => [] as string[]),
+        serviceHub
+          .app()
+          .getServerStatus()
+          .catch(() => false),
+        serviceHub
+          .models()
+          .getActiveModels(providerName)
+          .catch(() => [] as string[]),
         Promise.all(
           LOCAL_PROVIDERS.filter(
             (provider) => provider !== (providerName as LocalProviderName)
           ).map((provider) =>
-            serviceHub.models().getActiveModels(provider).catch(() => [] as string[])
+            serviceHub
+              .models()
+              .getActiveModels(provider)
+              .catch(() => [] as string[])
           )
         ),
       ])
@@ -475,10 +487,16 @@ async function isTargetModelAlreadyServing(params: {
   // Cloud provider: already "serving" when the proxy is up, the UI active-model
   // pointer is on this cloud model, and no local engines are loaded.
   const [serverRunning, localEngineModels] = await Promise.all([
-    serviceHub.app().getServerStatus().catch(() => false),
+    serviceHub
+      .app()
+      .getServerStatus()
+      .catch(() => false),
     Promise.all(
       LOCAL_PROVIDERS.map((provider) =>
-        serviceHub.models().getActiveModels(provider).catch(() => [] as string[])
+        serviceHub
+          .models()
+          .getActiveModels(provider)
+          .catch(() => [] as string[])
       )
     ),
   ])
@@ -844,7 +862,11 @@ async function doSwitchToModel(params: {
     // terminal codes (missing model/binary) are never auto-retried; others back
     // off. Explicit user switches bypass `shouldAttemptAutoStart`, so a manual
     // retry is always possible.
-    recordAutoStartFailure(providerName, modelId, toErrorObject(error).code ?? null)
+    recordAutoStartFailure(
+      providerName,
+      modelId,
+      toErrorObject(error).code ?? null
+    )
     if (isLocal) {
       emitModelLoad('failed', {
         modelId,
@@ -918,7 +940,9 @@ export type OomRetryStep =
   | { kind: 'fit_target'; from: number; to: number }
 
 function modelSettingNumber(
-  model: { settings?: Record<string, { controller_props?: { value?: unknown } }> } | undefined,
+  model:
+    | { settings?: Record<string, { controller_props?: { value?: unknown } }> }
+    | undefined,
   key: string
 ): number | undefined {
   const raw = model?.settings?.[key]?.controller_props?.value
@@ -1028,7 +1052,8 @@ function emitModelLoadRetry(args: {
       ctx_after: args.step.kind === 'ctx' ? args.step.to : null,
       ngl_before: args.step.kind === 'ngl' ? args.step.from : null,
       ngl_after: args.step.kind === 'ngl' ? args.step.to : null,
-      fit_target_before: args.step.kind === 'fit_target' ? args.step.from : null,
+      fit_target_before:
+        args.step.kind === 'fit_target' ? args.step.from : null,
       fit_target_after: args.step.kind === 'fit_target' ? args.step.to : null,
     })
   } catch (telemetryError) {
@@ -1050,9 +1075,8 @@ async function loadLocalModelWithOomRetry(args: {
   const { serviceHub, providerName, modelId } = args
   let lastStep: OomRetryStep | null = null
   for (let attempt = 0; attempt < OOM_RETRY_MAX_ATTEMPTS; attempt++) {
-    const provider = useModelProvider
-      .getState()
-      .providers.find((p) => p.provider === providerName)
+    const providers = useModelProvider.getState().providers
+    const provider = providers.find((p) => p.provider === providerName)
     if (!provider) throw new Error(`Provider '${providerName}' not found`)
     const fitEnabled = readProviderFit(provider)
     try {
@@ -1122,11 +1146,7 @@ async function loadLocalModelWithOomRetry(args: {
   return undefined
 }
 
-const OOM_CODES = new Set([
-  'OUT_OF_MEMORY',
-  'OutOfMemory',
-  'OOM',
-])
+const OOM_CODES = new Set(['OUT_OF_MEMORY', 'OutOfMemory', 'OOM'])
 
 const OOM_MESSAGE_PATTERNS = [
   'out of memory',
@@ -1140,11 +1160,13 @@ const OOM_MESSAGE_PATTERNS = [
 
 function toErrorObject(error: unknown): ErrorObject {
   if (error && typeof error === 'object') {
-    const candidate = error as Partial<ErrorObject> & { toString?: () => string }
+    const candidate = error as Partial<ErrorObject> & {
+      toString?: () => string
+    }
     const message =
       typeof candidate.message === 'string' && candidate.message.length > 0
         ? candidate.message
-        : candidate.toString?.() ?? 'Unknown error'
+        : (candidate.toString?.() ?? 'Unknown error')
     return {
       code: typeof candidate.code === 'string' ? candidate.code : undefined,
       message,
@@ -1298,7 +1320,11 @@ function reportModelLoadError(
   if (err.code === 'MULTIMODAL_PROJECTOR_LOAD_FAILED') {
     toast.error(t('model-errors:multimodalUnsupportedTitle'), {
       id: 'model-load-error',
-      description: unsupportedDescription(t, 'multimodalUnsupported', providerName),
+      description: unsupportedDescription(
+        t,
+        'multimodalUnsupported',
+        providerName
+      ),
       duration: 10000,
       closeButton: true,
     })
@@ -1327,7 +1353,10 @@ function reportModelLoadError(
   // A shard set missing members is an incomplete download by another name, and
   // the remedy the corrupt-file copy already gives — delete and download again —
   // is exactly right for it.
-  if (err.code === 'MODEL_FILE_CORRUPT' || err.code === 'MODEL_SHARDS_INCOMPLETE') {
+  if (
+    err.code === 'MODEL_FILE_CORRUPT' ||
+    err.code === 'MODEL_SHARDS_INCOMPLETE'
+  ) {
     toast.error(t('model-errors:modelFileCorruptTitle'), {
       id: 'model-load-error',
       description: t('model-errors:modelFileCorruptDescription'),

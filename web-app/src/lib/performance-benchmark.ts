@@ -75,12 +75,7 @@ export function noiseFloorFor({
   stddev: number | null
   samples: number
 }): number {
-  if (
-    median === null ||
-    median === 0 ||
-    stddev === null ||
-    samples < 2
-  ) {
+  if (median === null || median === 0 || stddev === null || samples < 2) {
     return 5
   }
   const coefficientOfVariation = Math.abs(stddev / median) * 100
@@ -95,7 +90,9 @@ export function compareBenchmarkRuns(
   run: BenchmarkRun,
   baseline: BenchmarkRun
 ): Record<string, BenchmarkComparison> {
-  const baselineById = new Map(baseline.results.map((result) => [result.id, result]))
+  const baselineById = new Map(
+    baseline.results.map((result) => [result.id, result])
+  )
   const comparison: Record<string, BenchmarkComparison> = {}
 
   for (const result of run.results) {
@@ -264,18 +261,64 @@ function extractSsePayloads(buffer: string): {
 }
 
 /**
- * Request the first advertised model ID with a 2.5-second timeout.
- * Return null for HTTP failures or no model; fetch and parsing errors propagate.
+ * Where the inference benchmark sends its requests.
+ *
+ * The Local API Server also proxies cloud models, so its model list cannot be
+ * trusted to mean "on this device": only a model that a local engine has
+ * loaded is measured, which keeps the benchmark local-only and free.
  */
-async function resolveLocalModel(baseUrl: string): Promise<string | null> {
-  const response = await fetch(`${baseUrl}/models`, {
+export type LocalApiTarget = {
+  /** Dial address including the API prefix, e.g. `http://127.0.0.1:1337/v1`. */
+  baseUrl: string
+  /** The server's API key, when one is configured. */
+  apiKey?: string
+  /** Ids of the models local engines currently have loaded. */
+  loadedLocalModels: () => Promise<string[]>
+}
+
+/** Thrown for conditions that skip the inference metrics with a reason. */
+class BenchmarkSkip extends Error {}
+
+function authHeaders(target: LocalApiTarget): Record<string, string> {
+  return target.apiKey ? { Authorization: `Bearer ${target.apiKey}` } : {}
+}
+
+/**
+ * The first loaded local model that the server advertises.
+ * Network and HTTP failures propagate and become a skip reason.
+ */
+async function resolveLocalModel(target: LocalApiTarget): Promise<string> {
+  const loaded = await target.loadedLocalModels()
+  if (loaded.length === 0) {
+    throw new BenchmarkSkip(
+      'Load a local model to measure time to first token and decode speed.'
+    )
+  }
+  const response = await fetch(`${target.baseUrl}/models`, {
+    headers: authHeaders(target),
     signal: AbortSignal.timeout(2500),
   })
-  if (!response.ok) return null
+  if (response.status === 401 || response.status === 403) {
+    throw new BenchmarkSkip('The Local API Server rejected its API key.')
+  }
+  if (!response.ok) {
+    throw new BenchmarkSkip(
+      `The Local API Server returned HTTP ${response.status}.`
+    )
+  }
   const payload = (await response.json()) as {
     data?: Array<{ id?: string }>
   }
-  return payload.data?.find((item) => item.id)?.id ?? null
+  const advertised = new Set(
+    (payload.data ?? []).flatMap((item) => (item.id ? [item.id] : []))
+  )
+  const model = loaded.find((id) => advertised.has(id))
+  if (!model) {
+    throw new BenchmarkSkip(
+      'The Local API Server does not list the loaded local model.'
+    )
+  }
+  return model
 }
 
 /**
@@ -284,13 +327,13 @@ async function resolveLocalModel(baseUrl: string): Promise<string | null> {
  * Throw for failed HTTP responses, missing text, or request/stream errors.
  */
 async function runLocalApiSample(
-  baseUrl: string,
+  target: LocalApiTarget,
   model: string
 ): Promise<LocalApiSample> {
   const started = performance.now()
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch(`${target.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(target) },
     signal: AbortSignal.timeout(30000),
     body: JSON.stringify({
       model,
@@ -319,34 +362,40 @@ async function runLocalApiSample(
   let completionTokens: number | null = null
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
-    const parsed = extractSsePayloads(buffer)
-    buffer = parsed.remainder
+      buffer += decoder.decode(value, { stream: true })
+      const parsed = extractSsePayloads(buffer)
+      buffer = parsed.remainder
 
-    for (const payloadText of parsed.payloads) {
-      if (payloadText === '[DONE]') continue
-      try {
-        const payload = JSON.parse(payloadText) as {
-          choices?: Array<{ delta?: { content?: string } }>
-          usage?: { completion_tokens?: number }
+      for (const payloadText of parsed.payloads) {
+        if (payloadText === '[DONE]') continue
+        try {
+          const payload = JSON.parse(payloadText) as {
+            choices?: Array<{ delta?: { content?: string } }>
+            usage?: { completion_tokens?: number }
+          }
+          const text = payload.choices?.[0]?.delta?.content
+          if (text) {
+            if (firstTokenAt === null) firstTokenAt = performance.now()
+            outputText += text
+          }
+          if (typeof payload.usage?.completion_tokens === 'number') {
+            completionTokens = payload.usage.completion_tokens
+          }
+        } catch {
+          // Ignore incomplete/unknown SSE records; the stream parser keeps
+          // record boundaries and benchmark correctness does not depend on logs.
         }
-        const text = payload.choices?.[0]?.delta?.content
-        if (text) {
-          if (firstTokenAt === null) firstTokenAt = performance.now()
-          outputText += text
-        }
-        if (typeof payload.usage?.completion_tokens === 'number') {
-          completionTokens = payload.usage.completion_tokens
-        }
-      } catch {
-        // Ignore incomplete/unknown SSE records; the stream parser keeps
-        // record boundaries and benchmark correctness does not depend on logs.
       }
     }
+  } finally {
+    // Stops the server generating when the read failed or timed out; a no-op
+    // once the stream has finished.
+    void reader.cancel().catch(() => undefined)
   }
 
   const finished = performance.now()
@@ -355,7 +404,8 @@ async function runLocalApiSample(
   }
 
   const decodeSeconds = Math.max(0.001, (finished - firstTokenAt) / 1000)
-  const tokens = completionTokens ?? Math.max(1, Math.round(outputText.length / 4))
+  const tokens =
+    completionTokens ?? Math.max(1, Math.round(outputText.length / 4))
 
   return {
     ttftMs: firstTokenAt - started,
@@ -363,36 +413,36 @@ async function runLocalApiSample(
   }
 }
 
+function skippedInference(reason: string): BenchmarkResult[] {
+  return [
+    skippedResult('inference.ttft', 'Local API TTFT', 'ms', false, reason),
+    skippedResult(
+      'inference.decode',
+      'Local API decode throughput',
+      'tok/s',
+      true,
+      reason
+    ),
+  ]
+}
+
 /**
- * Sample the first advertised local model repeatedly for latency and throughput.
- * Return skipped results for both metrics if model discovery or any sample fails.
+ * Sample a loaded local model repeatedly for latency and throughput.
+ * Keep successful samples; skip both metrics if discovery or every sample fails.
  */
 async function runLocalApiBenchmarks(
-  baseUrl: string,
+  target: LocalApiTarget,
   iterations = 3
 ): Promise<BenchmarkResult[]> {
   try {
-    const model = await resolveLocalModel(baseUrl)
-    if (!model) {
-      const reason = 'No model is available from the Radium local API server.'
-      return [
-        skippedResult('inference.ttft', 'Local API TTFT', 'ms', false, reason),
-        skippedResult(
-          'inference.decode',
-          'Local API decode throughput',
-          'tok/s',
-          true,
-          reason
-        ),
-      ]
-    }
+    const model = await resolveLocalModel(target)
 
     const ttft: number[] = []
     const throughput: number[] = []
     let lastError: unknown
     for (let index = 0; index < iterations; index += 1) {
       try {
-        const sample = await runLocalApiSample(baseUrl, model)
+        const sample = await runLocalApiSample(target, model)
         ttft.push(sample.ttftMs)
         if (sample.tokensPerSecond !== null) {
           throughput.push(sample.tokensPerSecond)
@@ -414,34 +464,24 @@ async function runLocalApiBenchmarks(
       ),
     ]
   } catch (error) {
-    const reason =
-      error instanceof Error
-        ? error.message
-        : 'The Radium local API server is unavailable.'
-    return [
-      skippedResult('inference.ttft', 'Local API TTFT', 'ms', false, reason),
-      skippedResult(
-        'inference.decode',
-        'Local API decode throughput',
-        'tok/s',
-        true,
-        reason
-      ),
-    ]
+    if (error instanceof BenchmarkSkip) return skippedInference(error.message)
+    const detail = error instanceof Error ? ` (${error.message})` : ''
+    return skippedInference(
+      `The Local API Server could not be reached${detail}. Start it from Settings to measure inference.`
+    )
   }
 }
 
 /**
  * Run hardware IPC, renderer, and inference benchmarks sequentially with a timestamp.
- * The API URL defaults to loopback; callers supplying an override must keep it local.
  * Hardware and inference failures become skipped results.
  */
 export async function runPerformanceBenchmarks({
   sampleHardware,
-  baseUrl = 'http://127.0.0.1:1337/v1',
+  localApi,
 }: {
   sampleHardware: () => Promise<unknown>
-  baseUrl?: string
+  localApi: LocalApiTarget
 }): Promise<BenchmarkRun> {
   const results: BenchmarkResult[] = []
 
@@ -460,7 +500,7 @@ export async function runPerformanceBenchmarks({
   }
 
   results.push(await runRendererFrameBenchmark())
-  results.push(...(await runLocalApiBenchmarks(baseUrl)))
+  results.push(...(await runLocalApiBenchmarks(localApi)))
 
   return {
     runId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,

@@ -194,6 +194,87 @@ pub fn write_file_sync<R: Runtime>(
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Decode `data_base64` and write it to `path`, creating parent folders.
+///
+/// The media library saves generated images and video through this. There was
+/// no binary write at all before: the frontend called a `writeBlob` that no
+/// Rust command backed, so every generation failed to save and the Library
+/// stayed empty. Base64 rather than a JSON number array keeps a multi-megabyte
+/// image from ballooning on its way over IPC.
+///
+/// Absolute paths only, because the user can point media at any folder they
+/// own, and a relative path would silently land in the process's cwd.
+#[tauri::command]
+pub fn write_binary_file<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    path: String,
+    data_base64: String,
+) -> Result<(), String> {
+    use base64::Engine;
+
+    if path.is_empty() {
+        return Err("write_binary_file error: Invalid argument".to_string());
+    }
+    let target = resolve_path(app_handle, &path);
+    if !target.is_absolute() {
+        return Err("write_binary_file error: path must be absolute".to_string());
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data_base64.as_bytes())
+        .map_err(|e| format!("write_binary_file error: bad base64: {e}"))?;
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&target, bytes).map_err(|e| e.to_string())
+}
+
+/// Copy a file to a path the user picked in a save dialog ("Save as…").
+///
+/// Refuses to overwrite a directory and creates missing parent folders. The
+/// source must be an existing regular file.
+#[tauri::command]
+pub fn copy_file<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    src: String,
+    dest: String,
+) -> Result<(), String> {
+    if src.is_empty() || dest.is_empty() {
+        return Err("copy_file error: source and destination required".to_string());
+    }
+    let source = resolve_path(app_handle.clone(), &src);
+    let destination = resolve_path(app_handle, &dest);
+    if !source.is_file() {
+        return Err("copy_file error: source is not a file".to_string());
+    }
+    if !destination.is_absolute() || destination.is_dir() {
+        return Err("copy_file error: destination must be an absolute file path".to_string());
+    }
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(&source, &destination)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Delete one file. Unlike `rm` it is not limited to the app's own folders,
+/// because a generation can live in a media folder the user chose - but it only
+/// ever removes a single regular file, never a directory.
+#[tauri::command]
+pub fn remove_file<R: Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    path: String,
+) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("remove_file error: Invalid argument".to_string());
+    }
+    let target = resolve_path(app_handle, &path);
+    if !target.is_absolute() || !target.is_file() {
+        return Err("remove_file error: not an existing file".to_string());
+    }
+    fs::remove_file(&target).map_err(|e| e.to_string())
+}
+
 /// Returns the current OS user's real home directory (e.g. `/Users/<name>` or
 /// `C:\Users\<name>`), NOT the Jan data folder. Used by the local-model scanner
 /// to locate other apps' model stores (Ollama / LM Studio / HF cache / Unsloth).
@@ -300,29 +381,38 @@ pub fn readdir_sync<R: Runtime>(
     Ok(paths)
 }
 
-#[tauri::command]
-pub fn write_yaml(
-    app: tauri::AppHandle<impl Runtime>,
-    data: serde_json::Value,
-    save_path: &str,
-) -> Result<(), String> {
-    // TODO: have an internal function to check scope
+/// Resolves `path` against the data folder and refuses anything outside the
+/// app's folders. `label` names the path in the error ("path", "save path").
+fn get_scoped_path<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    path: &str,
+    label: &str,
+) -> Result<std::path::PathBuf, String> {
     let jan_data_folder = crate::core::app::commands::get_jan_data_folder_path(app.clone());
-    let save_path = redirect_for_app(
-        &app,
-        &jan_utils::normalize_path(&jan_data_folder.join(save_path)),
-    );
+    let resolved_path =
+        redirect_for_app(app, &jan_utils::normalize_path(&jan_data_folder.join(path)));
     if !is_within_app_folders(
-        &save_path,
+        &resolved_path,
         &jan_data_folder,
-        chosen_models_folder(&app).as_deref(),
+        chosen_models_folder(app).as_deref(),
     ) {
         return Err(format!(
-            "Error: save path {} is not under jan_data_folder {}",
-            save_path.to_string_lossy(),
+            "Error: {} {} is not under jan_data_folder {}",
+            label,
+            resolved_path.to_string_lossy(),
             jan_data_folder.to_string_lossy(),
         ));
     }
+    Ok(resolved_path)
+}
+
+#[tauri::command]
+pub fn write_yaml<R: Runtime>(
+    app: tauri::AppHandle<R>,
+    data: serde_json::Value,
+    save_path: &str,
+) -> Result<(), String> {
+    let save_path = get_scoped_path(&app, save_path, "save path")?;
     let file = fs::File::create(&save_path).map_err(|e| e.to_string())?;
     let mut writer = std::io::BufWriter::new(file);
     serde_yaml::to_writer(&mut writer, &data).map_err(|e| e.to_string())?;
@@ -334,22 +424,7 @@ pub fn read_yaml<R: Runtime>(
     app: tauri::AppHandle<R>,
     path: &str,
 ) -> Result<serde_json::Value, String> {
-    let jan_data_folder = crate::core::app::commands::get_jan_data_folder_path(app.clone());
-    let path = redirect_for_app(
-        &app,
-        &jan_utils::normalize_path(&jan_data_folder.join(path)),
-    );
-    if !is_within_app_folders(
-        &path,
-        &jan_data_folder,
-        chosen_models_folder(&app).as_deref(),
-    ) {
-        return Err(format!(
-            "Error: path {} is not under jan_data_folder {}",
-            path.to_string_lossy(),
-            jan_data_folder.to_string_lossy(),
-        ));
-    }
+    let path = get_scoped_path(&app, path, "path")?;
     let file = fs::File::open(&path).map_err(|e| e.to_string())?;
     let reader = std::io::BufReader::new(file);
     let data: serde_json::Value = serde_yaml::from_reader(reader).map_err(|e| e.to_string())?;

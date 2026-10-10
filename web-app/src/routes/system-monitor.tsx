@@ -33,7 +33,9 @@ function SystemMonitorContent() {
   // Poll system usage every 5 seconds
   useEffect(() => {
     const intervalId = setInterval(() => {
-      serviceHub.hardware().getSystemUsage()
+      serviceHub
+        .hardware()
+        .getSystemUsage()
         .then((data) => {
           if (data) {
             updateSystemUsage(data)
@@ -163,10 +165,7 @@ function SystemMonitorContent() {
               {t('system-monitor:activeGpus')}
             </h2>
             {hardwareData.gpus.length > 0 && llamacppDevices.length === 0 && (
-              <DriverOutdatedBanner
-                gpus={hardwareData.gpus}
-                className="mb-4"
-              />
+              <DriverOutdatedBanner gpus={hardwareData.gpus} className="mb-4" />
             )}
             <div className="flex flex-col gap-2">
               {llamacppDevices.length > 0 ? (
@@ -282,7 +281,9 @@ function SystemMonitorContent() {
                           {formatMegaBytes(usage.used_memory)} /{' '}
                           {formatMegaBytes(usage.total_memory)}
                         </span>
-                        <span className="text-muted-foreground">Temperature</span>
+                        <span className="text-muted-foreground">
+                          Temperature
+                        </span>
                         <span className="text-right">
                           {typeof usage.temperature_c === 'number'
                             ? `${usage.temperature_c} °C`
