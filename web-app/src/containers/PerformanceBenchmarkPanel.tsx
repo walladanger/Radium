@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useServiceHub } from '@/hooks/useServiceHub'
+import { useLocalApiServer } from '@/hooks/useLocalApiServer'
+import { getLocalApiServerUrl } from '@/utils/localApiServerControl'
 import {
   compareBenchmarkRuns,
   loadBenchmarkBaseline,
@@ -20,6 +22,7 @@ export function PerformanceBenchmarkPanel() {
   const serviceHub = useServiceHub()
   const [running, setRunning] = useState(false)
   const [run, setRun] = useState<BenchmarkRun | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [baseline, setBaseline] = useState<BenchmarkRun | null>(() =>
     loadBenchmarkBaseline()
   )
@@ -30,12 +33,22 @@ export function PerformanceBenchmarkPanel() {
 
   const runBenchmarks = async () => {
     setRunning(true)
+    setError(null)
     try {
       const next = await runPerformanceBenchmarks({
         sampleHardware: () => serviceHub.hardware().getSystemUsage(),
+        localApi: {
+          baseUrl: getLocalApiServerUrl(),
+          apiKey: useLocalApiServer.getState().apiKey || undefined,
+          loadedLocalModels: () => serviceHub.models().getActiveModels(),
+        },
       })
-      saveBenchmarkRun(next)
       setRun(next)
+      saveBenchmarkRun(next)
+    } catch (failure) {
+      setError(
+        failure instanceof Error ? failure.message : 'The benchmark failed.'
+      )
     } finally {
       setRunning(false)
     }
@@ -43,8 +56,16 @@ export function PerformanceBenchmarkPanel() {
 
   const makeBaseline = () => {
     if (!run) return
-    saveBenchmarkBaseline(run)
     setBaseline(run)
+    try {
+      saveBenchmarkBaseline(run)
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? `The baseline could not be saved: ${failure.message}`
+          : 'The baseline could not be saved.'
+      )
+    }
   }
 
   return (
@@ -70,6 +91,12 @@ export function PerformanceBenchmarkPanel() {
           </Button>
         </div>
       </div>
+
+      {error && (
+        <p role="alert" className="text-sm text-destructive mb-3">
+          {error}
+        </p>
+      )}
 
       {!run ? (
         <p className="text-sm text-muted-foreground">
