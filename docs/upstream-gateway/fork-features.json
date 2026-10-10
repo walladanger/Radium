@@ -421,5 +421,42 @@
     ],
     "decision": "Tracker D37, Task 29 (PR #19)",
     "status": "pending"
+  },
+  {
+    "id": "skill-organization",
+    "feature": "Skills organized by creator and category",
+    "forUsers": "Skills can live in nested category folders, each shows its creator, category, tags and size, and the Skills page groups, sorts and searches them and can move a skill between folders.",
+    "paths": [
+      "src-tauri/src/core/agent/skills/discovery.rs",
+      "src-tauri/src/core/agent/skills/organization.rs",
+      "src-tauri/src/core/agent/skills/seeding.rs",
+      "src-tauri/resources/agent-skills/_catalog.json",
+      "web-app/src/lib/skill-organization.ts",
+      "web-app/src/containers/AgentSkillMoveDialog.tsx",
+      "web-app/src/containers/AgentSkillOrganizationFields.tsx",
+      "web-app/src/routes/skills/index.tsx"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::skills",
+        "cwd": "src-tauri",
+        "files": [
+          "src-tauri/src/core/agent/skills/discovery.rs",
+          "src-tauri/src/core/agent/skills/organization.rs",
+          "src-tauri/src/core/agent/skills/seeding.rs"
+        ]
+      },
+      {
+        "run": "npx vitest run src/lib/skill-organization.test.ts src/routes/skills/index.test.tsx src/services/agent/skills.test.ts",
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/lib/skill-organization.test.ts",
+          "web-app/src/routes/skills/index.test.tsx",
+          "web-app/src/services/agent/skills.test.ts"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-09-organize-skills-by-creator-and-category.md",
+    "status": "checked"
   }
 ]
