@@ -4,8 +4,35 @@ import {
   createPrivacyState,
   redactText,
   rehydrateText,
+  rehydrateUIMessageStream,
   scanSensitiveText,
+  StreamingRehydrator,
 } from '../privacy-gate'
+
+type Chunk = { type: string } & Record<string, unknown>
+
+async function collect(chunks: Chunk[], state = createPrivacyState()) {
+  const source = new ReadableStream<Chunk>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(chunk)
+      controller.close()
+    },
+  })
+  const out: Chunk[] = []
+  const reader = rehydrateUIMessageStream(source, state).getReader()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) return out
+    out.push(value)
+  }
+}
+
+function splitInto(text: string, size: number): string[] {
+  const pieces: string[] = []
+  for (let i = 0; i < text.length; i += size)
+    pieces.push(text.slice(i, i + size))
+  return pieces
+}
 
 describe('privacy gate', () => {
   it('redacts sensitive values with request-scoped collision-resistant tokens', () => {
@@ -82,5 +109,87 @@ describe('privacy gate', () => {
     expect(rehydrateText(redacted + ' [RDM_other_EMAIL_1]', state)).toBe(
       'me@example.com [RDM_other_EMAIL_1]'
     )
+  })
+
+  it('restores a placeholder split across streamed deltas', () => {
+    const state = createPrivacyState([], 'abc123')
+    const token = redactText('me@example.com', state)
+    const rehydrator = new StreamingRehydrator(state)
+    const reply = `Write to ${token} today.`
+    const shown =
+      splitInto(reply, 3)
+        .map((piece) => rehydrator.push(piece))
+        .join('') + rehydrator.flush()
+    expect(shown).toBe('Write to me@example.com today.')
+  })
+
+  it('does not hold back brackets that cannot become a placeholder', () => {
+    const state = createPrivacyState([], 'abc123')
+    redactText('me@example.com', state)
+    const rehydrator = new StreamingRehydrator(state)
+    expect(rehydrator.push('see [1] and [x')).toBe('see [1] and [x')
+    expect(rehydrator.push(' and [RDM_ab')).toBe(' and ')
+    expect(rehydrator.flush()).toBe('[RDM_ab')
+  })
+
+  it('rehydrates a UI stream per part without losing or reordering text', async () => {
+    const state = createPrivacyState([], 'abc123')
+    const email = redactText('me@example.com', state)
+    const ip = redactText('10.0.0.7', state)
+    const text = `Mail ${email} from ${ip}`
+    const chunks: Chunk[] = [
+      { type: 'start' },
+      { type: 'text-start', id: 't1' },
+      ...splitInto(text, 4).map((delta) => ({
+        type: 'text-delta',
+        id: 't1',
+        delta,
+      })),
+      { type: 'text-end', id: 't1' },
+      { type: 'tool-input-start', toolCallId: 'c1', toolName: 'send' },
+      ...splitInto(`{"to":"${email}"}`, 5).map((inputTextDelta) => ({
+        type: 'tool-input-delta',
+        toolCallId: 'c1',
+        inputTextDelta,
+      })),
+      {
+        type: 'tool-input-available',
+        toolCallId: 'c1',
+        toolName: 'send',
+        input: { to: email },
+      },
+      { type: 'finish' },
+    ]
+
+    const out = await collect(chunks, state)
+
+    const shownText = out
+      .filter((chunk) => chunk.type === 'text-delta')
+      .map((chunk) => chunk.delta)
+      .join('')
+    expect(shownText).toBe('Mail me@example.com from 10.0.0.7')
+    const toolText = out
+      .filter((chunk) => chunk.type === 'tool-input-delta')
+      .map((chunk) => chunk.inputTextDelta)
+      .join('')
+    expect(toolText).toBe('{"to":"me@example.com"}')
+    expect(out.find((chunk) => chunk.type === 'tool-input-available')).toEqual(
+      expect.objectContaining({ input: { to: 'me@example.com' } })
+    )
+    const types = out.map((chunk) => chunk.type)
+    expect(types.indexOf('text-end')).toBeGreaterThan(
+      types.lastIndexOf('text-delta')
+    )
+    expect(JSON.stringify(out)).not.toContain('RDM_')
+  })
+
+  it('releases a held-back tail when the stream ends without an end chunk', async () => {
+    const state = createPrivacyState([], 'abc123')
+    redactText('me@example.com', state)
+    const out = await collect(
+      [{ type: 'text-delta', id: 't1', delta: 'cut off [RDM_abc' }],
+      state
+    )
+    expect(out.map((chunk) => chunk.delta).join('')).toBe('cut off [RDM_abc')
   })
 })

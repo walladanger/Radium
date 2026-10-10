@@ -98,8 +98,7 @@ import {
 import {
   applyPrivacyGate,
   readPrivacyGateSettings,
-  rehydrateText,
-  type PrivacyState,
+  rehydrateUIMessageStream,
 } from '@/lib/privacy-gate'
 
 /// Local inference backends (mlx, llamacpp, llamacpp-upstream,
@@ -399,53 +398,6 @@ function prependTextDeltaToUIStream(
             delta: prefixText,
           } as UIMessageChunk)
         }
-      } catch (error) {
-        controller.error(error)
-      }
-    },
-    cancel() {
-      reader.cancel()
-    },
-  })
-}
-
-function rehydratePrivacyValue(value: unknown, state: PrivacyState): unknown {
-  if (typeof value === 'string') return rehydrateText(value, state)
-  if (Array.isArray(value)) {
-    return value.map((entry) => rehydratePrivacyValue(entry, state))
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-        key,
-        rehydratePrivacyValue(entry, state),
-      ])
-    )
-  }
-  return value
-}
-
-/**
- * Restores request-scoped privacy placeholders before provider output reaches
- * the visible transcript or local tool execution. The remote provider never
- * receives the originals; rehydration happens only on the local stream.
- */
-function rehydratePrivacyUIStream(
-  stream: ReadableStream<UIMessageChunk>,
-  state: PrivacyState
-): ReadableStream<UIMessageChunk> {
-  const reader = stream.getReader()
-  return new ReadableStream<UIMessageChunk>({
-    async pull(controller) {
-      try {
-        const { done, value } = await reader.read()
-        if (done) {
-          controller.close()
-          return
-        }
-        controller.enqueue(
-          rehydratePrivacyValue(value, state) as UIMessageChunk
-        )
       } catch (error) {
         controller.error(error)
       }
@@ -1282,7 +1234,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
     const uiStream =
       privacyRequest && privacySettings.rehydrateResponses
-        ? rehydratePrivacyUIStream(providerUiStream, privacyRequest.state)
+        ? rehydrateUIMessageStream(providerUiStream, privacyRequest.state)
         : providerUiStream
 
     // When continuing a truncated response, inject the partial content as the
