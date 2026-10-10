@@ -112,7 +112,7 @@ pub fn run() {
     // Desktop: the full command surface.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
-        // FS commands - Deperecate soon
+        // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
         core::filesystem::commands::exists_sync,
@@ -298,7 +298,7 @@ pub fn run() {
     // Mobile: the same surface minus the desktop-only commands.
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
-        // FS commands - Deperecate soon
+        // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
         core::filesystem::commands::exists_sync,
