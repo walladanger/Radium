@@ -19,7 +19,11 @@ function provider(adapter: MediaProviderAdapterId): MediaProviderDescriptor {
     kind: adapter === 'a1111' ? 'local_worker' : 'remote_http',
     enabled: true,
     origin: 'user',
-    auth: { type: 'api_key', setting_key: `media.${adapter}.api_key` },
+    // A local A1111 normally needs nothing; the cloud services need a key.
+    auth:
+      adapter === 'a1111'
+        ? { type: 'none' }
+        : { type: 'api_key', setting_key: `media.${adapter}.api_key` },
   }
 }
 

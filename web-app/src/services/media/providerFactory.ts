@@ -16,6 +16,7 @@ import { createReplicateAdapter } from './adapters/replicate'
 import { createFalAiAdapter } from './adapters/falAi'
 import { createStabilityAiAdapter } from './adapters/stabilityAi'
 import { readMediaSecret } from './secrets'
+import { mediaTransport } from './transport'
 import type { MediaProviderAdapter, MediaProviderDescriptor } from './contract'
 
 export class UnknownMediaAdapterError extends Error {
@@ -38,16 +39,29 @@ export function createMediaAdapter(
       return createAtomicWorkerAdapter(descriptor)
     case 'comfyui':
       return createComfyUiAdapter(descriptor)
+    // The four adapters below reach services that do not all allow a browser
+    // origin (Replicate sends no CORS headers; A1111 only with a flag), so they
+    // use the Tauri HTTP client in the app. Credentials come from the OS
+    // credential store per request, exactly as for openai-images below.
     case 'a1111':
-      return createA1111Adapter(descriptor)
+      // Usually none; a server started with --api-auth needs user:password.
+      return createA1111Adapter(descriptor, {
+        fetch: mediaTransport,
+        resolveSecret: readMediaSecret,
+      })
     case 'replicate':
       return createReplicateAdapter(descriptor, {
+        fetch: mediaTransport,
         resolveSecret: readMediaSecret,
       })
     case 'fal-ai':
-      return createFalAiAdapter(descriptor, { resolveSecret: readMediaSecret })
+      return createFalAiAdapter(descriptor, {
+        fetch: mediaTransport,
+        resolveSecret: readMediaSecret,
+      })
     case 'stability-ai':
       return createStabilityAiAdapter(descriptor, {
+        fetch: mediaTransport,
         resolveSecret: readMediaSecret,
       })
     case 'openai-images':
