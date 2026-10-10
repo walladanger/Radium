@@ -30,6 +30,7 @@ import { buildOptimisticUserMessage } from '@/lib/optimisticUserMessage'
 import { useChat } from '@/hooks/use-chat'
 import { useModelProvider } from '@/hooks/useModelProvider'
 import { renderInstructions } from '@/lib/instructionTemplate'
+import { buildAgentSpecialists } from '@/lib/agent-specialists'
 import {
   Conversation,
   ConversationAutoScroll,
@@ -1171,6 +1172,10 @@ function ThreadDetail() {
               .getState()
               .getDisabledToolsForThread(threadId),
             rag,
+            specialists: buildAgentSpecialists(
+              useAssistant.getState().assistants,
+              threadAssistant?.id
+            ),
           },
           applyAgentEvent
         )
@@ -1212,6 +1217,7 @@ function ThreadDetail() {
       syncAgentSessionIfNeeded,
       systemMessage,
       t,
+      threadAssistant?.id,
       threadId,
     ]
   )

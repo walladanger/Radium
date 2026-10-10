@@ -252,6 +252,11 @@ const STATIC_TOOL_GRAMMARS: &[ToolGrammar] = &[
         args: r#""{" ws "\"title\"" ws ":" ws non-empty-string ( ws "," ws "\"body\"" ws ":" ws string )? ws "}""#,
     },
     ToolGrammar {
+        name: "agent.delegate",
+        rule: "agent-delegate",
+        args: r#""{" ws "\"specialist\"" ws ":" ws non-empty-string ws "," ws "\"task\"" ws ":" ws non-empty-string ws "}""#,
+    },
+    ToolGrammar {
         name: "reply",
         rule: "reply",
         args: r#""{" ws "\"text\"" ws ":" ws non-empty-string ws "}""#,
@@ -339,6 +344,7 @@ pub const GRAMMAR_TOOL_NAMES: &[&str] = &[
     "os.clipboard.read",
     "os.clipboard.write",
     "os.notify",
+    "agent.delegate",
     "reply",
     "finish",
 ];
