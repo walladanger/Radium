@@ -461,7 +461,11 @@ describe('fal.ai — where the key goes', () => {
     await adapter.poll(submitted)
 
     const sentKeys = state.requests.filter((r) => r.headers.Authorization)
-    expect(sentKeys.every((r) => r.url.startsWith(QUEUE))).toBe(true)
+    expect(sentKeys.length).toBeGreaterThan(0)
+    const queueOrigin = new URL(QUEUE).origin
+    expect(sentKeys.map((r) => new URL(r.url).origin)).toEqual(
+      sentKeys.map(() => queueOrigin)
+    )
     expect(state.requests.at(-1)!.url).toBe(
       `${QUEUE}/${MODEL}/requests/${state.requestId}/status`
     )
