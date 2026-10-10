@@ -381,9 +381,12 @@ pub fn readdir_sync<R: Runtime>(
     Ok(paths)
 }
 
+/// Resolves `path` against the data folder and refuses anything outside the
+/// app's folders. `label` names the path in the error ("path", "save path").
 fn get_scoped_path<R: Runtime>(
     app: &tauri::AppHandle<R>,
     path: &str,
+    label: &str,
 ) -> Result<std::path::PathBuf, String> {
     let jan_data_folder = crate::core::app::commands::get_jan_data_folder_path(app.clone());
     let resolved_path =
@@ -394,7 +397,8 @@ fn get_scoped_path<R: Runtime>(
         chosen_models_folder(app).as_deref(),
     ) {
         return Err(format!(
-            "Error: path {} is not under jan_data_folder {}",
+            "Error: {} {} is not under jan_data_folder {}",
+            label,
             resolved_path.to_string_lossy(),
             jan_data_folder.to_string_lossy(),
         ));
@@ -408,10 +412,7 @@ pub fn write_yaml<R: Runtime>(
     data: serde_json::Value,
     save_path: &str,
 ) -> Result<(), String> {
-    let save_path = get_scoped_path(&app, save_path).map_err(|e| {
-        // Preserve the existing write command's error text.
-        e.replace("Error: path", "Error: save path")
-    })?;
+    let save_path = get_scoped_path(&app, save_path, "save path")?;
     let file = fs::File::create(&save_path).map_err(|e| e.to_string())?;
     let mut writer = std::io::BufWriter::new(file);
     serde_yaml::to_writer(&mut writer, &data).map_err(|e| e.to_string())?;
@@ -423,7 +424,7 @@ pub fn read_yaml<R: Runtime>(
     app: tauri::AppHandle<R>,
     path: &str,
 ) -> Result<serde_json::Value, String> {
-    let path = get_scoped_path(&app, path)?;
+    let path = get_scoped_path(&app, path, "path")?;
     let file = fs::File::open(&path).map_err(|e| e.to_string())?;
     let reader = std::io::BufReader::new(file);
     let data: serde_json::Value = serde_yaml::from_reader(reader).map_err(|e| e.to_string())?;

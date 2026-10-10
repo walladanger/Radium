@@ -47,8 +47,8 @@ test('every file command follows the chosen models folder', () => {
   assert.match(scopedBody, /redirect_for_app/, 'YAML scope helper no longer redirects')
   assert.match(scopedBody, /is_within_app_folders/, 'YAML scope helper no longer checks scope')
   assert.match(scopedBody, /chosen_models_folder/, 'YAML scope helper ignores the chosen folder')
-  assert.match(body('write_yaml'), /get_scoped_path\(&app, save_path\)/, 'write_yaml bypasses scope helper')
-  assert.match(body('read_yaml'), /get_scoped_path\(&app, path\)/, 'read_yaml bypasses scope helper')
+  assert.match(body('write_yaml'), /get_scoped_path\(&app, save_path[,)]/, 'write_yaml bypasses scope helper')
+  assert.match(body('read_yaml'), /get_scoped_path\(&app, path[,)]/, 'read_yaml bypasses scope helper')
   assert.match(body('rm'), /is_within_app_folders/, 'rm cannot delete in the models folder')
 })
 
