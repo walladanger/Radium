@@ -121,7 +121,6 @@
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",
     "@types/culori": "2.1.1",
-    "@types/dompurify": "^3.2.0",
     "@types/istanbul-lib-report": "3.0.3",
     "@types/istanbul-reports": "3.0.4",
     "@types/lodash": "^4",

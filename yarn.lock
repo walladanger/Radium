@@ -2804,7 +2804,6 @@ __metadata:
     "@testing-library/react": "npm:16.3.0"
     "@testing-library/user-event": "npm:14.6.1"
     "@types/culori": "npm:2.1.1"
-    "@types/dompurify": "npm:^3.2.0"
     "@types/istanbul-lib-report": "npm:3.0.3"
     "@types/istanbul-reports": "npm:3.0.4"
     "@types/lodash": "npm:^4"
@@ -7083,15 +7082,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/dompurify@npm:^3.2.0":
-  version: 3.2.0
-  resolution: "@types/dompurify@npm:3.2.0"
-  dependencies:
-    dompurify: "npm:*"
-  checksum: 10c0/e83fec586ffbb1b43f7c8479f2a99c223814d240db912d53fb126aaeea52a4091deceeb75632b5d76004d88ef0fbf444984887b121dece6fa69f4172ed4b2b07
-  languageName: node
-  linkType: hard
-
 "@types/estree-jsx@npm:^1.0.0":
   version: 1.0.5
   resolution: "@types/estree-jsx@npm:1.0.5"
@@ -10271,7 +10261,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:*, dompurify@npm:^3.3.3, dompurify@npm:^3.4.16":
+"dompurify@npm:^3.3.3, dompurify@npm:^3.4.16":
   version: 3.4.16
   resolution: "dompurify@npm:3.4.16"
   dependencies:
