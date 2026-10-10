@@ -366,7 +366,11 @@ fn validate_output_target(
                 output.display()
             )));
         }
-        if !overwrite && !(is_dir && metadata.is_dir()) {
+        // Refuse unless we were told to overwrite, or this is a directory
+        // archive landing on an existing directory, which is the one case that
+        // merges rather than clobbers. Written in the De Morgan form clippy's
+        // `nonminimal_bool` insists on since 1.94.
+        if !(overwrite || (is_dir && metadata.is_dir())) {
             return Err(ToolOutcome::error(format!(
                 "Archive output '{}' already exists; set overwrite=true to replace it",
                 output.display()

@@ -1,3 +1,10 @@
+// Rust 1.99's clippy reports `double_must_use` against the code `#[async_trait]`
+// generates: it marks the boxed future `#[must_use]`, and a future is already
+// must_use. 18 errors across 9 traits, none of them in code written here, and
+// `-D warnings` turned every one into a build failure. async-trait 0.1.89 is
+// the current release; drop this once a release stops emitting the attribute.
+#![allow(clippy::double_must_use)]
+
 pub mod core;
 
 #[cfg(test)]
@@ -60,6 +67,10 @@ pub fn run() {
 
     let mut app_builder = builder
         .register_uri_scheme_protocol("artifact", core::artifact::handle_artifact_request)
+        // Custom panels: third-party folders rendered in a sandboxed iframe.
+        // Same mechanism as `artifact` above, opposite policy — the response
+        // CSP forbids the network entirely. See core::panels.
+        .register_uri_scheme_protocol("panel", core::panels::handle_panel_request)
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
@@ -101,7 +112,7 @@ pub fn run() {
     // Desktop: the full command surface.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
-        // FS commands - Deperecate soon
+        // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
         core::filesystem::commands::exists_sync,
@@ -115,6 +126,9 @@ pub fn run() {
         core::filesystem::commands::mv,
         core::filesystem::commands::file_stat,
         core::filesystem::commands::write_file_sync,
+        core::filesystem::commands::write_binary_file,
+        core::filesystem::commands::copy_file,
+        core::filesystem::commands::remove_file,
         core::filesystem::commands::write_yaml,
         core::filesystem::commands::read_yaml,
         core::filesystem::commands::decompress,
@@ -221,6 +235,7 @@ pub fn run() {
         core::agent::skills::commands::agent_update_skill,
         core::agent::skills::commands::agent_export_skill,
         core::agent::skills::commands::agent_delete_skill,
+        core::agent::skills::commands::agent_move_skill,
         core::agent::skills::commands::agent_refresh_skills,
         core::mcp::commands::restart_mcp_servers,
         core::mcp::commands::get_connected_servers,
@@ -257,6 +272,12 @@ pub fn run() {
         // HTML artifact preview (served via the artifact:// protocol)
         core::artifact::set_artifact_html,
         core::artifact::clear_artifact_html,
+        // Custom panels (desktop only: the board is a desktop surface)
+        core::panels::commands::panels_list,
+        core::panels::commands::panels_install,
+        core::panels::commands::panels_remove,
+        core::panels::commands::panels_open_folder,
+        core::panels::commands::panels_request,
         // Tray status (desktop only runtime behaviour; the symbol exists on mobile as a no-op)
         core::tray_status::update_tray_status,
         // Telemetry (ATO-113): consent sync + zero-PII context tags for Sentry
@@ -296,7 +317,7 @@ pub fn run() {
     // Mobile: the same surface minus the desktop-only commands.
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
-        // FS commands - Deperecate soon
+        // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
         core::filesystem::commands::exists_sync,
@@ -310,6 +331,9 @@ pub fn run() {
         core::filesystem::commands::mv,
         core::filesystem::commands::file_stat,
         core::filesystem::commands::write_file_sync,
+        core::filesystem::commands::write_binary_file,
+        core::filesystem::commands::copy_file,
+        core::filesystem::commands::remove_file,
         core::filesystem::commands::write_yaml,
         core::filesystem::commands::read_yaml,
         core::filesystem::commands::decompress,
@@ -411,6 +435,7 @@ pub fn run() {
         core::agent::skills::commands::agent_update_skill,
         core::agent::skills::commands::agent_export_skill,
         core::agent::skills::commands::agent_delete_skill,
+        core::agent::skills::commands::agent_move_skill,
         core::agent::skills::commands::agent_refresh_skills,
         core::mcp::commands::restart_mcp_servers,
         core::mcp::commands::get_connected_servers,

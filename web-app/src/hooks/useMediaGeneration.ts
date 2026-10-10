@@ -22,6 +22,7 @@ import {
   type MediaJobManager,
 } from '@/services/media/jobManager'
 import type { NormalizedMediaRequest } from '@/services/media/contract'
+import { useMediaLastUsedStore } from '@/stores/media-last-used-store'
 
 export type UseMediaGeneration = {
   /** Every tracked job, newest first. */
@@ -57,7 +58,11 @@ export function useMediaGeneration(
   )
 
   const submit = useCallback(
-    (request: NormalizedMediaRequest) => manager.submit(request),
+    (request: NormalizedMediaRequest) => {
+      // What the user tuned on the Media page is what chat generates with.
+      useMediaLastUsedStore.getState().record(request)
+      return manager.submit(request)
+    },
     [manager]
   )
 

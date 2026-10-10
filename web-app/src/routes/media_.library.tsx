@@ -16,6 +16,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import HeaderPage from '@/containers/HeaderPage'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { MediaLibrary } from '@/containers/media/MediaLibrary'
+import { MediaOutputSettings } from '@/containers/media/MediaOutputSettings'
 import { route } from '@/constants/routes'
 import { setPendingMediaReRun } from '@/services/media/rerun'
 
@@ -33,6 +34,7 @@ function MediaLibraryRoute() {
         <span>{t('media:library.title', { defaultValue: 'Library' })}</span>
       </HeaderPage>
       <div className="p-4">
+        <MediaOutputSettings />
         <MediaLibrary
           onReRun={(request) => {
             // Handed over rather than executed here: the studio owns submission,

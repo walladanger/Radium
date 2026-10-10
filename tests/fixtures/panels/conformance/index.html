@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/panel-theme.css" />
+<title>Contract conformance</title>
+<pre id="log">running…</pre>
+<script type="module">
+  import { panel } from '/panel-sdk.js'
+
+  const lines = []
+  const record = (name, outcome) => {
+    lines.push(`${name}: ${outcome}`)
+    document.getElementById('log').textContent = lines.join('\n')
+  }
+
+  panel.onTheme((theme) => {
+    document.documentElement.dataset.theme = theme
+    record('onTheme', theme)
+  })
+
+  // Each probe is awaited separately: one denial must not stop the rest, since
+  // the point of the fixture is to report on every path.
+  const probe = async (name, fn, expect) => {
+    try {
+      const value = await fn()
+      record(name, expect === 'ok' ? `ok ${JSON.stringify(value)}` : `UNEXPECTED ok`)
+    } catch (error) {
+      const code = error.code || 'no-code'
+      record(name, expect === code ? `ok (${code})` : `UNEXPECTED ${code}: ${error.message}`)
+    }
+  }
+
+  // Always allowed, no permission needed.
+  await probe('host.info', () => panel.host(), 'ok')
+  await probe('panel.theme', () => panel.theme(), 'ok')
+
+  // Granted by this manifest.
+  await probe('storage.set', () => panel.set('probe', Date.now()), 'ok')
+  await probe('storage.get', () => panel.get('probe'), 'ok')
+  await probe('mcp.listTools', () => panel.tools(), 'ok')
+
+  // Declared permissions stop here, so these must be refused by the host
+  // rather than answered. A host that answers either one is broken.
+  await probe('mcp.callTool denied', () => panel.callTool('anything'), 'permission_denied')
+  await probe('unknown method', () => panel.call('does.not.exist'), 'unknown_method')
+
+  panel.ready()
+</script>

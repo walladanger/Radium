@@ -46,6 +46,13 @@ function collectLocalModels(
 ): Map<string, InstalledModel> {
   const out = new Map<string, InstalledModel>()
 
+  const providerMap = new Map<string, readonly Model[]>()
+  for (const provider of providers) {
+    if ((LOCAL_PROVIDERS as readonly string[]).includes(provider.provider)) {
+      providerMap.set(provider.provider, provider.models)
+    }
+  }
+
   const add = (models: readonly Model[], isMlx: boolean) => {
     for (const model of models) {
       // The embedding model is an app-internal download for retrieval, not
@@ -56,8 +63,7 @@ function collectLocalModels(
     }
   }
 
-  const modelsOf = (name: string) =>
-    providers.find((provider) => provider.provider === name)?.models ?? []
+  const modelsOf = (name: string) => providerMap.get(name) ?? []
 
   for (const name of LLAMACPP_PROVIDERS) add(modelsOf(name), false)
   add(modelsOf(MLX_PROVIDER), true)
@@ -114,10 +120,11 @@ export function findInstalledLocalModel(
   ids: readonly string[],
   providerNames: readonly string[] = LOCAL_PROVIDERS
 ): InstalledModelLocation | null {
+  const idSet = new Set(ids)
   for (const name of providerNames) {
     const provider = providers.find((entry) => entry.provider === name)
     if (!provider) continue
-    const match = provider.models.find((model) => ids.includes(model.id))
+    const match = provider.models.find((model) => idSet.has(model.id))
     if (match) return { modelId: match.id, provider: name }
   }
   return null

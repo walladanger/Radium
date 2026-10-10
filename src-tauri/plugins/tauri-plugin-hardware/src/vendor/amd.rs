@@ -59,8 +59,15 @@ impl GpuInfo {
                 };
                 return Ok(GpuUsage {
                     uuid: self.uuid.clone(),
+                    available: true,
                     total_memory: read_mem(&device_path.join("mem_info_vram_total")),
                     used_memory: read_mem(&device_path.join("mem_info_vram_used")),
+                    utilization_percent: None,
+                    temperature_c: None,
+                    power_w: None,
+                    power_limit_w: None,
+                    clock_graphics_mhz: None,
+                    clock_memory_mhz: None,
                 });
             }
             Err(format!("GPU not found").into())
@@ -101,19 +108,25 @@ impl GpuInfo {
         match memory_usage_map.get(&self.name) {
             Some(&used_memory) => GpuUsage {
                 uuid: self.uuid.clone(),
+                available: true,
                 used_memory: used_memory as u64,
                 total_memory: self.total_memory,
+                utilization_percent: None,
+                temperature_c: None,
+                power_w: None,
+                power_limit_w: None,
+                clock_graphics_mhz: None,
+                clock_memory_mhz: None,
             },
             None => self.get_usage_unsupported(),
         }
     }
 }
 
-// TODO: refactor this into a more egonomic API
 #[cfg(target_os = "windows")]
 mod windows_impl {
     use libc;
-    use libloading::{Library, Symbol};
+    use libloading::Library;
     use std::collections::HashMap;
     use std::ffi::{c_char, c_int, c_void, CStr};
     use std::mem::{self, MaybeUninit};
@@ -152,16 +165,119 @@ mod windows_impl {
     type Adl2AdapterDedicatedVramUsageGet =
         unsafe extern "C" fn(*mut c_void, c_int, *mut c_int) -> c_int;
 
-    struct AdlContext {
-        handle: *mut c_void,
+    struct AdlApi {
+        _lib: Library,
+        create: Adl2MainControlCreate,
         destroy: Adl2MainControlDestroy,
+        get_adapter_count: Adl2AdapterNumberOfAdaptersGet,
+        get_adapter_info: Adl2AdapterAdapterInfoGet,
+        get_adapter_active: Adl2AdapterActiveGet,
+        get_dedicated_vram_usage: Adl2AdapterDedicatedVramUsageGet,
     }
 
-    impl Drop for AdlContext {
+    impl AdlApi {
+        unsafe fn new() -> Result<Self, Box<dyn std::error::Error>> {
+            let lib = Library::new("atiadlxx.dll").or_else(|_| Library::new("atiadlxy.dll"))?;
+
+            let create = *lib.get::<Adl2MainControlCreate>(b"ADL2_Main_Control_Create\0")?;
+            let destroy = *lib.get::<Adl2MainControlDestroy>(b"ADL2_Main_Control_Destroy\0")?;
+            let get_adapter_count =
+                *lib.get::<Adl2AdapterNumberOfAdaptersGet>(b"ADL2_Adapter_NumberOfAdapters_Get\0")?;
+            let get_adapter_info =
+                *lib.get::<Adl2AdapterAdapterInfoGet>(b"ADL2_Adapter_AdapterInfo_Get\0")?;
+            let get_adapter_active =
+                *lib.get::<Adl2AdapterActiveGet>(b"ADL2_Adapter_Active_Get\0")?;
+            let get_dedicated_vram_usage = *lib.get::<Adl2AdapterDedicatedVramUsageGet>(
+                b"ADL2_Adapter_DedicatedVRAMUsage_Get\0",
+            )?;
+
+            Ok(Self {
+                _lib: lib,
+                create,
+                destroy,
+                get_adapter_count,
+                get_adapter_info,
+                get_adapter_active,
+                get_dedicated_vram_usage,
+            })
+        }
+    }
+
+    struct AdlContext<'a> {
+        api: &'a AdlApi,
+        handle: *mut c_void,
+    }
+
+    impl<'a> Drop for AdlContext<'a> {
         fn drop(&mut self) {
             unsafe {
-                let _ = (self.destroy)(self.handle);
+                let _ = (self.api.destroy)(self.handle);
             }
+        }
+    }
+
+    impl<'a> AdlContext<'a> {
+        fn new(api: &'a AdlApi) -> Result<Self, Box<dyn std::error::Error>> {
+            let mut handle = std::ptr::null_mut();
+            let status = unsafe { (api.create)(adl_malloc, 1, &mut handle) };
+            if status != 0 || handle.is_null() {
+                return Err(format!("ADL2 initialization failed with status {status}").into());
+            }
+            Ok(Self { api, handle })
+        }
+
+        fn get_adapter_count(&self) -> Result<c_int, Box<dyn std::error::Error>> {
+            let mut num_adapters = 0;
+            let status = unsafe { (self.api.get_adapter_count)(self.handle, &mut num_adapters) };
+            if status != 0 {
+                return Err(format!("ADL2 adapter enumeration failed with status {status}").into());
+            }
+            Ok(num_adapters)
+        }
+
+        fn get_adapter_info(
+            &self,
+            num_adapters: c_int,
+        ) -> Result<Vec<AdapterInfo>, Box<dyn std::error::Error>> {
+            let mut adapter_info: Vec<AdapterInfo> =
+                vec![unsafe { MaybeUninit::zeroed().assume_init() }; num_adapters as usize];
+            let status = unsafe {
+                (self.api.get_adapter_info)(
+                    self.handle,
+                    adapter_info.as_mut_ptr(),
+                    mem::size_of::<AdapterInfo>() as i32 * num_adapters,
+                )
+            };
+            if status != 0 {
+                return Err(format!("ADL2 adapter info query failed with status {status}").into());
+            }
+            Ok(adapter_info)
+        }
+
+        fn is_adapter_active(&self, adapter_index: c_int) -> Result<bool, String> {
+            let mut is_active = 0;
+            let status = unsafe {
+                (self.api.get_adapter_active)(self.handle, adapter_index, &mut is_active)
+            };
+            if status != 0 {
+                return Err(format!(
+                    "ADL2 active-adapter query failed with status {status}"
+                ));
+            }
+            Ok(is_active != 0)
+        }
+
+        fn get_dedicated_vram_usage(&self, adapter_index: c_int) -> Result<c_int, String> {
+            let mut vram_mb = 0;
+            let status = unsafe {
+                (self.api.get_dedicated_vram_usage)(self.handle, adapter_index, &mut vram_mb)
+            };
+            if status != 0 || vram_mb < 0 {
+                return Err(format!(
+                    "ADL2 dedicated VRAM query returned status {status} and value {vram_mb}"
+                ));
+            }
+            Ok(vram_mb)
         }
     }
 
@@ -175,94 +291,45 @@ mod windows_impl {
     pub fn get_gpu_usage() -> Result<HashMap<String, i32>, Box<dyn std::error::Error>> {
         let _lock = ADL_LOCK.lock().map_err(|_| "AMD ADL lock poisoned")?;
 
-        unsafe {
-            let lib = Library::new("atiadlxx.dll").or_else(|_| Library::new("atiadlxy.dll"))?;
+        let api = unsafe { AdlApi::new()? };
+        let context = AdlContext::new(&api)?;
 
-            let create: Symbol<Adl2MainControlCreate> = lib.get(b"ADL2_Main_Control_Create\0")?;
-            let destroy: Symbol<Adl2MainControlDestroy> =
-                lib.get(b"ADL2_Main_Control_Destroy\0")?;
-            let get_adapter_count: Symbol<Adl2AdapterNumberOfAdaptersGet> =
-                lib.get(b"ADL2_Adapter_NumberOfAdapters_Get\0")?;
-            let get_adapter_info: Symbol<Adl2AdapterAdapterInfoGet> =
-                lib.get(b"ADL2_Adapter_AdapterInfo_Get\0")?;
-            let get_adapter_active: Symbol<Adl2AdapterActiveGet> =
-                lib.get(b"ADL2_Adapter_Active_Get\0")?;
-            let get_dedicated_vram_usage: Symbol<Adl2AdapterDedicatedVramUsageGet> =
-                lib.get(b"ADL2_Adapter_DedicatedVRAMUsage_Get\0")?;
+        let num_adapters = context.get_adapter_count()?;
+        let mut vram_usages = HashMap::new();
+        let mut last_probe_error = None;
 
-            let mut context = std::ptr::null_mut();
-            let status = create(adl_malloc, 1, &mut context);
-            if status != 0 || context.is_null() {
-                return Err(format!("ADL2 initialization failed with status {status}").into());
-            }
-            let context = AdlContext {
-                handle: context,
-                destroy: *destroy,
-            };
+        if num_adapters > 0 {
+            let adapter_info = context.get_adapter_info(num_adapters)?;
 
-            let mut num_adapters: c_int = 0;
-            let status = get_adapter_count(context.handle, &mut num_adapters);
-            if status != 0 {
-                return Err(format!("ADL2 adapter enumeration failed with status {status}").into());
-            }
-
-            let mut vram_usages = HashMap::new();
-            let mut last_probe_error = None;
-
-            if num_adapters > 0 {
-                let mut adapter_info: Vec<AdapterInfo> =
-                    vec![MaybeUninit::zeroed().assume_init(); num_adapters as usize];
-                let status = get_adapter_info(
-                    context.handle,
-                    adapter_info.as_mut_ptr(),
-                    mem::size_of::<AdapterInfo>() as i32 * num_adapters,
-                );
-                if status != 0 {
-                    return Err(
-                        format!("ADL2 adapter info query failed with status {status}").into(),
-                    );
-                }
-
-                for adapter in adapter_info.iter() {
-                    let mut is_active = 0;
-                    let status =
-                        get_adapter_active(context.handle, adapter.iAdapterIndex, &mut is_active);
-                    if status != 0 {
-                        last_probe_error = Some(format!(
-                            "ADL2 active-adapter query failed with status {status}"
-                        ));
-                        continue;
-                    }
-
-                    if is_active != 0 {
-                        let mut vram_mb = 0;
-                        let status = get_dedicated_vram_usage(
-                            context.handle,
-                            adapter.iAdapterIndex,
-                            &mut vram_mb,
-                        );
-                        if status != 0 || vram_mb < 0 {
-                            last_probe_error = Some(format!(
-                                "ADL2 dedicated VRAM query returned status {status} and value {vram_mb}"
-                            ));
-                            continue;
+            for adapter in adapter_info.iter() {
+                match context.is_adapter_active(adapter.iAdapterIndex) {
+                    Ok(true) => match context.get_dedicated_vram_usage(adapter.iAdapterIndex) {
+                        Ok(vram_mb) => {
+                            let name = unsafe {
+                                CStr::from_ptr(adapter.strAdapterName.as_ptr())
+                                    .to_string_lossy()
+                                    .into_owned()
+                            };
+                            vram_usages.insert(name, vram_mb);
                         }
-                        // NOTE: adapter name might not be unique?
-                        let name = CStr::from_ptr(adapter.strAdapterName.as_ptr())
-                            .to_string_lossy()
-                            .into_owned();
-                        vram_usages.insert(name, vram_mb);
+                        Err(e) => {
+                            last_probe_error = Some(e);
+                        }
+                    },
+                    Ok(false) => continue,
+                    Err(e) => {
+                        last_probe_error = Some(e);
                     }
                 }
             }
-
-            if vram_usages.is_empty() {
-                if let Some(error) = last_probe_error {
-                    return Err(error.into());
-                }
-            }
-
-            Ok(vram_usages)
         }
+
+        if vram_usages.is_empty() {
+            if let Some(error) = last_probe_error {
+                return Err(error.into());
+            }
+        }
+
+        Ok(vram_usages)
     }
 }

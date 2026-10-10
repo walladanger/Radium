@@ -9,15 +9,16 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-258 records, 2026-05-19 → 2026-09-25.
+263 records, 2026-05-19 → 2026-10-09.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
-
 
 ---
 
 ## Load-bearing — read before touching platform / provider / agent code
 
+- **2026-10-09** — [Media saves through real fs commands; chat reuses the Media page's settings](2026-10-09-media-saves-through-real-fs-commands-and-chat-reuses-media-settings.md)
+- **2026-10-07** — [Port privacy, GPU telemetry, and benchmarking through Radium-native boundaries](2026-10-07-port-privacy-gpu-telemetry-and-benchmarking-through-radium-native-boundaries.md)
 - **2026-09-13** — [Gate every upstream sync on a Fork features impact report](2026-09-13-gate-every-upstream-sync-on-a-fork-features-impact-report.md)
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
 - **2026-08-13** — [Mirror and sign upstream llama.cpp releases in atomic-chat-conf](2026-08-13-mirror-and-sign-upstream-llama-cpp-in-atomic-chat-conf.md)
@@ -73,8 +74,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-02** — [Add a `/v1/responses` translation shim to the local proxy so Codex CLI works on llama.cpp models](2026-06-02-add-a-v1-responses-translation-shim-to-the-local-proxy-so-codex.md)
 - **2026-06-01** — [Add a "Launch" page to install + configure external coding agents / assistants against the local OpenAI-compatible API](2026-06-01-add-a-launch-page-to-install-configure-external-coding-agents.md)
 
-## Agent mode — autonomous loop, tools, skills, workspace (44)
+## Agent mode — autonomous loop, tools, skills, workspace (45)
 
+- **2026-10-09** — [Organize skills by creator and category, with nested folders](2026-10-09-organize-skills-by-creator-and-category.md)
 - **2026-08-27** — [Give the agent native RAG tools over the existing vector collections](2026-08-27-native-agent-rag-tools.md)
 - **2026-08-27** — [Unify chat and agent on the agent engine](2026-08-27-unify-chat-and-agent-on-the-agent-engine.md)
 - **2026-08-18** — [Let Agent turns think, and apply the same thinking level chat uses](2026-08-18-let-agent-turns-think-and-apply-the-thinking-level.md)
@@ -175,11 +177,11 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-07-23** — [Bound Windows GPU detection and bypass it in fast development](2026-07-23-bound-windows-gpu-detection-and-bypass-it-in-fast-development.md)
 - **2026-07-14** — [Bundle every upstream Windows DLL, repair incomplete installs, and isolate provider backend preferences (ATO-294)](2026-07-14-bundle-every-upstream-windows-dll-repair-incomplete-installs.md)
 - **2026-07-07** — [Make llama-server readiness detection version-independent (log-line broadening + `/health` HTTP poll) in both `llamacpp-upstream` and `llamacpp` (turboquant) plugins](2026-07-07-make-llama-server-readiness-detection-version-independent-log.md)
-- **2026-07-01** — [Fix `llamacpp-upstream` hot-swap race: persist `version_backend` *before* unloading, not after (Windows "optimal backend selected but still running on CPU" bug)](2026-07-01-fix-llamacpp-upstream-hot-swap-race-persist-version-backend.md)
+- **2026-07-01** — [Fix `llamacpp-upstream` hot-swap race: persist `version_backend` _before_ unloading, not after (Windows "optimal backend selected but still running on CPU" bug)](2026-07-01-fix-llamacpp-upstream-hot-swap-race-persist-version-backend.md)
 - **2026-06-26** — [Fix Linux/Vulkan GPU backend 404 → infinite spinner when manifest tag is stale or CDN asset is missing (ATO-233)](2026-06-26-fix-linux-vulkan-gpu-backend-404-infinite-spinner-when-manifest.md)
 - **2026-06-24** — [Add a "Find optimal backend" button + a once-ever post-first-launch popup to the TurboQuant `llamacpp` provider on Windows/Linux (clean-id optimal detection, provider-aware `useBackendUpdater`)](2026-06-24-add-a-find-optimal-backend-button-a-once-ever-post-first-launch.md)
 - **2026-06-23** — [Ship the TurboQuant `llamacpp` provider on Windows + Linux as a second provider (side-by-side with `llamacpp-upstream`), resolving the backend index from a static `atomic-chat-conf` turboquant manifest (per-backend tag) and downloading GPU variants at runtime from the `AtomicBot-ai/atomic-llama-cpp-turboquant` releases CDN](2026-06-23-ship-the-turboquant-llamacpp-provider-on-windows-linux-as-a.md)
-- **2026-06-17** — [Resolve the `llamacpp-upstream` backend *index* from a static `atomic-chat-conf` manifest (raw.githubusercontent.com) instead of the rate-limited `api.github.com` (ATO-199)](2026-06-17-resolve-the-llamacpp-upstream-backend-index-from-a-static.md)
+- **2026-06-17** — [Resolve the `llamacpp-upstream` backend _index_ from a static `atomic-chat-conf` manifest (raw.githubusercontent.com) instead of the rate-limited `api.github.com` (ATO-199)](2026-06-17-resolve-the-llamacpp-upstream-backend-index-from-a-static.md)
 - **2026-06-17** — [Recover the poisoned Metal backend + surface a clear OOM message after a GPU compute error, instead of retrying 3× into a dead backend (ATO-197)](2026-06-17-recover-the-poisoned-metal-backend-surface-a-clear-oom-message.md)
 - **2026-06-16** — [Treat empty/incomplete `llamacpp-upstream` backend folders as not-installed, fall back to a compatible installed backend on load, and sweep orphan folders at startup (ATO-179)](2026-06-16-treat-empty-incomplete-llamacpp-upstream-backend-folders-as-not.md)
 - **2026-06-16** — [Tiered graceful backend fallback when a pinned `llamacpp-upstream` tag 404s / the ggml-org release stream is unreachable (ATO-178; extends ATO-179)](2026-06-16-tiered-graceful-backend-fallback-when-a-pinned-llamacpp.md)
@@ -254,6 +256,7 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-09** — [Add zero-PII Sentry crash/error tracking to both the React frontend and the Rust/Tauri desktop, gated behind `productAnalytic` (ATO-113)](2026-06-09-add-zero-pii-sentry-crash-error-tracking-to-both-the-react.md)
 
 ## Packaging, installers, autostart & platform policy (16)
+
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
 - **2026-09-12** — [Radium never auto-updates: remove the updater rather than repoint it](2026-09-12-radium-never-auto-updates.md)
 - **2026-09-04** — [Sanitize the AppImage environment before launching host processes](2026-09-04-sanitize-appimage-environment-before-launching-host-processes.md)
@@ -271,8 +274,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-05-22** — [Pin static WiX `upgradeCode` to legacy Jan UUID for in-place MSI upgrades](2026-05-22-pin-static-wix-upgradecode-to-legacy-jan-uuid-for-in-place-msi.md)
 - **2026-05-19** — [Product identity is "Radium Chat"; new code stops carrying Jan branding](2026-05-19-product-identity-is-atomic-chat-new-code-stops-carrying-jan.md)
 
-## UI / UX (36)
+## UI / UX (37)
 
+- **2026-10-03** — [Port the panel mechanism from ClaudeDesktopClient, not its built-in panels; freeze the manifest + SDK as a shared contract](2026-10-03-port-the-panel-mechanism-from-claudedesktopclient-not-its.md)
 - **2026-09-11** — [List the Hub picks under the onboarding offer](2026-09-11-list-the-hub-picks-under-the-onboarding-offer.md)
 - **2026-09-11** — [Pick the model and its reasoning effort from one composer pill](2026-09-11-pick-the-model-and-its-effort-from-one-composer-pill.md)
 - **2026-09-11** — [Show engine state in the model dot and let a Stop hold](2026-09-11-show-engine-state-in-the-model-dot-and-let-a-stop-hold.md)
@@ -313,8 +317,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-11** — [Add a unified "Sampling — {assistant}" popover (assistant switcher + sampling params in one place) (ATO-155)](2026-06-11-add-a-unified-sampling-assistant-popover-assistant-switcher.md)
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
-## Other (17)
+## Other (18)
 
+- **2026-10-08** — [Consolidate current PRs through one verified integration](2026-10-08-consolidate-current-prs-through-one-verified-integration.md)
 - **2026-09-25** — [Run and configure Ollama from Radium: pinned install, env-var settings, take-over](2026-09-25-manage-ollama-from-radium.md)
 - **2026-09-25** — [Connect a found runtime by making it an ordinary OpenAI-compatible provider](2026-09-25-connect-found-runtimes-as-ordinary-providers.md)
 - **2026-09-24** — [Integrate inference runtimes behind one Rust adapter layer, starting with a catalog and a read-only scan](2026-09-24-integrate-inference-runtimes-behind-one-adapter-layer.md)

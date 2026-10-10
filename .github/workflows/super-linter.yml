@@ -25,39 +25,64 @@ jobs:
       statuses: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #@v7.0.1
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
 
       - name: Lint Code Base
-        uses: github/super-linter@v4
+        uses: super-linter/super-linter@2da136927bd4a73596db63044b504547c62cb854 #@v9.0.0
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: "main"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use the repo-level .github/actionlint.yaml (shared with local
+          # actionlint runs) instead of .github/linters/actionlint.yml. The
+          # path is relative to LINTER_RULES_PATH (.github/linters).
+          GITHUB_ACTIONS_CONFIG_FILE: ../actionlint.yaml
+          # v4 never commented on PRs; keep it that way (the job has no
+          # pull-requests: write). Results stay in the log and step summary.
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           # src-tauri/resources/agent-skills/ holds third-party skills bundled
           # verbatim (UI UX Pro Max, MIT). Their bodies are kept byte-for-byte
           # from upstream on purpose, so linting them to this repo's Python,
           # Markdown and duplicate-code rules only produces failures we must not
           # "fix" by editing vendored code. Exclude the whole vendored tree; the
           # skills are reviewed on import and gated by cargo tests instead.
-          FILTER_REGEX_EXCLUDE: "src-tauri/resources/agent-skills/"
+          # src-tauri/static/swagger-ui/ is the minified Swagger UI bundle,
+          # vendored as built; ESLint on it only reports minifier output.
+          FILTER_REGEX_EXCLUDE: "(src-tauri/resources/agent-skills/|src-tauri/static/swagger-ui/)"
+          # JSCPD (off for now, see the end of this block) runs at threshold 0,
+          # and src-tauri/src/lib.rs is excluded in
+          # .github/linters/.jscpd.json because it holds two deliberately
+          # parallel `tauri::generate_handler!` lists — the desktop command
+          # surface and the mobile one, which is the same surface minus the
+          # desktop-only commands. Tauri's proc macro needs each list spelled
+          # out literally at its call site, so the duplication is structural:
+          # any command added to the app lengthens both lists and the clone
+          # with them. The alternative, splicing a shared list in through a
+          # `macro_rules!` wrapper, would hide the whole IPC surface behind a
+          # macro and break the two guards that read lib.rs textually
+          # (web-app/src/lib/__tests__/ipc-contract.test.ts, which pins exactly
+          # which handlers are desktop-only, and tests/capabilities.test.mjs).
+          # Those guards are worth more than the clone report, so the file is
+          # excluded rather than refactored. Everything else stays at zero.
+          # super-linter looks for the markdown config at
+          # `.github/linters/.markdown-lint.yml` by default
+          # (MARKDOWN_FILE_NAME in lib/linter.sh), so our
+          # `.markdownlint.json` was never read and it silently fell back to
+          # its own bundled TEMPLATES/.markdown-lint.yml. That template leaves
+          # MD025 and MD034 on, which every ADR here violates by design: the
+          # records carry YAML frontmatter with a `title:` *and* an `# H1`,
+          # which MD025 counts as two titles. So MARKDOWN went red whenever a
+          # record changed, while our deliberate rule choices sat dead on
+          # disk. Naming the file we actually have makes them effective.
+          MARKDOWN_CONFIG_FILE: .markdownlint.json
           # textlint's terminology preset cannot tell prose from identifiers or
           # from quoted document titles, so it rejects "id", "api" and "ids"
           # wherever they appear. Markdown style is covered by markdownlint
           # (.github/linters/.markdownlint.json).
           VALIDATE_NATURAL_LANGUAGE: false
-          # ts-standard runs against super-linter's own bundled tsconfig
-          # (/action/lib/.automation/tsconfig.json), which includes none of this
-          # repository's files, so it cannot parse any of them:
-          #   Parsing error: ESLint was configured to run on <file> using
-          #   parserOptions.project: .../action/lib/.automation/tsconfig.json
-          #   However, that TSConfig does not include this file.
-          # It also enforces standardjs style, which contradicts this
-          # repository's Prettier configuration. TYPESCRIPT_ES (eslint) passes
-          # and stays on; TypeScript is gated properly by `make verify`.
-          VALIDATE_TYPESCRIPT_STANDARD: false
           # clippy here runs with super-linter's own bundled Cargo, which is too
           # old to read this repository's lockfile at all:
           #   error: failed to parse lock file at: src-tauri/Cargo.lock
@@ -78,3 +103,92 @@ jobs:
           VALIDATE_RUST_2015: false
           VALIDATE_RUST_2018: false
           VALIDATE_RUST_2021: false
+          # Same reason for the RUST_2024 validator that super-linter added
+          # after v4: wrong edition and a different rustfmt than the toolchain.
+          VALIDATE_RUST_2024: false
+          # Moving from super-linter v4 to v9 keeps the set of linters that v4
+          # ran here. The validators below are new since v4 or changed scope,
+          # and are left off so the upgrade doesn't change what this check
+          # enforces. Each one can be switched on in its own PR once its
+          # existing findings are dealt with:
+          # - BIOME_FORMAT / BIOME_LINT scan the whole repository on every run
+          #   and overlap with the Prettier and ESLint setup this repo uses.
+          # - CHECKOV and TRIVY scan the whole repository as infrastructure as
+          #   code, mostly hitting the vendored agent-skills Terraform/Helm
+          #   samples, which FILTER_REGEX_EXCLUDE doesn't cover for them.
+          # - JSCPD: v4 checked only the files a PR changed; v9 always scans
+          #   the whole repository, and existing duplication (~4%) is far
+          #   over the threshold of 0 in .github/linters/.jscpd.json.
+          # - GITHUB_ACTIONS_ZIZMOR is a new workflow security audit. Its
+          #   findings (workflow_run trigger, caches in release builds,
+          #   persisted checkout credentials) need workflow design changes.
+          # - YAML_PRETTIER is new formatting enforcement for every YAML file.
+          VALIDATE_BIOME_FORMAT: false
+          VALIDATE_BIOME_LINT: false
+          VALIDATE_CHECKOV: false
+          VALIDATE_TRIVY: false
+          VALIDATE_JSCPD: false
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
+          VALIDATE_YAML_PRETTIER: false
+          # TYPESCRIPT_ES and TSX run super-linter's own bundled ESLint config,
+          # not web-app/eslint.config.js. That config uses eslint-plugin-n's
+          # no-missing-import with no TypeScript resolver, so every `@/...`
+          # path alias and every npm import (the job never runs `yarn install`)
+          # is "Can't resolve", and eslint-plugin-react's legacy
+          # react-in-jsx-scope rejects the automatic JSX runtime. Any PR that
+          # touched a .ts/.tsx file went red. Pointing super-linter at the
+          # repo's flat config is not reliable: it imports @eslint/js,
+          # typescript-eslint, eslint-plugin-react-hooks/-refresh and globals,
+          # which resolve from the repo's node_modules, and this job has none.
+          # TS/TSX linting is enforced by `yarn lint` (the repo's real ESLint
+          # config) in `make verify` in radium-ci.yml, plus `tsc -b`
+          # (`make typecheck`) for imports and types.
+          VALIDATE_TYPESCRIPT_ES: false
+          VALIDATE_TSX: false
+          # The validators below are also new since v4 and check whole files,
+          # so a PR fails for lines it never touched. Measured on main
+          # (outside agent-skills) with super-linter v9.0.0's own tools:
+          # - Prettier: 288 of 311 Markdown files and 624 of 1629 TS/TSX/JSON
+          #   files are not Prettier-formatted. Nothing in this repository
+          #   enforces Prettier (`yarn lint` is ESLint only), so a PR touching
+          #   any of them failed MARKDOWN_PRETTIER / TYPESCRIPT_PRETTIER /
+          #   JSON_PRETTIER. Markdown style stays covered by markdownlint
+          #   (MARKDOWN, .github/linters/.markdownlint.json). Switch these on
+          #   together with a one-off `prettier --write` of the repository.
+          # - Python: the scripts here (autoqa/, scripts/, docs/tests/) follow
+          #   no single style. Black would reformat 14 of 22 files, Pylint flags
+          #   20, Flake8 10 and Ruff reports 83 findings, and Black, Flake8 and
+          #   Pylint disagree on line length (88/120/100), so no file can
+          #   satisfy all of them. isort rejects 7 files and mypy reports real
+          #   but pre-existing type errors in 6 (e.g. scripts/release-notes/,
+          #   scripts/live_test_support.py). These are developer scripts, not
+          #   shipped code; pick one Python toolchain (Ruff is the obvious
+          #   one), configure it in pyproject.toml, fix the files, then switch
+          #   the matching validator back on.
+          # - SHELL_SHFMT defaults to tab indentation; 22 of 33 shell scripts
+          #   use spaces (17 still differ even at 2-space indent). ShellCheck
+          #   (BASH) still lints every changed script.
+          # - CSS: super-linter's stylelint-config-standard does not know
+          #   Tailwind v4 (`@theme`, `@source`, `@custom-variant`, oklch
+          #   tokens), so 6 of 7 stylesheets fail. They are compiled, and so
+          #   checked, by the Tailwind/Vite web build that the Windows
+          #   installer build (windows-test-build.yml) runs.
+          VALIDATE_CSS_PRETTIER: false
+          VALIDATE_GRAPHQL_PRETTIER: false
+          VALIDATE_HTML_PRETTIER: false
+          VALIDATE_JAVASCRIPT_PRETTIER: false
+          VALIDATE_JSONC_PRETTIER: false
+          VALIDATE_JSON_PRETTIER: false
+          VALIDATE_JSX_PRETTIER: false
+          VALIDATE_MARKDOWN_PRETTIER: false
+          VALIDATE_TYPESCRIPT_PRETTIER: false
+          VALIDATE_VUE_PRETTIER: false
+          VALIDATE_CSS: false
+          VALIDATE_PYTHON_BLACK: false
+          VALIDATE_PYTHON_ISORT: false
+          VALIDATE_PYTHON_MYPY: false
+          VALIDATE_PYTHON_FLAKE8: false
+          VALIDATE_PYTHON_PYLINT: false
+          VALIDATE_PYTHON_RUFF: false
+          VALIDATE_PYTHON_RUFF_FORMAT: false
+          VALIDATE_SHELL_SHFMT: false

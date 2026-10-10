@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import { ChevronRight } from 'lucide-react'
+import {
+  ChevronRight,
+  Clapperboard as MediaIcon,
+  LayoutGrid as LayoutGridIcon,
+} from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,
@@ -132,8 +136,24 @@ export function NavMain() {
             className="data-[active=true]:bg-sidebar-foreground/15"
           >
             <Link to={route.media}>
-              <BlocksIcon className="text-foreground/70" size={16} />
+              <MediaIcon className="text-foreground/70" size={16} />
               <span>{t('media:settings.title', { defaultValue: 'Media' })}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        {/* The panel workspace is a destination like Media, not a mode. The
+            chat/agent pill that would once have carried it was removed
+            upstream at v2.0.35, so a standalone row is both what survives
+            this merge and what will survive the next one. */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            isActive={pathname.startsWith('/workspace')}
+            className="data-[active=true]:bg-sidebar-foreground/15"
+          >
+            <Link to={route.workspace.index}>
+              <LayoutGridIcon className="text-foreground/70" size={16} />
+              <span>{t('common:workspace', { defaultValue: 'Workspace' })}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

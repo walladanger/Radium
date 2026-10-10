@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::organization::DeclaredOrganization;
+
 const DEFAULT_VERSION: &str = "0.0.0";
 const MAX_DESCRIPTION_CHARS: usize = 512;
 const MAX_VERSION_CHARS: usize = 64;
@@ -47,6 +49,10 @@ pub struct SkillManifest {
 pub struct ParsedSkillFile {
     pub manifest: SkillManifest,
     pub body: String,
+    /// Creator, category and tags the skill declares (`metadata.*`, `author`,
+    /// `tags`). Display-only and read leniently: a value of the wrong shape
+    /// is ignored, never a parse error.
+    pub organization: DeclaredOrganization,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,9 +65,66 @@ struct RawSkillManifest {
     requires_scripts: Option<serde_yaml::Value>,
     dangerous: Option<serde_yaml::Value>,
     platforms: Option<serde_yaml::Value>,
+    /// Accepted but not surfaced in `SkillManifest`; present in third-party
+    /// skill frontmatter (e.g. NVIDIA skills declare `license`, `metadata`,
+    /// and `compatibility`). Keeping them known preserves the
+    /// `deny_unknown_fields` guard against genuinely unexpected keys.
+    /// `metadata` (with `author`, `owner` and `tags` below) feeds the
+    /// display-only `ParsedSkillFile::organization`.
+    #[allow(dead_code)]
+    license: Option<serde_yaml::Value>,
+    metadata: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    compatibility: Option<serde_yaml::Value>,
+    // The rest of the keys the bundled skill set actually uses: 27 distinct
+    // ones across 407 skills. `deny_unknown_fields` stays — a test locks it,
+    // and it is what catches a typo in a hand-written skill — so every
+    // third-party key has to be named here or the parse aborts and
+    // `bundled_skills_follow_explicit_platform_metadata_policy` fails. None of
+    // these are surfaced in `SkillManifest`.
+    //
+    // `allowed-tools` is deliberately *not* aliased onto `requires_tools`: the
+    // published Agent Skills field means "tools this skill may use", while
+    // `requires_tools` means "tools that must be present for it to run", and
+    // conflating them would change which skills this app considers runnable.
+    #[allow(dead_code)]
+    #[serde(rename = "allowed-tools")]
+    allowed_tools: Option<serde_yaml::Value>,
+    tags: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    when_to_use: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    tools: Option<serde_yaml::Value>,
+    author: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    permissions: Option<serde_yaml::Value>,
+    owner: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    service: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    reviewed: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    #[serde(rename = "argument-hint")]
+    argument_hint: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    #[serde(rename = "disable-model-invocation")]
+    disable_model_invocation: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    title: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    triggers: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    user_invocable: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    argument: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    origin: Option<serde_yaml::Value>,
+    #[allow(dead_code)]
+    data_classification: Option<serde_yaml::Value>,
 }
 
-pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {
+/// Split a SKILL.md into its YAML frontmatter and its body.
+pub fn split_frontmatter(content: &str) -> Result<(String, String), String> {
     let normalized = content.replace("\r\n", "\n");
     let rest = normalized
         .strip_prefix("---\n")
@@ -69,12 +132,23 @@ pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {
     let closing = rest
         .find("\n---")
         .ok_or_else(|| "SKILL.md frontmatter is not closed with ---".to_string())?;
-    let yaml = &rest[..closing];
+    let yaml = rest[..closing].to_string();
     let body = rest[closing + "\n---".len()..]
         .trim_start_matches('\n')
         .to_string();
-    let raw: RawSkillManifest =
-        serde_yaml::from_str(yaml).map_err(|error| format!("Invalid YAML frontmatter: {error}"))?;
+    Ok((yaml, body))
+}
+
+pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {
+    let (yaml, body) = split_frontmatter(content)?;
+    let raw: RawSkillManifest = serde_yaml::from_str(&yaml)
+        .map_err(|error| format!("Invalid YAML frontmatter: {error}"))?;
+    let organization = DeclaredOrganization::from_frontmatter(
+        raw.metadata.as_ref(),
+        raw.author.as_ref(),
+        raw.owner.as_ref(),
+        raw.tags.as_ref(),
+    );
     let mut issues = Vec::new();
     let name = required_string(raw.name, "name", &mut issues);
     if !name.is_empty() && !is_valid_skill_name(&name) {
@@ -117,6 +191,7 @@ pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {
             platforms,
         },
         body,
+        organization,
     })
 }
 
@@ -289,6 +364,38 @@ mod tests {
             "---\nname: test-skill\ndescription: x\nunknown: true\n---\nbody"
         )
         .is_err());
+    }
+
+    #[test]
+    fn accepts_third_party_frontmatter_fields_without_surfacing_them() {
+        let parsed = parse_skill_file(
+            "---\nname: test-skill\ndescription: Test\nlicense: MIT\nmetadata: {author: acme}\ncompatibility: [win32, linux]\n---\n# Body\n",
+        )
+        .unwrap();
+        assert_eq!(parsed.manifest.name, "test-skill");
+        assert_eq!(parsed.manifest.description, "Test");
+        assert_eq!(parsed.body, "# Body\n");
+        assert_eq!(parsed.organization.creator.as_deref(), Some("acme"));
+    }
+
+    #[test]
+    fn organization_metadata_never_fails_a_skill() {
+        let parsed = parse_skill_file(
+            "---\nname: test-skill\ndescription: Test\nmetadata:\n  creator: Ada\n  category: Graphics & Design\n  tags: [logo, svg]\n---\nBody",
+        )
+        .unwrap();
+        assert_eq!(parsed.organization.creator.as_deref(), Some("Ada"));
+        assert_eq!(
+            parsed.organization.category.as_deref(),
+            Some("Graphics & Design")
+        );
+        assert_eq!(parsed.organization.tags, ["logo", "svg"]);
+
+        let odd = parse_skill_file(
+            "---\nname: test-skill\ndescription: Test\nmetadata: just a string\ntags: 7\n---\nBody",
+        )
+        .unwrap();
+        assert_eq!(odd.organization, DeclaredOrganization::default());
     }
 
     #[test]
