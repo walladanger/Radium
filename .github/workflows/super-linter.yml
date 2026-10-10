@@ -30,25 +30,12 @@ jobs:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 #@v7.1.0
-        with:
-          node-version: "24"
-
-      - name: Install repository lint dependencies
-        run: |
-          corepack enable
-          corepack prepare yarn@4.5.3 --activate
-          yarn install --immutable
-
       - name: Lint Code Base
         uses: super-linter/super-linter@2da136927bd4a73596db63044b504547c62cb854 #@v9.0.0
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: "main"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Use the browser TypeScript rules already enforced by yarn lint.
-          TYPESCRIPT_ES_CONFIG_FILE: ../../web-app/eslint.config.js
           # Use the repo-level .github/actionlint.yaml (shared with local
           # actionlint runs) instead of .github/linters/actionlint.yml. The
           # path is relative to LINTER_RULES_PATH (.github/linters).
