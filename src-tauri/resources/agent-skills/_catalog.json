@@ -1,0 +1,2970 @@
+{
+  "version": 1,
+  "_comment": "Creator, category and tags for each bundled skill, shown on the Skills page. Categories must come from SKILL_CATEGORIES in src-tauri/src/core/agent/skills/organization.rs. Discovery never reads this file as a skill; seeding installs it as .catalog.json.",
+  "skills": {
+    "academy-guide": {
+      "creator": "Anthropic",
+      "category": "Productivity",
+      "tags": [
+        "learning"
+      ]
+    },
+    "accelerated-computing-cudf": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cudf"
+      ]
+    },
+    "aiq-deploy": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "ai-q"
+      ]
+    },
+    "aiq-research": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "ai-q"
+      ]
+    },
+    "algorithmic-art": {
+      "creator": "Anthropic",
+      "category": "Graphics & Design",
+      "tags": [
+        "generative-art"
+      ]
+    },
+    "amc-run-rtsp-calibration": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "auto-magic-calib"
+      ]
+    },
+    "amc-run-sample-calibration": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "auto-magic-calib"
+      ]
+    },
+    "amc-run-video-calibration": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "auto-magic-calib"
+      ]
+    },
+    "amc-setup-calibration-stack": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "auto-magic-calib"
+      ]
+    },
+    "anthropic-skill-creator": {
+      "creator": "Anthropic",
+      "category": "Code & Dev",
+      "tags": [
+        "skills"
+      ]
+    },
+    "apple-calendar": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "macos",
+        "calendar"
+      ]
+    },
+    "apple-notes": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "macos",
+        "notes"
+      ]
+    },
+    "apple-reminders": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "macos",
+        "reminders"
+      ]
+    },
+    "audio-transcribe": {
+      "creator": "Radium",
+      "category": "Media",
+      "tags": [
+        "audio",
+        "transcription"
+      ]
+    },
+    "bionemo-kermt-add-cmim-pretrain": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-continue-pretrain": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-embed": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-finetune": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-infer": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-monitor": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-pretrain-scratch": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-kermt-setup": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-msa-structure-prediction-pipeline": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-nvmolkit-usage": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "bionemo-openfold2-nim": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "bionemo"
+      ]
+    },
+    "brand-guidelines": {
+      "creator": "Anthropic",
+      "category": "Graphics & Design",
+      "tags": [
+        "branding"
+      ]
+    },
+    "canvas-design": {
+      "creator": "Anthropic",
+      "category": "Graphics & Design",
+      "tags": [
+        "poster"
+      ]
+    },
+    "claude-api": {
+      "creator": "Anthropic",
+      "category": "Code & Dev",
+      "tags": [
+        "api"
+      ]
+    },
+    "cudaq-guide": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuda-q"
+      ]
+    },
+    "cudaq-importing": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuda-q"
+      ]
+    },
+    "cuopt-developer": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "cuopt-install": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "cuopt-multi-objective-exploration": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "cuopt-numerical-optimization-api": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "cuopt-numerical-optimization-formulation": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "cuopt-routing-api-python": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "cuopt-server-api-python": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "cuopt"
+      ]
+    },
+    "currency": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "finance"
+      ]
+    },
+    "dali-dynamic-mode": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "dali"
+      ]
+    },
+    "data-designer": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "data-designer"
+      ]
+    },
+    "deepstream-dev": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "deepstream"
+      ]
+    },
+    "deepstream-generate-pipeline": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "deepstream"
+      ]
+    },
+    "deepstream-import-vision-model": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "deepstream"
+      ]
+    },
+    "deepstream-profile-pipeline": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "deepstream"
+      ]
+    },
+    "deepstream-run-mv3dt": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "deepstream"
+      ]
+    },
+    "deepstream-sop": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "deepstream"
+      ]
+    },
+    "dicom-metadata-extract": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "dicom"
+      ]
+    },
+    "dicom-series-preflight": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "dicom"
+      ]
+    },
+    "dicom-series-to-volume": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "dicom"
+      ]
+    },
+    "digital-health-clinical-asr-build": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "clinical-asr"
+      ]
+    },
+    "digital-health-clinical-asr-eval": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "clinical-asr"
+      ]
+    },
+    "digital-health-clinical-asr-finetune": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "clinical-asr"
+      ]
+    },
+    "digital-health-clinical-asr-setup": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "clinical-asr"
+      ]
+    },
+    "discernment-nudge": {
+      "creator": "Anthropic",
+      "category": "Writing & Communication",
+      "tags": [
+        "ai-literacy"
+      ]
+    },
+    "doc-coauthoring": {
+      "creator": "Anthropic",
+      "category": "Writing & Communication",
+      "tags": [
+        "documents"
+      ]
+    },
+    "doca-aes-gcm": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-argp": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-argus": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-bare-metal-deployment": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-bench": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-bench-extension": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-bf3-deployment": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-bf4-deployment": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-caps": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-collectx-deployment": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-comch": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-comm-channel-admin": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-common": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-compress": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-container-deployment": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-debug": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-devemu": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-dma": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-dms": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-dpa": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-dpa-hl-tracer": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-dpdk-bridge": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-erasure-coding": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-eth": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-firefly": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-flow": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-flow-dpa-perf": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-flow-dpa-provider": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-flow-grpc-server": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-flow-perf": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-flow-tune": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-gpi": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-gpunetio": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-gpunetio-ib-write-bw": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-gpunetio-ib-write-lat": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-hardware-safety": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-mgmt": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-pcc": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-pcc-counters": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-pcc-ztr-rttcc-algo": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-programming-guide": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-public-knowledge-map": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-rdma": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-rdmi": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-rmax": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-setup": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-sha": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-sha-offload-engine": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-socket-relay": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-spcx-cc": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-sta": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-structured-tools-contract": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-telemetry": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-telemetry-exporter": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-telemetry-utils": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-upgrade": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-urom": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-urom-svc": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-verbs": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "doca-version": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "doca"
+      ]
+    },
+    "docker": {
+      "creator": "Radium",
+      "category": "Code & Dev",
+      "tags": [
+        "containers"
+      ]
+    },
+    "dynamo-interconnect-check": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "dynamo"
+      ]
+    },
+    "dynamo-recipe-runner": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "dynamo"
+      ]
+    },
+    "dynamo-router-starter": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "dynamo"
+      ]
+    },
+    "dynamo-troubleshoot": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "dynamo"
+      ]
+    },
+    "earth2studio-create-datasource": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "earth2studio-create-diagnostic": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "earth2studio-create-prognostic": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "earth2studio-data-fetch": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "earth2studio-deterministic-forecast": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "earth2studio-discover": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "earth2studio-install": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "earth-2"
+      ]
+    },
+    "ffmpeg": {
+      "creator": "Radium",
+      "category": "Media",
+      "tags": [
+        "video",
+        "audio"
+      ]
+    },
+    "foundationpose-pipeline": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "foundationpose"
+      ]
+    },
+    "foundationpose-setup": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "foundationpose"
+      ]
+    },
+    "frontend-design": {
+      "creator": "Anthropic",
+      "category": "Graphics & Design",
+      "tags": [
+        "web",
+        "ui"
+      ]
+    },
+    "github": {
+      "creator": "Radium",
+      "category": "Code & Dev",
+      "tags": [
+        "git"
+      ]
+    },
+    "gog-workspace": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "google-workspace"
+      ]
+    },
+    "holohub-app-lifecycle": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holohub-debug-build-run": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holohub-module-lifecycle": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holoscan-install-conda": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holoscan-install-container": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holoscan-install-debian": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holoscan-install-source": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holoscan-install-wheel": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "holoscan-setup": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan"
+      ]
+    },
+    "hsb-app": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "hsb-flash": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "hsb-ip-create-top": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "hsb-ip-def": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "hsb-ip-packetizer": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "hsb-setup": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "hsb-test": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "holoscan-sensor-bridge"
+      ]
+    },
+    "i4h-lerobot-viz": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-create": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-dataset-annotate": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-dataset-convert": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-dataset-mimic": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-dataset-replay": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-dataset-teleop": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-e2e": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-finetune": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-scene-edit": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-setup": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-train-rl": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "i4h-workflow-validate": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "isaac-for-healthcare"
+      ]
+    },
+    "imagemagick": {
+      "creator": "Radium",
+      "category": "Media",
+      "tags": [
+        "images"
+      ]
+    },
+    "internal-comms": {
+      "creator": "Anthropic",
+      "category": "Writing & Communication",
+      "tags": [
+        "communication"
+      ]
+    },
+    "isaac-mission-control-showcase": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "isaac"
+      ]
+    },
+    "jetson-build-source": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-camera": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-clocks": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-fan": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-mgbe": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-nvpmodel": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-pcie": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-pinmux": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-uphy": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-customize-usb": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-derive-carrier": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-diagnostic": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-download-bsp": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-flash-image": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-generate-kb": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-headless-mode": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-inference-mem-tune": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-init-image": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-init-source": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-init-target": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-link-docs": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-llm-benchmark": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-llm-serve": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-memory-audit": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-optimize-memory": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-package": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-print-bsp-info": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-print-device-info": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-promote-image": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-quick-start": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-set-target": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-speculative-decoding": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-validate-image": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-video-benchmark": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-video-capability": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-video-pipeline": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-video-recipe": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "jetson-video-setup": {
+      "creator": "NVIDIA",
+      "category": "Infrastructure & Hardware",
+      "tags": [
+        "jetson"
+      ]
+    },
+    "launch-nemo-rl": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-rl"
+      ]
+    },
+    "mcore-create-issue": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "megatron-core"
+      ]
+    },
+    "mcore-linting-and-formatting": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "megatron-core"
+      ]
+    },
+    "mcore-run-on-slurm": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "megatron-core"
+      ]
+    },
+    "mcore-split-pr": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "megatron-core"
+      ]
+    },
+    "mcore-testing": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "megatron-core"
+      ]
+    },
+    "mcp-builder": {
+      "creator": "Anthropic",
+      "category": "Code & Dev",
+      "tags": [
+        "mcp"
+      ]
+    },
+    "medtech-model-evidence-export": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medtech"
+      ]
+    },
+    "nemo-automodel-distributed-training": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-automodel"
+      ]
+    },
+    "nemo-automodel-launcher-config": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-automodel"
+      ]
+    },
+    "nemo-automodel-model-onboarding": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-automodel"
+      ]
+    },
+    "nemo-automodel-recipe-development": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-automodel"
+      ]
+    },
+    "nemo-fabric-build-adapter": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-fabric"
+      ]
+    },
+    "nemo-fabric-integrate": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-fabric"
+      ]
+    },
+    "nemo-mbridge-mlm-bridge-training": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-multi-node-slurm": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-activation-recompute": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-cpu-offloading": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-cuda-graphs": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-expert-parallel-overlap": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-hierarchical-context-parallel": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-megatron-fsdp": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-memory-tuning": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-moe-comm-overlap": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-moe-dispatcher-selection": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-moe-hardware-configs": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-moe-long-context": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-moe-optimization-workflow": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-moe-vlm-training": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-parallelism-strategies": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-sequence-packing": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-perf-tp-dp-comm-overlap": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-recipe-recommender": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-mbridge-resiliency": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "megatron-bridge"
+      ]
+    },
+    "nemo-relay-debug-runtime-integration": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-get-started": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-install": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-instrument-calls": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-instrument-context-isolation": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-instrument-typed-wrappers": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-migrate-from-flow": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-plugin-adaptive-tuning": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-plugin-build": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-relay-plugin-observability": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-relay"
+      ]
+    },
+    "nemo-retriever": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-retriever"
+      ]
+    },
+    "nemo-retriever-mcp": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-retriever"
+      ]
+    },
+    "nemo-rl-auto-research": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-rl"
+      ]
+    },
+    "nemo-rl-brev-etiquette": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-rl"
+      ]
+    },
+    "nemo-rl-docs": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-rl"
+      ]
+    },
+    "nemo-rl-session-memory": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemo-rl"
+      ]
+    },
+    "nemoclaw-user-guide": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemoclaw"
+      ]
+    },
+    "nemotron-asr-finetune": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemotron"
+      ]
+    },
+    "nemotron-customize": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemotron"
+      ]
+    },
+    "nemotron-policy-generator": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemotron"
+      ]
+    },
+    "nemotron-retrieval-recipes": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemotron"
+      ]
+    },
+    "nemotron-speech": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemotron"
+      ]
+    },
+    "nemotron-voice-agent-builder": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "nemotron"
+      ]
+    },
+    "notion": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "notes"
+      ]
+    },
+    "nv-generate-ct-rflow": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-generate-mr": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-generate-mr-brain": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-generate-mr-brain-finetune": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-generate-vae-finetune": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-reason-cxr": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-segment-ct": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-segment-ct-finetune": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nv-segment-ctmr": {
+      "creator": "NVIDIA",
+      "category": "Health & Life Sciences",
+      "tags": [
+        "medical-imaging"
+      ]
+    },
+    "nvflare-autofl": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-autofl-report": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-convert-huggingface": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-convert-lightning": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-convert-pytorch": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-diagnose-job": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-fed-stats": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-orient": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvflare-shared": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "flare"
+      ]
+    },
+    "nvidia-skill-finder": {
+      "creator": "NVIDIA",
+      "category": "Other",
+      "tags": [
+        "skills"
+      ]
+    },
+    "obsidian": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "notes"
+      ]
+    },
+    "omniverse-cad-to-simready": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "omniverse"
+      ]
+    },
+    "omniverse-realtime-viewer": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "omniverse"
+      ]
+    },
+    "omniverse-usd-performance-tuning": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "omniverse"
+      ]
+    },
+    "paidf-augmentation": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "paidf-auto-labeling": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "paidf-curation-and-retrieval": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "paidf-orchestration-setup": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "paidf-orchestration-write-dag": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "pandoc": {
+      "creator": "Radium",
+      "category": "Writing & Communication",
+      "tags": [
+        "documents"
+      ]
+    },
+    "pdf": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "documents",
+        "pdf"
+      ]
+    },
+    "physical-ai-defect-image-generation": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "physical-ai-event-video-generation": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "physical-ai-image-attribute-augmentation": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "physical-ai-infrastructure-setup-and-resilient-scaling": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "physical-ai-neural-reconstruction": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "physical-ai-video-data-augmentation": {
+      "creator": "NVIDIA",
+      "category": "Robotics & Simulation",
+      "tags": [
+        "physical-ai"
+      ]
+    },
+    "physicsnemo-discover": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "physicsnemo"
+      ]
+    },
+    "physicsnemo-shard-tensor": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "physicsnemo"
+      ]
+    },
+    "portfolio-optimization": {
+      "creator": "NVIDIA",
+      "category": "Data & Science",
+      "tags": [
+        "finance"
+      ]
+    },
+    "rag-blueprint": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "rag"
+      ]
+    },
+    "rag-eval": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "rag"
+      ]
+    },
+    "rag-perf": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "rag"
+      ]
+    },
+    "rtvi-cv-customize-model": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "rtvi"
+      ]
+    },
+    "rtvi-cv-scaffold-vss-service": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "rtvi"
+      ]
+    },
+    "rtvi-vlm-customize-model": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "rtvi"
+      ]
+    },
+    "rtx-remix-modding": {
+      "creator": "NVIDIA",
+      "category": "Graphics & Design",
+      "tags": [
+        "rtx-remix"
+      ]
+    },
+    "skill-card-generator": {
+      "creator": "NVIDIA",
+      "category": "Other",
+      "tags": [
+        "skills"
+      ]
+    },
+    "skill-creator": {
+      "creator": "Radium",
+      "category": "Code & Dev",
+      "tags": [
+        "skills"
+      ]
+    },
+    "slack-gif-creator": {
+      "creator": "Anthropic",
+      "category": "Media",
+      "tags": [
+        "gif",
+        "slack"
+      ]
+    },
+    "tao-analyze-changenet-rca": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-analyze-detection-kpi": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-analyze-gaps-od-map": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-analyze-gaps-visual-changenet": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-analyze-gaps-vlm-bcq": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-artifacts": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-convert-dataset-format": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-data-io": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-clip": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-cosmos-embed": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-cosmos-reason": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-huggingface-model": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-nv-tesseract-ad-diffusion": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-nv-tesseract-forecasting": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-finetune-video-clip": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-generate-image-embeddings": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-generate-image-grounding": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-generate-referring-expressions": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-generate-video-reasoning-annotations": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-launch-workflow": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-list-capabilities": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-mine-aoi-images": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-mine-nearest-neighbors": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-mine-od-images": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-port-huggingface-model": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-route-visual-changenet-samples": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-automl": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-automl-deft-pipeline": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-deft-aoi": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-deft-aoi-cosmos3": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-deft-cr-its-mining": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-deft-object-detection": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-inference-service": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-on-brev": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-on-docker": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-on-kubernetes": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-on-slurm": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-run-on-virtualenv": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-setup": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-setup-nvidia-gpu-host": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-action-recognition": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-bevfusion": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-centerpose": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-codetr": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-deformable-detr": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-depth-anything-v2": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-dino": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-dinov3": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-fast-foundation-stereo": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-foundation-stereo": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-grounding-dino": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-image-classification": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-mask-auto-encoder": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-mask-auto-label": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-mask-grounding-dino": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-mask2former": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-metric-learning-recognition": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-nvdinov2": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-nvpanoptix3d": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-ocdnet": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-ocrnet": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-oneformer": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-optical-inspection": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-pointpillars": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-pose-classification": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-reid": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-rtdetr": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-segformer": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-single-step": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-sparse4d": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-train-visual-changenet": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-validate-dataset-format": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "tao-validate-recipe-transfer": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "tao"
+      ]
+    },
+    "theme-factory": {
+      "creator": "Anthropic",
+      "category": "Graphics & Design",
+      "tags": [
+        "themes"
+      ]
+    },
+    "tilegym-adding-cutile-kernel": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "tilegym-converting-cutile-to-julia": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "tilegym-converting-cutile-to-triton": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "tilegym-cutile-autotuning": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "tilegym-cutile-python": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "tilegym-improve-cutile-kernel-perf": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "tilegym-monkey-patch-kernels-to-transformers": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "tilegym"
+      ]
+    },
+    "uupm-banner-design": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "uupm-brand": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "uupm-design": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "uupm-design-system": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "uupm-slides": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "uupm-ui-styling": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "uupm-ui-ux-pro-max": {
+      "creator": "UI UX Pro Max",
+      "category": "Graphics & Design",
+      "tags": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "vss-ask-video": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-deploy-dense-captioning": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-deploy-detection-tracking-2d": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-deploy-detection-tracking-3d": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-deploy-profile": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-deploy-video-embedding": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-generate-video-calibration": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-generate-video-report": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-manage-alerts": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-manage-video-io-storage": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-query-analytics": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-search-archive": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-setup-behavior-analytics": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-setup-video-analytics-api": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "vss-summarize-video": {
+      "creator": "NVIDIA",
+      "category": "AI & Machine Learning",
+      "tags": [
+        "video-search-and-summarization"
+      ]
+    },
+    "warp-compile-time-optimizer": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "warp"
+      ]
+    },
+    "warp-debug-gradients": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "warp"
+      ]
+    },
+    "warp-eval": {
+      "creator": "NVIDIA",
+      "category": "Code & Dev",
+      "tags": [
+        "warp"
+      ]
+    },
+    "web-artifacts-builder": {
+      "creator": "Anthropic",
+      "category": "Code & Dev",
+      "tags": [
+        "web",
+        "react"
+      ]
+    },
+    "webapp-testing": {
+      "creator": "Anthropic",
+      "category": "Code & Dev",
+      "tags": [
+        "testing",
+        "playwright"
+      ]
+    },
+    "wikipedia": {
+      "creator": "Radium",
+      "category": "Writing & Communication",
+      "tags": [
+        "research"
+      ]
+    },
+    "wttr-weather": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "weather"
+      ]
+    },
+    "xlsx": {
+      "creator": "Radium",
+      "category": "Productivity",
+      "tags": [
+        "spreadsheets"
+      ]
+    }
+  }
+}

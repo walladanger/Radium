@@ -9,29 +9,51 @@ use serde::Deserialize;
 
 use super::{
     global_skills_dir,
-    manifest::{is_valid_skill_name, parse_skill_file},
+    manifest::{is_valid_skill_name, parse_skill_file, split_frontmatter},
 };
 
 const MAX_INSTRUCTIONS_CHARS: usize = 100_000;
 const MAX_IMPORTED_ENTRIES: usize = 512;
 const MAX_IMPORTED_FILES: usize = 256;
 const MAX_IMPORTED_BYTES: u64 = 10 * 1024 * 1024;
+const MAX_ORGANIZATION_LABEL_CHARS: usize = 64;
+const MAX_ORGANIZATION_TAGS: usize = 16;
+const MAX_ORGANIZATION_TAG_CHARS: usize = 40;
 static TEMP_FILE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAgentSkillRequest {
     pub name: String,
     pub description: String,
     pub instructions: String,
+    #[serde(flatten)]
+    pub organization: SkillOrganizationFields,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAgentSkillRequest {
     pub name: String,
     pub description: String,
     pub instructions: String,
+    #[serde(flatten)]
+    pub organization: SkillOrganizationFields,
+}
+
+/// How a user organizes their own skill, stored in the SKILL.md `metadata`
+/// map (`metadata.creator`, `metadata.category`, `metadata.tags`) - the keys
+/// the strict manifest parser already accepts. On update, a field left out
+/// keeps its current value and an empty one removes the key.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillOrganizationFields {
+    #[serde(default)]
+    pub creator: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
 }
 
 pub fn create_custom_skill(
@@ -55,13 +77,12 @@ pub fn create_custom_skill(
         ));
     }
     let description = request.description.trim();
-    let skill_file = format!(
-        "---\nname: {}\ndescription: {}\nversion: 0.0.0\n---\n{}\n",
-        name,
-        yaml_string(description)?,
-        instructions
-    );
-    parse_skill_file(&skill_file)?;
+    let mut frontmatter = serde_yaml::Mapping::new();
+    frontmatter.insert("name".into(), name.clone().into());
+    frontmatter.insert("description".into(), description.into());
+    frontmatter.insert("version".into(), "0.0.0".into());
+    apply_organization(&mut frontmatter, &request.organization)?;
+    let skill_file = render_skill_file(&frontmatter, instructions)?;
 
     let destination = reserve_destination(data_folder, &name)?;
     let result = fs::write(destination.join("SKILL.md"), skill_file)
@@ -97,13 +118,112 @@ pub fn update_custom_skill(
         ));
     }
 
-    let mut manifest = parsed.manifest;
-    manifest.description = description.to_string();
-    let yaml = serde_yaml::to_string(&manifest)
-        .map_err(|error| format!("Failed to serialize skill manifest: {error}"))?;
-    let updated = format!("---\n{}---\n{}\n", yaml, instructions);
-    parse_skill_file(&updated)?;
+    // Rewrite the frontmatter as it is, changing only what the form edits,
+    // so keys this app does not model (license, metadata, compatibility...)
+    // survive an edit.
+    let (yaml, _) = split_frontmatter(&content)?;
+    let mut frontmatter: serde_yaml::Mapping = serde_yaml::from_str(&yaml)
+        .map_err(|error| format!("Invalid YAML frontmatter: {error}"))?;
+    frontmatter.insert("description".into(), description.into());
+    apply_organization(&mut frontmatter, &request.organization)?;
+    let updated = render_skill_file(&frontmatter, instructions)?;
+    let reparsed = parse_skill_file(&updated)?;
+    if reparsed.manifest.name != request.name {
+        return Err("Skill update name does not match its manifest".into());
+    }
     atomic_write(&manifest_path, updated.as_bytes())
+}
+
+fn render_skill_file(
+    frontmatter: &serde_yaml::Mapping,
+    instructions: &str,
+) -> Result<String, String> {
+    let yaml = serde_yaml::to_string(frontmatter)
+        .map_err(|error| format!("Failed to serialize skill manifest: {error}"))?;
+    let skill_file = format!("---\n{yaml}---\n{instructions}\n");
+    parse_skill_file(&skill_file)?;
+    Ok(skill_file)
+}
+
+/// Write the organizing fields into `metadata`, creating the map if needed
+/// and dropping it again if it ends up empty.
+fn apply_organization(
+    frontmatter: &mut serde_yaml::Mapping,
+    fields: &SkillOrganizationFields,
+) -> Result<(), String> {
+    if fields.creator.is_none() && fields.category.is_none() && fields.tags.is_none() {
+        return Ok(());
+    }
+    let metadata_key = serde_yaml::Value::from("metadata");
+    let mut metadata =
+        match frontmatter.get(&metadata_key) {
+            None | Some(serde_yaml::Value::Null) => serde_yaml::Mapping::new(),
+            Some(serde_yaml::Value::Mapping(map)) => map.clone(),
+            Some(_) => return Err(
+                "This skill's `metadata` is not a key/value map, so creator, category and tags \
+                 cannot be stored in it"
+                    .into(),
+            ),
+        };
+    for (key, value) in [("creator", &fields.creator), ("category", &fields.category)] {
+        let Some(value) = value else { continue };
+        let value = organization_label(value, key)?;
+        if value.is_empty() {
+            metadata.remove(key);
+        } else {
+            metadata.insert(key.into(), value.into());
+        }
+    }
+    if let Some(tags) = &fields.tags {
+        let mut cleaned: Vec<String> = Vec::new();
+        for tag in tags {
+            let tag = organization_label(tag, "tags")?;
+            if tag.chars().count() > MAX_ORGANIZATION_TAG_CHARS {
+                return Err(format!(
+                    "Each tag must be at most {MAX_ORGANIZATION_TAG_CHARS} characters"
+                ));
+            }
+            if !tag.is_empty()
+                && !cleaned
+                    .iter()
+                    .any(|existing| existing.eq_ignore_ascii_case(&tag))
+            {
+                cleaned.push(tag);
+            }
+        }
+        if cleaned.len() > MAX_ORGANIZATION_TAGS {
+            return Err(format!(
+                "A skill may have at most {MAX_ORGANIZATION_TAGS} tags"
+            ));
+        }
+        if cleaned.is_empty() {
+            metadata.remove("tags");
+        } else {
+            metadata.insert(
+                "tags".into(),
+                serde_yaml::Value::Sequence(cleaned.into_iter().map(Into::into).collect()),
+            );
+        }
+    }
+    if metadata.is_empty() {
+        frontmatter.remove(&metadata_key);
+    } else {
+        frontmatter.insert(metadata_key, serde_yaml::Value::Mapping(metadata));
+    }
+    Ok(())
+}
+
+fn organization_label(value: &str, field: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.chars().any(char::is_control) {
+        return Err(format!("`{field}` must be a single line"));
+    }
+    if value.chars().count() > MAX_ORGANIZATION_LABEL_CHARS {
+        return Err(format!(
+            "`{field}` must be at most {MAX_ORGANIZATION_LABEL_CHARS} characters"
+        ));
+    }
+    Ok(value.to_string())
 }
 
 pub fn export_skill_archive(skill_dir: &Path, target: &Path) -> Result<(), String> {
@@ -271,10 +391,12 @@ fn find_archive_manifest(archive: &mut zip::ZipArchive<File>) -> Result<usize, S
         let path = entry
             .enclosed_name()
             .ok_or_else(|| "Archive contains an unsafe path".to_string())?;
-        if !entry.is_dir() && path.file_name().is_some_and(|name| name == "SKILL.md")
-            && manifest_index.replace(index).is_some() {
-                return Err("Archive must contain exactly one SKILL.md file".into());
-            }
+        if !entry.is_dir()
+            && path.file_name().is_some_and(|name| name == "SKILL.md")
+            && manifest_index.replace(index).is_some()
+        {
+            return Err("Archive must contain exactly one SKILL.md file".into());
+        }
     }
     manifest_index.ok_or_else(|| "Archive must include a SKILL.md file".into())
 }
@@ -347,12 +469,6 @@ fn extract_skill_archive(
         }
     }
     Ok(())
-}
-
-fn yaml_string(value: &str) -> Result<String, String> {
-    serde_yaml::to_string(value)
-        .map(|serialized| serialized.trim().to_string())
-        .map_err(|error| format!("Failed to serialize skill description: {error}"))
 }
 
 fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
@@ -579,6 +695,7 @@ mod tests {
                 name: "weekly-report".into(),
                 description: "Summarizes weekly progress: wins & blockers".into(),
                 instructions: "Use three concise sections.".into(),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -612,6 +729,7 @@ mod tests {
                 name: "editable-skill".into(),
                 description: "After".into(),
                 instructions: "New instructions".into(),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -630,6 +748,120 @@ mod tests {
             fs::read_to_string(skill_dir.join("scripts/run.sh")).unwrap(),
             "echo preserved"
         );
+    }
+
+    #[test]
+    fn writes_organization_into_metadata_on_create() {
+        let temp = TempDir::new().unwrap();
+        create_custom_skill(
+            temp.path(),
+            CreateAgentSkillRequest {
+                name: "logo-helper".into(),
+                description: "Makes logos".into(),
+                instructions: "Draw.".into(),
+                organization: SkillOrganizationFields {
+                    creator: Some("Warwick".into()),
+                    category: Some("Graphics & Design".into()),
+                    tags: Some(vec!["svg".into(), " logo ".into(), "SVG".into(), "".into()]),
+                },
+            },
+        )
+        .unwrap();
+
+        let content =
+            fs::read_to_string(global_skills_dir(temp.path()).join("logo-helper/SKILL.md"))
+                .unwrap();
+        let parsed = parse_skill_file(&content).unwrap();
+        assert_eq!(parsed.organization.creator.as_deref(), Some("Warwick"));
+        assert_eq!(
+            parsed.organization.category.as_deref(),
+            Some("Graphics & Design")
+        );
+        assert_eq!(parsed.organization.tags, ["svg", "logo"]);
+    }
+
+    #[test]
+    fn rejects_multi_line_or_oversized_organization_fields() {
+        let temp = TempDir::new().unwrap();
+        let request = |organization| CreateAgentSkillRequest {
+            name: "bad-fields".into(),
+            description: "Test".into(),
+            instructions: "Body".into(),
+            organization,
+        };
+        assert!(create_custom_skill(
+            temp.path(),
+            request(SkillOrganizationFields {
+                category: Some("two\nlines".into()),
+                ..Default::default()
+            })
+        )
+        .is_err());
+        assert!(create_custom_skill(
+            temp.path(),
+            request(SkillOrganizationFields {
+                tags: Some((0..20).map(|index| format!("tag-{index}")).collect()),
+                ..Default::default()
+            })
+        )
+        .is_err());
+        assert!(!global_skills_dir(temp.path()).join("bad-fields").exists());
+    }
+
+    #[test]
+    fn editing_keeps_frontmatter_it_does_not_model_and_updates_organization() {
+        let temp = TempDir::new().unwrap();
+        let skill_dir = global_skills_dir(temp.path()).join("kept-fields");
+        fs::create_dir_all(&skill_dir).unwrap();
+        fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: kept-fields\ndescription: Before\nlicense: MIT\nmetadata:\n  author: Ada\n  category: Media\n  version: \"2\"\n---\nOld",
+        )
+        .unwrap();
+
+        // Fields left out stay as they are.
+        update_custom_skill(
+            &skill_dir,
+            UpdateAgentSkillRequest {
+                name: "kept-fields".into(),
+                description: "After".into(),
+                instructions: "New".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let content = fs::read_to_string(skill_dir.join("SKILL.md")).unwrap();
+        assert!(content.contains("license: MIT"), "{content}");
+        let parsed = parse_skill_file(&content).unwrap();
+        assert_eq!(parsed.manifest.description, "After");
+        assert_eq!(parsed.organization.category.as_deref(), Some("Media"));
+
+        // Set one, clear another; unrelated metadata keys survive.
+        update_custom_skill(
+            &skill_dir,
+            UpdateAgentSkillRequest {
+                name: "kept-fields".into(),
+                description: "After".into(),
+                instructions: "New".into(),
+                organization: SkillOrganizationFields {
+                    creator: Some("Warwick".into()),
+                    category: Some(String::new()),
+                    tags: Some(vec!["video".into()]),
+                },
+            },
+        )
+        .unwrap();
+        let content = fs::read_to_string(skill_dir.join("SKILL.md")).unwrap();
+        let parsed = parse_skill_file(&content).unwrap();
+        assert_eq!(parsed.organization.creator.as_deref(), Some("Warwick"));
+        assert_eq!(parsed.organization.category, None);
+        assert_eq!(parsed.organization.tags, ["video"]);
+        assert!(content.contains("author: Ada"), "{content}");
+        assert!(
+            content.contains("version: '2'") || content.contains("version: \"2\""),
+            "{content}"
+        );
+        assert_eq!(parsed.body, "New\n");
     }
 
     #[test]

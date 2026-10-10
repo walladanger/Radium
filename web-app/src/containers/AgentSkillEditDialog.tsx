@@ -13,6 +13,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslation } from '@/i18n/react-i18next-compat'
+import {
+  EMPTY_SKILL_ORGANIZATION,
+  SKILL_CATEGORIES,
+  declaredOrganization,
+  organizationRequest,
+} from '@/lib/skill-organization'
+import { AgentSkillOrganizationFields } from './AgentSkillOrganizationFields'
 import type {
   AgentSkillDetail,
   UpdateAgentSkillRequest,
@@ -23,6 +30,8 @@ type AgentSkillEditDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate: (request: UpdateAgentSkillRequest) => Promise<void>
+  /** Category suggestions; defaults to the fixed list. */
+  categories?: string[]
 }
 
 export function AgentSkillEditDialog({
@@ -30,16 +39,22 @@ export function AgentSkillEditDialog({
   open,
   onOpenChange,
   onUpdate,
+  categories = [...SKILL_CATEGORIES],
 }: AgentSkillEditDialogProps) {
   const { t } = useTranslation()
   const [description, setDescription] = useState('')
   const [instructions, setInstructions] = useState('')
+  const [organization, setOrganization] = useState(EMPTY_SKILL_ORGANIZATION)
   const [submitting, setSubmitting] = useState(false)
+  // An older backend does not report what the file declares; then the fields
+  // are not sent, so an edit cannot wipe metadata it never showed.
+  const canOrganize = skill?.declaredTags !== undefined
 
   useEffect(() => {
     if (!open || !skill) return
     setDescription(skill.description)
     setInstructions(skill.body)
+    setOrganization(declaredOrganization(skill))
     setSubmitting(false)
   }, [open, skill])
 
@@ -51,6 +66,7 @@ export function AgentSkillEditDialog({
         name: skill.name,
         description: description.trim(),
         instructions: instructions.trim(),
+        ...(canOrganize ? organizationRequest(organization, 'update') : {}),
       })
       onOpenChange(false)
     } catch (reason) {
@@ -91,6 +107,15 @@ export function AgentSkillEditDialog({
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
+          {canOrganize && (
+            <AgentSkillOrganizationFields
+              idPrefix="agent-skill-edit"
+              value={organization}
+              categories={categories}
+              disabled={submitting}
+              onChange={setOrganization}
+            />
+          )}
           <div className="space-y-2">
             <Label htmlFor="agent-skill-edit-instructions">
               {t('common:instructions')}
