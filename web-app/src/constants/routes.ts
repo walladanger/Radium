@@ -22,6 +22,7 @@ export const route = {
     mcp_servers: '/settings/mcp-servers',
     https_proxy: '/settings/https-proxy',
     hardware: '/settings/hardware',
+    runtimes: '/settings/runtimes',
     media: '/settings/media',
     chat: '/settings/chat',
     cloud: '/settings/cloud',
