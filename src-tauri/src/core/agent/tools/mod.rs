@@ -9,6 +9,7 @@ mod git;
 mod http;
 mod mcp_call;
 mod media;
+pub mod net;
 mod notify;
 mod proc;
 mod shell;
@@ -173,6 +174,7 @@ pub async fn execute(call: &ToolCallPayload, context: &ToolContext<'_>) -> ToolO
         "skill.run_script" => skill_run_script::execute(&call.args, context).await,
         "skill.view" => skill_view::execute(&call.args, context).await,
         "tool.view" => tool_view::execute(&call.args, context.loaded_tools, context.mcp).await,
+        tool if tool.starts_with("net.") => net::execute(tool, &call.args, context).await,
         "agent.delegate" => delegate(&call.args, context).await,
         "reply" => required_string(&call.args, "text")
             .map(ToolOutcome::ok)
@@ -368,6 +370,21 @@ fn safe_preview(call: &ToolCallPayload) -> Value {
             if let Some(value) = args.get(key) {
                 preview.insert(key.into(), value.clone());
             }
+        }
+    }
+    // A network fix shows its blast radius — what changes, what drops, how
+    // to undo it — before the user decides.
+    if let Some(radius) = net::blast_radius(&call.tool, &call.args) {
+        preview.insert("action".into(), Value::String(radius.action.clone()));
+        preview.insert(
+            "blastRadius".into(),
+            serde_json::to_value(&radius).unwrap_or(Value::Null),
+        );
+        if let Some(adapter) = call.args.get("adapter") {
+            preview.insert("adapter".into(), adapter.clone());
+        }
+        if let Some(servers) = call.args.get("servers") {
+            preview.insert("servers".into(), servers.clone());
         }
     }
     match call.tool.as_str() {

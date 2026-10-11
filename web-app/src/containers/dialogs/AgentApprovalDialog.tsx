@@ -12,6 +12,8 @@ import {
 import { useAgentRun } from '@/hooks/useAgentRun'
 import { useThreads } from '@/hooks/useThreads'
 import { useTranslation } from '@/i18n/react-i18next-compat'
+import { ApprovalBlastRadius } from '@/containers/ApprovalBlastRadius'
+import { readBlastRadius } from '@/lib/blast-radius'
 import {
   isStaleAgentApprovalError,
   resolveAgentApproval,
@@ -115,6 +117,11 @@ export default function AgentApprovalDialog() {
             </div>
             <p className="text-sm text-muted-foreground">{approval.reason}</p>
           </div>
+
+          {(() => {
+            const radius = readBlastRadius(approval.preview)
+            return radius ? <ApprovalBlastRadius radius={radius} /> : null
+          })()}
 
           {preview && (
             <div>
