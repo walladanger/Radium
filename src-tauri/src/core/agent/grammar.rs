@@ -299,32 +299,32 @@ const STATIC_TOOL_GRAMMARS: &[ToolGrammar] = &[
     ToolGrammar {
         name: "net.dns_flush",
         rule: "net-dns-flush",
-        args: r#""{" ws "}""#,
+        args: r#""{" ws ( "\"reason\"" ws ":" ws string ws )? "}""#,
     },
     ToolGrammar {
         name: "net.dhcp_renew",
         rule: "net-dhcp-renew",
-        args: r#""{" ws ( "\"adapter\"" ws ":" ws non-empty-string )? ws "}""#,
+        args: r#""{" ws ( "\"adapter\"" ws ":" ws non-empty-string ( ws "," ws "\"reason\"" ws ":" ws string )? | "\"reason\"" ws ":" ws string )? ws "}""#,
     },
     ToolGrammar {
         name: "net.adapter_restart",
         rule: "net-adapter-restart",
-        args: r#""{" ws "\"adapter\"" ws ":" ws non-empty-string ws "}""#,
+        args: r#""{" ws "\"adapter\"" ws ":" ws non-empty-string ( ws "," ws "\"reason\"" ws ":" ws string )? ws "}""#,
     },
     ToolGrammar {
         name: "net.set_dns",
         rule: "net-set-dns",
-        args: r#""{" ws "\"adapter\"" ws ":" ws non-empty-string ws "," ws "\"servers\"" ws ":" ws string-array ws "}""#,
+        args: r#""{" ws "\"adapter\"" ws ":" ws non-empty-string ws "," ws "\"servers\"" ws ":" ws string-array ( ws "," ws "\"reason\"" ws ":" ws string )? ws "}""#,
     },
     ToolGrammar {
         name: "net.wifi_reconnect",
         rule: "net-wifi-reconnect",
-        args: r#""{" ws ( "\"adapter\"" ws ":" ws non-empty-string )? ws "}""#,
+        args: r#""{" ws ( "\"adapter\"" ws ":" ws non-empty-string ( ws "," ws "\"reason\"" ws ":" ws string )? | "\"reason\"" ws ":" ws string )? ws "}""#,
     },
     ToolGrammar {
         name: "net.stack_reset",
         rule: "net-stack-reset",
-        args: r#""{" ws "}""#,
+        args: r#""{" ws ( "\"reason\"" ws ":" ws string ws )? "}""#,
     },
     ToolGrammar {
         name: "agent.delegate",

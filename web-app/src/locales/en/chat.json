@@ -79,6 +79,14 @@
         "low": "Low risk",
         "medium": "Medium risk",
         "high": "High risk"
+      },
+      "agentReason": "Why",
+      "review": {
+        "title": "Second opinion",
+        "agree": "Agrees",
+        "concern": "Has a concern",
+        "disagree": "Disagrees",
+        "unavailable": "Not available"
       }
     }
   },

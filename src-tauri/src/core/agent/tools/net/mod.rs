@@ -15,6 +15,7 @@ mod fix;
 mod live_tests;
 pub(crate) mod parse;
 pub(crate) mod platform;
+pub(crate) mod review;
 pub(crate) mod run;
 
 use std::net::IpAddr;
@@ -76,6 +77,23 @@ pub async fn execute(
         "net.stack_reset" => fix::stack_reset(context).await,
         _ => Err(ToolOutcome::error(format!("Unknown network tool: {tool}"))),
     }
+}
+
+/// A second opinion on a network fix, for its approval card. `None` for
+/// anything that is not a network fix, or when no model is available.
+pub async fn review_for_approval(
+    tool: &str,
+    args: &Value,
+    context: &ToolContext<'_>,
+) -> Option<review::Review> {
+    if !NET_FIX_TOOLS.contains(&tool) {
+        return None;
+    }
+    let client = context.client?;
+    let map = match diagnose::system_map(context).await {
+        Ok(outcome) | Err(outcome) => outcome.summary,
+    };
+    Some(review::review_with_map(client, &map, tool, args, context.cancellation).await)
 }
 
 // ------------------------------------------------------------ validation ---

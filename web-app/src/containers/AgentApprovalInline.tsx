@@ -4,7 +4,11 @@ import { Button } from '@/components/ui/button'
 import { useAgentApprovalActions } from '@/hooks/useAgentApprovalActions'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { ApprovalBlastRadius } from '@/containers/ApprovalBlastRadius'
-import { readBlastRadius } from '@/lib/blast-radius'
+import {
+  readAgentReason,
+  readBlastRadius,
+  readChangeReview,
+} from '@/lib/blast-radius'
 
 const PREVIEW_LIMIT = 4_000
 const RESOURCE_VALUE_LIMIT = 512
@@ -105,7 +109,13 @@ export default function AgentApprovalInline({
               </span>
             </div>
           </div>
-          {blastRadius && <ApprovalBlastRadius radius={blastRadius} />}
+          {blastRadius && approval && (
+            <ApprovalBlastRadius
+              radius={blastRadius}
+              agentReason={readAgentReason(approval.preview)}
+              review={readChangeReview(approval.preview)}
+            />
+          )}
           <div>
             <button
               type="button"

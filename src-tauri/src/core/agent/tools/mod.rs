@@ -312,10 +312,23 @@ async fn authorize_call(
             operation: "execute".into(),
         });
     }
+    let mut preview = safe_preview(&prepared.call);
+    // A network fix gets a second opinion from a separate reviewer call,
+    // shown on the card next to its blast radius; the user still decides.
+    if let Some(review) =
+        net::review_for_approval(&prepared.call.tool, &prepared.call.args, context).await
+    {
+        if let Some(object) = preview.as_object_mut() {
+            object.insert(
+                "review".into(),
+                serde_json::to_value(&review).unwrap_or(Value::Null),
+            );
+        }
+    }
     let request = ApprovalRequest {
         tool: prepared.call.tool.clone(),
         reason: reasons.join("; "),
-        preview: safe_preview(&prepared.call),
+        preview,
         affected_resources: resources,
         fingerprint,
         can_remember,
@@ -385,6 +398,12 @@ fn safe_preview(call: &ToolCallPayload) -> Value {
         }
         if let Some(servers) = call.args.get("servers") {
             preview.insert("servers".into(), servers.clone());
+        }
+        if let Some(reason) = call.args.get("reason").and_then(Value::as_str) {
+            preview.insert(
+                "agentReason".into(),
+                Value::String(reason.chars().take(400).collect()),
+            );
         }
     }
     match call.tool.as_str() {

@@ -24,6 +24,13 @@ title: 'Give the agent network tools behind a tool pack, with blast-radius appro
     - whether it needs admin rights or a reboot;
     - a risk level.
   - **Before and after.** Fixes report before/after state (for example, the previous DNS servers for undo) and re-check the result.
+  - **Second opinion.** Before a fix's approval card appears, a **separate reviewer call** (`tools/net/review.rs`) reads:
+    - a fresh `net.system_map`;
+    - the proposed call;
+    - the agent's optional `reason` argument;
+    - the blast radius.
+
+    It answers `agree`, `concern` or `disagree` with a short explanation. The answer is constrained by GBNF on llama.cpp and a JSON schema on chat transports. The verdict and the agent's reason are shown on the card. The reviewer advises and never blocks: an unavailable review says so, and the user still decides.
   - **Tool packs.** The tools belong to the `network` **tool pack**. They are disabled in the prompt, grammar, schema and dispatch unless the turn's assistant (or a specialist) has `tool_packs: ["network"]`. Each specialist gets its own disabled set.
   - **Template.** A "Network" specialist template in the assistant editor sets this up in one click.
   - **No new dependencies.** Commands use OS built-ins; DNS timing, port checks and TCP reachability use std/tokio.
