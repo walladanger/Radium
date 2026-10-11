@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-263 records, 2026-05-19 → 2026-10-09.
+267 records, 2026-05-19 → 2026-10-10.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -238,8 +238,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-04** — [Recover from unsupported multimodal projector (`gemma4a`) by falling back to text-only instead of crashing the load (issue #44)](2026-06-04-recover-from-unsupported-multimodal-projector-gemma4a-by.md)
 - **2026-05-27** — [Replace `janhq/model-catalog` + Fuse.js with curated `AtomicBot-ai/atomic-chat-model-catalog` and a pre-built MiniSearch index](2026-05-27-replace-janhq-model-catalog-fuse-js-with-curated-atomicbot-ai.md)
 
-## Local API server & OpenAI compatibility (4)
+## Local API server & OpenAI compatibility (5)
 
+- **2026-10-10** — [Refuse Local API Server requests from untrusted browser origins](2026-10-10-refuse-local-api-requests-from-untrusted-browser-origins.md)
 - **2026-09-11** — [Make starting the Local API Server idempotent (ATO-524)](2026-09-11-make-starting-the-local-api-server-idempotent.md)
 - **2026-07-27** — [Reconcile remote providers before proxy-routed requests](2026-07-27-reconcile-remote-providers-before-proxy-routed-requests.md)
 - **2026-07-15** — [Aggregate Local API Server request telemetry into three-minute summaries (ATO-297)](2026-07-15-aggregate-local-api-server-request-telemetry-into-three-minute.md)
@@ -317,7 +318,12 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-11** — [Add a unified "Sampling — {assistant}" popover (assistant switcher + sampling params in one place) (ATO-155)](2026-06-11-add-a-unified-sampling-assistant-popover-assistant-switcher.md)
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
-## Other (18)
+## Other (21)
+
+- **2026-10-10** — [Align Vitest 5 tooling and preserve critical coverage](2026-10-10-align-vitest-5-tooling-and-preserve-critical-coverage.md)
+
+- **2026-10-10** — [Limit TLS opt-outs and concurrent demo key lifetime](2026-10-10-limit-security-opt-outs-and-demo-key-lifetime.md)
+- **2026-10-09** — [Restrict privacy bypass to known local providers and redact loopback cloud proxies](2026-10-09-restrict-privacy-bypass-to-local-providers.md)
 
 - **2026-10-08** — [Consolidate current PRs through one verified integration](2026-10-08-consolidate-current-prs-through-one-verified-integration.md)
 - **2026-09-25** — [Run and configure Ollama from Radium: pinned install, env-var settings, take-over](2026-09-25-manage-ollama-from-radium.md)
