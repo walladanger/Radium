@@ -1620,9 +1620,9 @@ mod tests {
 
     #[test]
     fn parses_multiline_sse_and_done_marker() {
-        let event = "event: message\ndata: {\"content\":\"hel\",\ndata: \"stop\":false}";
+        let event = "event: message\ndata: {\"content\":\"partial\",\ndata: \"stop\":false}";
         let parsed = parse_sse_event(event).expect("SSE data should parse");
-        assert_eq!(parsed["content"], "hel");
+        assert_eq!(parsed["content"], "partial");
         assert_eq!(parsed["stop"], false);
         assert!(parse_sse_event("data: [DONE]").is_none());
         assert!(parse_sse_event("event: ping").is_none());
