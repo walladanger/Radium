@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-262 records, 2026-05-19 → 2026-10-10.
+271 records, 2026-05-19 → 2026-10-12.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -39,11 +39,16 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ---
 
-## Radium Media platform (8)
+## Radium Media platform (13)
 
 The model-agnostic media platform: provider adapters, the v2 contract, the
 library on disk, and how the frozen surface is allowed to change.
 
+- **2026-10-12** — [Continue a video from its last frame, browser-extracted and local-first](2026-10-12-continue-video-from-last-frame-browser-extracted-local-first.md)
+- **2026-10-11** — [Built-in engine progress is read on poll, not streamed as events](2026-10-11-built-in-engine-progress-is-read-on-poll.md)
+- **2026-10-11** — [Model-backed upscalers ship in the Rust catalog with a dedicated install path](2026-10-11-model-backed-upscalers-in-the-rust-catalog.md)
+- **2026-10-11** — [Full-HD images via the built-in engine's native hires-fix; no upscaler model download](2026-10-11-full-hd-images-via-built-in-engine-hires-fix.md)
+- **2026-10-11** — [Media jobs persist state-only history and retry submissions](2026-10-11-media-jobs-persist-state-only-and-retry-submits.md)
 - **2026-09-10** — [Adopt a provider-adapter architecture for Radium Media](2026-09-10-adopt-a-provider-adapter-architecture-for-radium-media.md)
 - **2026-09-10** — [Media contract v2 uses declarative parameter schemas with an open task vocabulary](2026-09-10-media-contract-v2-uses-declarative-parameter-schemas.md)
 - **2026-09-10** — [Materialise every media output to local disk before preview](2026-09-10-materialise-every-media-output-to-disk-before-preview.md)
@@ -240,8 +245,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-04** — [Recover from unsupported multimodal projector (`gemma4a`) by falling back to text-only instead of crashing the load (issue #44)](2026-06-04-recover-from-unsupported-multimodal-projector-gemma4a-by.md)
 - **2026-05-27** — [Replace `janhq/model-catalog` + Fuse.js with curated `AtomicBot-ai/atomic-chat-model-catalog` and a pre-built MiniSearch index](2026-05-27-replace-janhq-model-catalog-fuse-js-with-curated-atomicbot-ai.md)
 
-## Local API server & OpenAI compatibility (4)
+## Local API server & OpenAI compatibility (5)
 
+- **2026-10-10** — [Require an API key before the Local API Server binds a non-loopback address](2026-10-10-require-api-key-for-non-loopback-local-api-server.md)
 - **2026-09-11** — [Make starting the Local API Server idempotent (ATO-524)](2026-09-11-make-starting-the-local-api-server-idempotent.md)
 - **2026-07-27** — [Reconcile remote providers before proxy-routed requests](2026-07-27-reconcile-remote-providers-before-proxy-routed-requests.md)
 - **2026-07-15** — [Aggregate Local API Server request telemetry into three-minute summaries (ATO-297)](2026-07-15-aggregate-local-api-server-request-telemetry-into-three-minute.md)
@@ -276,7 +282,7 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-05-22** — [Pin static WiX `upgradeCode` to legacy Jan UUID for in-place MSI upgrades](2026-05-22-pin-static-wix-upgradecode-to-legacy-jan-uuid-for-in-place-msi.md)
 - **2026-05-19** — [Product identity is "Radium Chat"; new code stops carrying Jan branding](2026-05-19-product-identity-is-atomic-chat-new-code-stops-carrying-jan.md)
 
-## UI / UX (37)
+## UI / UX (40)
 
 - **2026-10-03** — [Port the panel mechanism from ClaudeDesktopClient, not its built-in panels; freeze the manifest + SDK as a shared contract](2026-10-03-port-the-panel-mechanism-from-claudedesktopclient-not-its.md)
 - **2026-09-11** — [List the Hub picks under the onboarding offer](2026-09-11-list-the-hub-picks-under-the-onboarding-offer.md)
@@ -319,10 +325,12 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-11** — [Add a unified "Sampling — {assistant}" popover (assistant switcher + sampling params in one place) (ATO-155)](2026-06-11-add-a-unified-sampling-assistant-popover-assistant-switcher.md)
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
-## Other (14)
+## Other (18)
 
 - **2026-10-08** — [Consolidate current PRs through one verified integration](2026-10-08-consolidate-current-prs-through-one-verified-integration.md)
-
+- **2026-09-25** — [Run and configure Ollama from Radium: pinned install, env-var settings, take-over](2026-09-25-manage-ollama-from-radium.md)
+- **2026-09-25** — [Connect a found runtime by making it an ordinary OpenAI-compatible provider](2026-09-25-connect-found-runtimes-as-ordinary-providers.md)
+- **2026-09-24** — [Integrate inference runtimes behind one Rust adapter layer, starting with a catalog and a read-only scan](2026-09-24-integrate-inference-runtimes-behind-one-adapter-layer.md)
 - **2026-09-19** — [`secret-service` uses the pure-Rust crypto backend, on the tokio runtime](2026-09-19-secret-service-uses-the-pure-rust-crypto-backend.md)
 - **2026-09-16** — [Structural provenance on `chunks`, document metadata on `files`; RAG assets get their own root](2026-09-16-rag-chunk-provenance-on-chunks-document-metadata-on-files.md)
 - **2026-09-15** — [Add a StructuredDocument IR beside `parse_document`, not instead of it](2026-09-15-add-a-structureddocument-ir-beside-parsedocument-not-instead.md)
