@@ -103,6 +103,5 @@ async fn live_traceroute_parses_on_this_machine() {
         Os::Windows => parse::tracert(&output.stdout),
         _ => parse::traceroute(&output.stdout),
     };
-    println!("{} hop(s)", hops.len());
     assert!(!hops.is_empty(), "not parsed:\n{}", output.combined());
 }
