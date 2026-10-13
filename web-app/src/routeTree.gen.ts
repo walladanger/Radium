@@ -23,6 +23,7 @@ import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as ThreadsThreadIdRouteImport } from './routes/threads/$threadId'
 import { Route as SettingsVoiceRouteImport } from './routes/settings/voice'
 import { Route as SettingsShortcutsRouteImport } from './routes/settings/shortcuts'
+import { Route as SettingsRuntimesRouteImport } from './routes/settings/runtimes'
 import { Route as SettingsPromptsRouteImport } from './routes/settings/prompts'
 import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
 import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
@@ -115,6 +116,11 @@ const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
 const SettingsShortcutsRoute = SettingsShortcutsRouteImport.update({
   id: '/settings/shortcuts',
   path: '/settings/shortcuts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRuntimesRoute = SettingsRuntimesRouteImport.update({
+  id: '/settings/runtimes',
+  path: '/settings/runtimes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsPromptsRoute = SettingsPromptsRouteImport.update({
@@ -259,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/settings/prompts': typeof SettingsPromptsRoute
+  '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
@@ -298,6 +305,7 @@ export interface FileRoutesByTo {
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/settings/prompts': typeof SettingsPromptsRoute
+  '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
@@ -338,6 +346,7 @@ export interface FileRoutesById {
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/settings/prompts': typeof SettingsPromptsRoute
+  '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
@@ -379,6 +388,7 @@ export interface FileRouteTypes {
     | '/settings/mcp-servers'
     | '/settings/privacy'
     | '/settings/prompts'
+    | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
     | '/threads/$threadId'
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/settings/mcp-servers'
     | '/settings/privacy'
     | '/settings/prompts'
+    | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
     | '/threads/$threadId'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/settings/mcp-servers'
     | '/settings/privacy'
     | '/settings/prompts'
+    | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
     | '/threads/$threadId'
@@ -497,6 +509,7 @@ export interface RootRouteChildren {
   SettingsMcpServersRoute: typeof SettingsMcpServersRoute
   SettingsPrivacyRoute: typeof SettingsPrivacyRoute
   SettingsPromptsRoute: typeof SettingsPromptsRoute
+  SettingsRuntimesRoute: typeof SettingsRuntimesRoute
   SettingsShortcutsRoute: typeof SettingsShortcutsRoute
   SettingsVoiceRoute: typeof SettingsVoiceRoute
   ThreadsThreadIdRoute: typeof ThreadsThreadIdRoute
@@ -610,6 +623,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/shortcuts'
       fullPath: '/settings/shortcuts'
       preLoaderRoute: typeof SettingsShortcutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/runtimes': {
+      id: '/settings/runtimes'
+      path: '/settings/runtimes'
+      fullPath: '/settings/runtimes'
+      preLoaderRoute: typeof SettingsRuntimesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/prompts': {
@@ -801,6 +821,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsMcpServersRoute: SettingsMcpServersRoute,
   SettingsPrivacyRoute: SettingsPrivacyRoute,
   SettingsPromptsRoute: SettingsPromptsRoute,
+  SettingsRuntimesRoute: SettingsRuntimesRoute,
   SettingsShortcutsRoute: SettingsShortcutsRoute,
   SettingsVoiceRoute: SettingsVoiceRoute,
   ThreadsThreadIdRoute: ThreadsThreadIdRoute,
