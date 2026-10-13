@@ -47,7 +47,10 @@ describe('AddEditAssistant specialist switch', () => {
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]![0]).toMatchObject({ id: 'network', specialist: true })
+    expect(onSave.mock.calls[0]![0]).toMatchObject({
+      id: 'network',
+      specialist: true,
+    })
   })
 
   it('saves a new assistant as a specialist once switched on', async () => {
@@ -66,7 +69,10 @@ describe('AddEditAssistant specialist switch', () => {
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]![0]).toMatchObject({ name: 'Computer care', specialist: true })
+    expect(onSave.mock.calls[0]![0]).toMatchObject({
+      name: 'Computer care',
+      specialist: true,
+    })
   })
 
   it('refuses a specialist without a description', async () => {
@@ -97,7 +103,10 @@ describe('AddEditAssistant specialist switch', () => {
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]![0]).toMatchObject({ name: 'Writer', specialist: false })
+    expect(onSave.mock.calls[0]![0]).toMatchObject({
+      name: 'Writer',
+      specialist: false,
+    })
   })
 
   it('saves the network tool pack when switched on', async () => {
@@ -111,9 +120,8 @@ describe('AddEditAssistant specialist switch', () => {
     await user.click(networkSwitch())
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ tool_packs: ['network'] })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ tool_packs: ['network'] })
   })
 
   it('fills in the Network specialist from its template', async () => {
