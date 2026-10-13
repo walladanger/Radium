@@ -296,6 +296,7 @@ pub fn run() {
         core::media::runtime::media_engine_install,
         core::media::runtime::media_engine_start,
         core::media::runtime::media_engine_stop,
+        core::media::runtime::media_upscaler_install,
         core::runtimes::commands::runtimes_catalog,
         core::runtimes::commands::runtimes_detect,
         core::runtimes::ollama::commands::ollama_status,
@@ -474,6 +475,7 @@ pub fn run() {
 
     let app = app_builder
         .manage(core::media::runtime::MediaEngineState::default())
+        .manage(core::filesystem::commands::DialogGrants::default())
         .manage(core::runtimes::ollama::OllamaState::default())
         .manage(AppState {
             app_token: Some(generate_app_token()),

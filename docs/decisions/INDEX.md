@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-267 records, 2026-05-19 → 2026-10-10.
+273 records, 2026-05-19 → 2026-10-12.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -39,11 +39,16 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ---
 
-## Radium Media platform (8)
+## Radium Media platform (13)
 
 The model-agnostic media platform: provider adapters, the v2 contract, the
 library on disk, and how the frozen surface is allowed to change.
 
+- **2026-10-12** — [Continue a video from its last frame, browser-extracted and local-first](2026-10-12-continue-video-from-last-frame-browser-extracted-local-first.md)
+- **2026-10-11** — [Built-in engine progress is read on poll, not streamed as events](2026-10-11-built-in-engine-progress-is-read-on-poll.md)
+- **2026-10-11** — [Model-backed upscalers ship in the Rust catalog with a dedicated install path](2026-10-11-model-backed-upscalers-in-the-rust-catalog.md)
+- **2026-10-11** — [Full-HD images via the built-in engine's native hires-fix; no upscaler model download](2026-10-11-full-hd-images-via-built-in-engine-hires-fix.md)
+- **2026-10-11** — [Media jobs persist state-only history and retry submissions](2026-10-11-media-jobs-persist-state-only-and-retry-submits.md)
 - **2026-09-10** — [Adopt a provider-adapter architecture for Radium Media](2026-09-10-adopt-a-provider-adapter-architecture-for-radium-media.md)
 - **2026-09-10** — [Media contract v2 uses declarative parameter schemas with an open task vocabulary](2026-09-10-media-contract-v2-uses-declarative-parameter-schemas.md)
 - **2026-09-10** — [Materialise every media output to local disk before preview](2026-09-10-materialise-every-media-output-to-disk-before-preview.md)
@@ -240,6 +245,7 @@ library on disk, and how the frozen surface is allowed to change.
 
 ## Local API server & OpenAI compatibility (5)
 
+- **2026-10-10** — [Require an API key before the Local API Server binds a non-loopback address](2026-10-10-require-api-key-for-non-loopback-local-api-server.md)
 - **2026-10-10** — [Refuse Local API Server requests from untrusted browser origins](2026-10-10-refuse-local-api-requests-from-untrusted-browser-origins.md)
 - **2026-09-11** — [Make starting the Local API Server idempotent (ATO-524)](2026-09-11-make-starting-the-local-api-server-idempotent.md)
 - **2026-07-27** — [Reconcile remote providers before proxy-routed requests](2026-07-27-reconcile-remote-providers-before-proxy-routed-requests.md)
