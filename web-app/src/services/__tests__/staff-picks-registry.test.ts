@@ -114,7 +114,7 @@ describe('staff-picks-registry loader', () => {
 
   it('still serves remote picks when cache writes exceed quota', async () => {
     mockFetchSuccess(buildManifest())
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new Error('quota exceeded')
     })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -149,7 +149,7 @@ describe('staff-picks-registry loader', () => {
   })
 
   it('reports a failed cache clear without throwing', () => {
-    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+    vi.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {
       throw new Error('storage disabled')
     })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
