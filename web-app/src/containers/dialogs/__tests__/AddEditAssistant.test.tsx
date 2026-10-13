@@ -41,9 +41,8 @@ describe('AddEditAssistant specialist switch', () => {
     expect(screen.getByRole('switch')).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'network', specialist: true })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ id: 'network', specialist: true })
   })
 
   it('saves a new assistant as a specialist once switched on', async () => {
@@ -61,9 +60,8 @@ describe('AddEditAssistant specialist switch', () => {
     await user.click(screen.getByRole('switch'))
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Computer care', specialist: true })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ name: 'Computer care', specialist: true })
   })
 
   it('refuses a specialist without a description', async () => {
@@ -93,8 +91,7 @@ describe('AddEditAssistant specialist switch', () => {
     )
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Writer', specialist: false })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ name: 'Writer', specialist: false })
   })
 })
