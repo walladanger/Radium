@@ -588,13 +588,6 @@ pub const ITERATION_ONE_TOOLS: &[ToolDescriptor] = &[
         examples: &[],
     },
     ToolDescriptor {
-        name: "agent.delegate",
-        summary: "Hand one self-contained task to a specialist listed under ### specialists and get its final answer back. The specialist cannot see this conversation, so put every fact it needs into `task`. Must be the only call in its step.",
-        args_schema: r#"{ specialist: string, task: string }"#,
-        tier: ToolTier::Frequent,
-        examples: &[],
-    },
-    ToolDescriptor {
         name: "reply",
         summary: "Final natural-language answer; ends the macro-turn. Never use to announce a pending action; keep text short (no huge dumps). If the task requires an exact answer format or marker, `text` must be ONLY that bare value or marker line — no preamble or commentary.",
         args_schema: r#"{ text: string }"#,
