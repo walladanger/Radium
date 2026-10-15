@@ -20,8 +20,30 @@ enum TestRangeBehavior {
     Mismatched,
 }
 
+/// How the first response breaks off after sending the first three bytes.
+#[derive(Clone, Copy)]
+enum FirstResponseEnd {
+    /// The connection drops.
+    Aborts,
+    /// The connection stays open and sends nothing more - a CDN that went
+    /// quiet. reqwest 0.11 has no read timeout, so before the stall timeout
+    /// such a download (and an engine install awaiting it) waited forever.
+    GoesQuiet,
+}
+
 async fn spawn_interrupted_download_server(
     range_behavior: TestRangeBehavior,
+) -> (
+    String,
+    Arc<AtomicUsize>,
+    tokio::task::JoinHandle<Result<(), hyper::Error>>,
+) {
+    spawn_partial_download_server(range_behavior, FirstResponseEnd::Aborts).await
+}
+
+async fn spawn_partial_download_server(
+    range_behavior: TestRangeBehavior,
+    first_end: FirstResponseEnd,
 ) -> (
     String,
     Arc<AtomicUsize>,
@@ -40,8 +62,16 @@ async fn spawn_interrupted_download_server(
                         let (mut sender, body) = Body::channel();
                         tokio::spawn(async move {
                             sender.send_data(Bytes::from_static(b"abc")).await.unwrap();
-                            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
-                            sender.abort();
+                            match first_end {
+                                FirstResponseEnd::Aborts => {
+                                    tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+                                    sender.abort();
+                                }
+                                FirstResponseEnd::GoesQuiet => {
+                                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                                    drop(sender);
+                                }
+                            }
                         });
                         Response::builder()
                             .status(StatusCode::OK)
@@ -714,68 +744,11 @@ async fn resumes_an_interrupted_download_from_the_persisted_offset() {
     let _ = tokio::fs::remove_dir_all(save_path.parent().unwrap()).await;
 }
 
-/// A CDN that sends part of a file and then goes quiet without closing the
-/// connection. reqwest 0.11 has no read timeout, so before the stall timeout
-/// this download - and the engine install awaiting it - waited forever.
-async fn spawn_stalling_download_server() -> (
-    String,
-    Arc<AtomicUsize>,
-    tokio::task::JoinHandle<Result<(), hyper::Error>>,
-) {
-    let request_count = Arc::new(AtomicUsize::new(0));
-    let service_count = request_count.clone();
-    let make_service = make_service_fn(move |_| {
-        let service_count = service_count.clone();
-        async move {
-            Ok::<_, Infallible>(service_fn(move |request: Request<Body>| {
-                let service_count = service_count.clone();
-                async move {
-                    let request_index = service_count.fetch_add(1, Ordering::SeqCst);
-                    let response = if request_index == 0 {
-                        let (mut sender, body) = Body::channel();
-                        tokio::spawn(async move {
-                            sender.send_data(Bytes::from_static(b"abc")).await.unwrap();
-                            // Hold the connection open, sending nothing.
-                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-                            drop(sender);
-                        });
-                        Response::builder()
-                            .status(StatusCode::OK)
-                            .header(CONTENT_LENGTH, "6")
-                            .body(body)
-                            .unwrap()
-                    } else if request.headers().get(RANGE).is_some() {
-                        Response::builder()
-                            .status(StatusCode::PARTIAL_CONTENT)
-                            .header(CONTENT_RANGE, "bytes 3-5/6")
-                            .body(Body::from("def"))
-                            .unwrap()
-                    } else {
-                        Response::builder()
-                            .status(StatusCode::OK)
-                            .body(Body::from("abcdef"))
-                            .unwrap()
-                    };
-                    Ok::<_, Infallible>(response)
-                }
-            }))
-        }
-    });
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.set_nonblocking(true).unwrap();
-    let address = listener.local_addr().unwrap();
-    let server = Server::from_tcp(listener).unwrap().serve(make_service);
-    let handle = tokio::spawn(server);
-    (
-        format!("http://{address}/model.gguf"),
-        request_count,
-        handle,
-    )
-}
-
 #[tokio::test]
 async fn resumes_a_download_whose_server_stops_sending() {
-    let (url, request_count, server) = spawn_stalling_download_server().await;
+    let (url, request_count, server) =
+        spawn_partial_download_server(TestRangeBehavior::Supported, FirstResponseEnd::GoesQuiet)
+            .await;
     let save_path = test_download_path("model.gguf");
     let item = DownloadItem {
         url,

@@ -9,19 +9,29 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { Script } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const webApp = path.resolve(__dirname, '../../..')
 const indexHtml = readFileSync(path.join(webApp, 'index.html'), 'utf8')
 const bootScript = readFileSync(path.join(webApp, 'public/boot.js'), 'utf8')
 const loaderCss = readFileSync(path.join(webApp, 'src/loader.css'), 'utf8')
+const bootScreenScript = new Script(bootScript, { filename: 'public/boot.js' })
 
 type Call = { command: string; args: Record<string, unknown> }
 
-function mountBootScreen(options: { userAgent?: string } = {}) {
-  const body = /<body>([\s\S]*)<\/body>/.exec(indexHtml)![1]
+/** index.html's <body>, parsed as the browser would, minus its scripts. */
+function loadIndexBody() {
+  const parsed = new DOMParser().parseFromString(indexHtml, 'text/html')
+  parsed.querySelectorAll('script').forEach((script) => script.remove())
   document.body.className = ''
-  document.body.innerHTML = body.replace(/<script[\s\S]*?<\/script>/g, '')
+  document.body.replaceChildren(
+    ...[...parsed.body.childNodes].map((node) => document.importNode(node, true))
+  )
+}
+
+function mountBootScreen(options: { userAgent?: string; windowLabel?: string } = {}) {
+  loadIndexBody()
   const calls: Call[] = []
   ;(window as unknown as { __TAURI_INTERNALS__: unknown }).__TAURI_INTERNALS__ = {
     invoke: (command: string, args: Record<string, unknown>) => {
@@ -31,12 +41,13 @@ function mountBootScreen(options: { userAgent?: string } = {}) {
       }
       return Promise.resolve(null)
     },
-    metadata: { currentWindow: { label: 'main' } },
+    metadata: { currentWindow: { label: options.windowLabel ?? 'main' } },
   }
   if (options.userAgent) {
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(options.userAgent)
   }
-  window.eval(bootScript)
+  // Runs the shipped file as the page would: a classic script, top level.
+  bootScreenScript.runInThisContext()
   const loader = () => document.getElementById('initial-loader')
   const logLines = () =>
     calls
@@ -166,17 +177,11 @@ describe('boot screen', () => {
   })
 
   it('leaves the logs and system-monitor windows their native title bar', () => {
-    const body = /<body>([\s\S]*)<\/body>/.exec(indexHtml)![1]
-    document.body.innerHTML = body.replace(/<script[\s\S]*?<\/script>/g, '')
-    ;(window as unknown as { __TAURI_INTERNALS__: unknown }).__TAURI_INTERNALS__ = {
-      invoke: () => Promise.resolve(null),
-      metadata: { currentWindow: { label: 'logs-app-window' } },
-    }
-    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/140'
-    )
-    window.eval(bootScript)
-    expect(document.getElementById('initial-loader')!.getAttribute('data-chrome')).toBeNull()
+    const { loader } = mountBootScreen({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/140',
+      windowLabel: 'logs-app-window',
+    })
+    expect(loader()!.getAttribute('data-chrome')).toBeNull()
   })
 
   it('leaves window buttons to the OS elsewhere', () => {
