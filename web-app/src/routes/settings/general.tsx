@@ -802,6 +802,7 @@ function General() {
                     <a
                       href={`${RADIUM_GITHUB_URL}/issues/new`}
                       target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <div className="flex items-center gap-1">
                         <span>{t('settings:general.reportIssue')}</span>

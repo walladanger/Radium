@@ -116,7 +116,8 @@ test('no analytics host is allowed anywhere in the CSP', () => {
 })
 
 test('Sentry is reachable only through its ingest hosts, and only for connect', () => {
-  const sentry = connectSrc.split(/\s+/).filter((s) => s.includes('sentry'))
+  const isSentry = (s) => /(^|\.)sentry\.io$/.test(sourceHost(s) ?? '')
+  const sentry = connectSrc.split(/\s+/).filter(isSentry)
   assert.deepEqual(sentry, [
     'https://*.ingest.sentry.io',
     'https://*.ingest.us.sentry.io',
@@ -124,17 +125,21 @@ test('Sentry is reachable only through its ingest hosts, and only for connect', 
   ])
   for (const [directive, value] of Object.entries(csp)) {
     if (directive === 'connect-src') continue
-    assert.ok(
-      !JSON.stringify(value).includes('sentry'),
-      `${directive} allows sentry`
-    )
+    const sources = [value].flat().join(' ').split(/\s+/)
+    assert.deepEqual(sources.filter(isSentry), [], `${directive} allows Sentry`)
   }
 })
+
+/** The host of a CSP source expression, or null for keywords and schemes. */
+function sourceHost(source) {
+  const m = /^[a-z][a-z0-9+.-]*:\/\/([^/:]+)/i.exec(source)
+  return m ? m[1].toLowerCase() : null
+}
 
 test('raw.githubusercontent.com is allowed only for the backend manifests', () => {
   const sources = connectSrc
     .split(/\s+/)
-    .filter((s) => s.includes('raw.githubusercontent.com'))
+    .filter((s) => sourceHost(s) === 'raw.githubusercontent.com')
   assert.deepEqual(sources, [
     'https://raw.githubusercontent.com/AtomicBot-ai/atomic-chat-conf/main/backends/',
   ])
