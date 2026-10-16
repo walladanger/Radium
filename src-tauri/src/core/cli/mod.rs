@@ -570,8 +570,8 @@ mod tests {
 
         write_model(
             &data,
-            "AtomicChat/Qwen3.5-9B-GGUF",
-            "model_path: llamacpp/models/AtomicChat/Qwen3.5-9B-GGUF/model.gguf\n\
+            "unsloth/Qwen3.5-9B-GGUF",
+            "model_path: llamacpp/models/unsloth/Qwen3.5-9B-GGUF/model.gguf\n\
              name: Qwen3.5-9B\nsize_bytes: 123\nembedding: false\n",
         );
         // Embedding models cannot serve /v1/chat/completions.
@@ -587,7 +587,7 @@ mod tests {
         let models = list_chat_models_in(&data);
         let ids: Vec<&str> = models.iter().map(|(id, _)| id.as_str()).collect();
 
-        assert_eq!(ids, vec!["AtomicChat/Qwen3.5-9B-GGUF"]);
+        assert_eq!(ids, vec!["unsloth/Qwen3.5-9B-GGUF"]);
         assert_eq!(models[0].1.name.as_deref(), Some("Qwen3.5-9B"));
 
         let _ = std::fs::remove_dir_all(&data);
@@ -705,7 +705,7 @@ mod tests {
 
     #[test]
     fn recognises_huggingface_repo_ids() {
-        assert!(looks_like_hf_repo("AtomicChat/Qwen3.5-9B-GGUF"));
+        assert!(looks_like_hf_repo("unsloth/Qwen3.5-9B-GGUF"));
         assert!(!looks_like_hf_repo("./local/path"));
         assert!(!looks_like_hf_repo("/abs/path"));
         assert!(!looks_like_hf_repo("~/home"));
