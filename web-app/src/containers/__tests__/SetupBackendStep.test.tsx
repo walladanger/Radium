@@ -231,4 +231,29 @@ describe('SetupBackendStep', () => {
     }
     view.unmount()
   })
+
+  it('finishes once even when the user clicks twice', async () => {
+    const view = await mount()
+    fireEvent.click(screen.getByRole('button', { name: 'setup:skip' }))
+    fireEvent.click(screen.getByRole('button', { name: 'setup:skip' }))
+    expect(state.done.mock.calls).toEqual([['skipped']])
+    view.unmount()
+  })
+
+  it('still restarts when the onboarding flag cannot be persisted', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const view = await mount()
+    fireEvent.click(screen.getByRole('button', { name: 'setup:backendStep.downloadAction' }))
+    state.recommendationPhase = 'restart-required'
+    view.rerender(<SetupBackendStep onDone={state.done} />)
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'setup:backendStep.restartNow' }))
+    })
+    expect(state.relaunch).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0][0]).toContain('failed to persist onboarding flag')
+    view.unmount()
+  })
 })

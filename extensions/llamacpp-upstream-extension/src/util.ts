@@ -108,7 +108,7 @@ export function matchesMtpLoadFailure(text: string): boolean {
   return (
     /failed to create MTP context/i.test(text) ||
     /context type MTP requested/i.test(text) ||
-    /doesn'?t contain MTP layers/i.test(text)
+    /does(?:n't|nt) contain MTP layers/i.test(text)
   )
 }
 

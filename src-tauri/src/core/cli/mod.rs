@@ -246,7 +246,7 @@ pub fn discover_llamacpp_binary_in(data_folder: &Path) -> Option<BackendBinary> 
     // Collect version directories, newest first. Sorting the names as plain
     // strings would rank "b9000" above "b10018-1.3.0" ('9' > '1'), so the build
     // number is parsed out and compared numerically, with the raw name as the
-    // tiebreaker for anything unparseable (e.g. the fork's `turboquant-<sha>`).
+    // tiebreaker for anything unparsable (e.g. the fork's `turboquant-<sha>`).
     let mut version_entries: Vec<_> = fs::read_dir(&backends_dir)
         .ok()?
         .filter_map(|e| e.ok())
