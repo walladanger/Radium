@@ -156,5 +156,17 @@
   "threadType": {
     "chat": "Chat thread",
     "agent": "Agent thread"
+  },
+  "specialistLanes": {
+    "title": "Specialists",
+    "task": "Task:",
+    "earlier_one": "{{count}} earlier lane hidden",
+    "earlier_other": "{{count}} earlier lanes hidden",
+    "earlier": "{{count}} earlier lanes hidden",
+    "status": {
+      "running": "Working",
+      "done": "Finished",
+      "failed": "Failed"
+    }
   }
 }

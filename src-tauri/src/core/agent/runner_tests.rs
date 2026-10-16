@@ -155,6 +155,7 @@ async fn run_script_with_options(
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -254,6 +255,9 @@ fn event_kind(event: &AgentEvent) -> &'static str {
         AgentEvent::BatchTrimmed { .. } => "batch_trimmed",
         AgentEvent::AssistantReply { .. } => "assistant_reply",
         AgentEvent::StepError { .. } => "step_error",
+        AgentEvent::SpecialistStarted { .. } => "specialist_started",
+        AgentEvent::SpecialistEvent { .. } => "specialist_event",
+        AgentEvent::SpecialistFinished { .. } => "specialist_finished",
         AgentEvent::TurnFinished { .. } => "turn_finished",
     }
 }
@@ -912,6 +916,7 @@ async fn gemma4_turn_uses_native_framing_and_parses_channel_reasoning() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -1089,6 +1094,7 @@ async fn sequential_runs_share_the_session_transcript() {
                 bundled_script_runtime: None,
                 pty: &PtyRegistry::new(),
                 cache_dir: &std::env::temp_dir(),
+                slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
             },
             |_| Ok(()),
         )
@@ -1573,6 +1579,7 @@ async fn cancellation_interrupts_an_in_flight_completion() {
             bundled_script_runtime: None,
             pty: &pty,
             cache_dir: &cache_dir,
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     );
@@ -1842,6 +1849,7 @@ async fn skill_view_loads_the_body_and_restores_it_on_the_next_turn() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -1909,6 +1917,7 @@ async fn selected_skill_is_loaded_into_the_first_prompt_without_skill_view() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -1977,6 +1986,7 @@ async fn unknown_selected_skill_fails_before_completion() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )

@@ -16,8 +16,9 @@ pub enum ResourceClass {
     ApprovalGated,
     Terminal,
     /// `agent.delegate`: runs a whole specialist turn that may read, write and
-    /// request approvals of its own. Needs no approval itself, but must run
-    /// solo — other class groups in a batch execute concurrently with it.
+    /// request approvals of its own. Needs no approval itself. It never shares
+    /// a batch with other tools, but a batch made only of delegations runs its
+    /// specialists concurrently (see [`is_delegation_batch`]).
     Delegation,
     Unknown,
 }
@@ -133,7 +134,21 @@ pub fn runs_solo(class: ResourceClass) -> bool {
 }
 
 pub fn is_parallel_within_group(class: ResourceClass) -> bool {
-    class == ResourceClass::PureRead
+    matches!(class, ResourceClass::PureRead | ResourceClass::Delegation)
+}
+
+/// Most specialists one batch may run at once. Matches the four lanes of the
+/// agents view and keeps local runtimes within a sane number of slots.
+pub const MAX_PARALLEL_DELEGATIONS: usize = 4;
+
+/// A batch of 2..=[`MAX_PARALLEL_DELEGATIONS`] calls that are all
+/// `agent.delegate`: the one shape in which a solo-only class may share a
+/// batch, because each specialist runs in its own fresh session.
+pub fn is_delegation_batch(classes: &[ResourceClass]) -> bool {
+    (2..=MAX_PARALLEL_DELEGATIONS).contains(&classes.len())
+        && classes
+            .iter()
+            .all(|class| *class == ResourceClass::Delegation)
 }
 
 #[cfg(test)]
@@ -182,6 +197,19 @@ mod tests {
                 "{tool}"
             );
         }
+    }
+
+    #[test]
+    fn delegation_batches_run_in_parallel_only_on_their_own() {
+        use ResourceClass::{Delegation, PureRead};
+        assert!(is_parallel_within_group(Delegation));
+        assert!(!is_delegation_batch(&[Delegation]));
+        assert!(is_delegation_batch(&[Delegation, Delegation]));
+        assert!(is_delegation_batch(&[Delegation; MAX_PARALLEL_DELEGATIONS]));
+        assert!(!is_delegation_batch(
+            &[Delegation; MAX_PARALLEL_DELEGATIONS + 1]
+        ));
+        assert!(!is_delegation_batch(&[Delegation, PureRead]));
     }
 
     #[test]

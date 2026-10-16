@@ -207,6 +207,19 @@ pub struct AgentSpecialist {
     /// Tool families this specialist gets on top of the shared tools.
     #[serde(default)]
     pub tool_packs: Vec<String>,
+    /// Model this specialist runs on. `None` shares the coordinator's model.
+    #[serde(default)]
+    pub model_id: Option<String>,
+    /// Provider of `model_id`. Ignored without `model_id`; `None` with a
+    /// `model_id` uses the same provider scan as a regular turn.
+    #[serde(default)]
+    pub provider: Option<String>,
+    /// Capabilities of `model_id` (`"tools"`, `"vision"`, …).
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    /// Context window of `model_id`, as known to the frontend.
+    #[serde(default)]
+    pub context_window: Option<usize>,
 }
 
 /// Per-turn RAG context. Collection names are computed frontend-side
@@ -458,6 +471,25 @@ pub enum AgentEvent {
     StepError {
         message: String,
         category: String,
+    },
+    /// A specialist lane opened: `agent.delegate` handed `task` to `specialist`.
+    SpecialistStarted {
+        lane_id: String,
+        specialist: String,
+        model_id: String,
+        task: String,
+    },
+    /// One event of a specialist's nested turn, tagged with its lane.
+    SpecialistEvent {
+        lane_id: String,
+        event: Box<AgentEvent>,
+    },
+    /// A specialist lane closed. `ok` is false when it failed, was cancelled
+    /// or ended without an answer; `summary` is its answer or the reason.
+    SpecialistFinished {
+        lane_id: String,
+        ok: bool,
+        summary: String,
     },
     TurnFinished {
         /// `"reply"` | `"finish"` | `"max_steps"` | `"cancelled"` | `"failed"`.
