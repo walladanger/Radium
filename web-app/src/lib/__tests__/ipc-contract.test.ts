@@ -32,6 +32,7 @@ const EXPECTED_DESKTOP_ONLY = new Set([
   'media_engine_stop',
   'media_ffmpeg_available',
   'media_upscaler_install',
+  'media_upscale_image',
   // Radium Media provider credentials, in the OS credential store. Desktop
   // only on purpose: mobile has no media providers, and shipping a credential
   // surface it does not need would widen the attack surface for nothing.
