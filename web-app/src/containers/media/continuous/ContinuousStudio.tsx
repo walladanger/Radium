@@ -228,7 +228,7 @@ export function ContinuousStudio() {
 
   const planFor = () =>
     planMd ||
-    planToMarkdown({ story: story || name, segments: segments.map((s, i) => ({ index: i, prompt: inherited[i] ?? '' })) })
+    planToMarkdown({ story: story || name, segments: segments.map((_s, i) => ({ index: i, prompt: inherited[i] ?? '' })) })
 
   const save = async (then?: (session: ContinuousSession) => Promise<void>) => {
     if (problems.length > 0) {

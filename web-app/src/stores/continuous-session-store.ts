@@ -104,7 +104,7 @@ async function realDeps(): Promise<SessionRunnerDeps> {
       const clip = assets.find((asset) => asset.media_type === 'video') ?? assets[0]
       if (!clip) throw new Error('The provider returned no output.')
       await gen.addToLibrary(assets)
-      return { asset_id: clip.id, path: clip.path, mime: clip.mime }
+      return { asset_id: clip.asset_id, path: clip.path, mime: clip.mime }
     },
     stitch: async (paths, session) => {
       const hub = getServiceHub().core()
