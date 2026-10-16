@@ -23,6 +23,8 @@ const specialistSwitch = () =>
   screen.getByRole('switch', { name: 'assistants:specialist' })
 const networkSwitch = () =>
   screen.getByRole('switch', { name: 'assistants:networkPack' })
+const computerSwitch = () =>
+  screen.getByRole('switch', { name: 'assistants:computerPack' })
 
 function renderDialog(initialData?: Assistant) {
   const onSave = vi.fn()
@@ -145,10 +147,52 @@ describe('AddEditAssistant specialist switch', () => {
     )
   })
 
+  it('saves both tool packs when both are switched on', async () => {
+    const user = userEvent.setup()
+    const onSave = renderDialog()
+
+    await user.type(
+      screen.getByPlaceholderText('assistants:enterName'),
+      'Helper'
+    )
+    await user.click(networkSwitch())
+    await user.click(computerSwitch())
+    await user.click(screen.getByRole('button', { name: 'assistants:save' }))
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ tool_packs: ['network', 'computer'] })
+    )
+  })
+
+  it('fills in the Computer care specialist from its template', async () => {
+    const user = userEvent.setup()
+    const onSave = renderDialog()
+
+    await user.click(
+      screen.getByRole('button', { name: 'assistants:useComputerTemplate' })
+    )
+    expect(specialistSwitch()).toBeChecked()
+    expect(computerSwitch()).toBeChecked()
+    expect(networkSwitch()).not.toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'assistants:save' }))
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Computer care',
+        specialist: true,
+        tool_packs: ['computer'],
+        instructions: expect.stringContaining('sys.overview'),
+      })
+    )
+  })
+
   it('offers the template only when creating an assistant', () => {
     renderDialog(existing)
     expect(
       screen.queryByRole('button', { name: 'assistants:useNetworkTemplate' })
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'assistants:useComputerTemplate' })
     ).toBeNull()
   })
 })

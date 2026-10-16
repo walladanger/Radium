@@ -58,6 +58,26 @@ describe('presentGenericTool', () => {
     ).toMatchObject({ title: 'Changing DNS servers', subtitle: 'Wi-Fi' })
   })
 
+  it('names the computer-care action and its target', () => {
+    expect(
+      presentGenericTool({
+        toolName: 'sys.disable_startup_item',
+        input: { name: 'Spotify' },
+        state: 'input-available',
+      })
+    ).toMatchObject({
+      title: 'Turning off startup program',
+      subtitle: 'Spotify',
+    })
+    expect(
+      presentGenericTool({
+        toolName: 'sys.disk_usage',
+        input: {},
+        state: 'output-available',
+      })
+    ).toMatchObject({ title: 'Checked disk space' })
+  })
+
   it('humanizes unknown MCP tool names', () => {
     expect(
       presentGenericTool({

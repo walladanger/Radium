@@ -35,6 +35,7 @@ use super::session::{load_session, save_session, validate_session_id, AgentResee
 use super::skills::load_registry;
 use super::target::{resolve_agent_target, resolve_mlx_target, AgentTarget};
 use super::tools::net::{net_tool_names, NETWORK_PACK};
+use super::tools::sys::{sys_tool_names, COMPUTER_PACK};
 use super::tools::{DelegateHook, DesktopServices};
 use super::types::{
     AgentApprovalDecision, AgentEvent, AgentFolderAccessDecision, AgentReasoning, AgentSpecialist,
@@ -1016,12 +1017,15 @@ async fn clear_pending_folder_access_for_run(state: &AppState, run_id: &str) {
 
 /// Tools that stay off because their tool pack is not enabled for this agent.
 fn disabled_by_tool_packs(packs: &[String]) -> Vec<String> {
-    let network = packs.iter().any(|pack| pack == NETWORK_PACK);
-    if network {
-        Vec::new()
-    } else {
-        net_tool_names().map(str::to_owned).collect()
+    let has = |name: &str| packs.iter().any(|pack| pack == name);
+    let mut disabled = Vec::new();
+    if !has(NETWORK_PACK) {
+        disabled.extend(net_tool_names().map(str::to_owned));
     }
+    if !has(COMPUTER_PACK) {
+        disabled.extend(sys_tool_names().map(str::to_owned));
+    }
+    disabled
 }
 
 fn validate_request(request: &AgentTurnRequest) -> Result<(), String> {
@@ -1050,7 +1054,10 @@ fn validate_request(request: &AgentTurnRequest) -> Result<(), String> {
 }
 
 fn validate_tool_packs(packs: &[String]) -> Result<(), String> {
-    match packs.iter().find(|pack| pack.as_str() != NETWORK_PACK) {
+    match packs
+        .iter()
+        .find(|pack| pack.as_str() != NETWORK_PACK && pack.as_str() != COMPUTER_PACK)
+    {
         Some(unknown) => Err(format!("Unknown tool pack: '{unknown}'")),
         None => Ok(()),
     }

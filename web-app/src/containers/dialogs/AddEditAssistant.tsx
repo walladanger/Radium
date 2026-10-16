@@ -13,7 +13,12 @@ import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
 
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { NETWORK_SPECIALIST_TEMPLATE } from '@/lib/assistant-templates'
+import {
+  COMPUTER_CARE_SPECIALIST_TEMPLATE,
+  NETWORK_SPECIALIST_TEMPLATE,
+  type AssistantTemplate,
+} from '@/lib/assistant-templates'
+import type { AgentToolPack } from '@/types/agent'
 
 import { useTheme } from '@/hooks/useTheme'
 import { useModelProvider } from '@/hooks/useModelProvider'
@@ -54,6 +59,9 @@ export default function AddEditAssistant({
   const [networkPack, setNetworkPack] = useState(
     initialData?.tool_packs?.includes('network') === true
   )
+  const [computerPack, setComputerPack] = useState(
+    initialData?.tool_packs?.includes('computer') === true
+  )
   const { isDark } = useTheme()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
@@ -93,6 +101,7 @@ export default function AddEditAssistant({
       setSpecialist(initialData.specialist === true)
       setSpecialistModel(initialData.specialist_model)
       setNetworkPack(initialData.tool_packs?.includes('network') === true)
+      setComputerPack(initialData.tool_packs?.includes('computer') === true)
       setSpecialistError(null)
       setShowEmojiPicker(false)
       // setToolStepsInput(String(initialData.tool_steps ?? 20))
@@ -110,10 +119,23 @@ export default function AddEditAssistant({
     setSpecialist(false)
     setSpecialistModel(undefined)
     setNetworkPack(false)
+    setComputerPack(false)
     setSpecialistError(null)
     setNameError(null)
     setShowEmojiPicker(false)
     // setToolStepsInput('20')
+  }
+
+  const applyTemplate = (template: AssistantTemplate) => {
+    setAvatar(template.avatar)
+    setName(template.name)
+    setDescription(template.description)
+    setInstructions(template.instructions)
+    setSpecialist(template.specialist)
+    setNetworkPack(template.tool_packs.includes('network'))
+    setComputerPack(template.tool_packs.includes('computer'))
+    setNameError(null)
+    setSpecialistError(null)
   }
 
   const handleSave = () => {
@@ -145,7 +167,9 @@ export default function AddEditAssistant({
       sampling_overridden: initialData?.sampling_overridden,
       specialist,
       specialist_model: specialist ? specialistModel : undefined,
-      tool_packs: networkPack ? ['network'] : [],
+      tool_packs: (
+        [networkPack && 'network', computerPack && 'computer'] as const
+      ).filter((pack): pack is AgentToolPack => pack !== false),
       // tool_steps: isNaN(parsedToolSteps) ? 20 : parsedToolSteps,
     }
     onSave(assistant)
@@ -166,25 +190,24 @@ export default function AddEditAssistant({
           </DialogTitle>
         </DialogHeader>
         {!editingKey && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => {
-              const template = NETWORK_SPECIALIST_TEMPLATE
-              setAvatar(template.avatar)
-              setName(template.name)
-              setDescription(template.description)
-              setInstructions(template.instructions)
-              setSpecialist(template.specialist)
-              setNetworkPack(template.tool_packs.includes('network'))
-              setNameError(null)
-              setSpecialistError(null)
-            }}
-          >
-            {t('assistants:useNetworkTemplate')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyTemplate(NETWORK_SPECIALIST_TEMPLATE)}
+            >
+              {t('assistants:useNetworkTemplate')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => applyTemplate(COMPUTER_CARE_SPECIALIST_TEMPLATE)}
+            >
+              {t('assistants:useComputerTemplate')}
+            </Button>
+          </div>
         )}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -375,6 +398,22 @@ export default function AddEditAssistant({
               id="assistant-network-pack"
               checked={networkPack}
               onCheckedChange={setNetworkPack}
+            />
+          </div>
+
+          <div className="flex items-start justify-between gap-4 pt-2">
+            <div className="space-y-1">
+              <label htmlFor="assistant-computer-pack" className="text-sm">
+                {t('assistants:computerPack')}
+              </label>
+              <div className="text-xs text-muted-foreground">
+                {t('assistants:computerPackDesc')}
+              </div>
+            </div>
+            <Switch
+              id="assistant-computer-pack"
+              checked={computerPack}
+              onCheckedChange={setComputerPack}
             />
           </div>
         </div>

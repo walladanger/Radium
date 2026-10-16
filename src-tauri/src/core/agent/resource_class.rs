@@ -63,7 +63,14 @@ pub fn resource_class_for(tool_name: &str) -> ResourceClass {
         | "net.ping"
         | "net.traceroute"
         | "net.neighbors"
-        | "net.port_check" => ResourceClass::PureRead,
+        | "net.port_check"
+        | "sys.overview"
+        | "sys.disk_usage"
+        | "sys.large_items"
+        | "sys.top_processes"
+        | "sys.startup_items"
+        | "sys.pending_updates"
+        | "sys.recent_errors" => ResourceClass::PureRead,
         "vision.describe" => ResourceClass::Vision,
         "os.clipboard.write" | "os.notify" => ResourceClass::MemoryWrite,
         "os.fs.write" | "os.fs.mkdir" | "os.fs.edit" => ResourceClass::FsWrite,
@@ -82,7 +89,11 @@ pub fn resource_class_for(tool_name: &str) -> ResourceClass {
         | "net.adapter_restart"
         | "net.set_dns"
         | "net.wifi_reconnect"
-        | "net.stack_reset" => ResourceClass::ApprovalGated,
+        | "net.stack_reset"
+        | "sys.clean_temp"
+        | "sys.empty_recycle_bin"
+        | "sys.disable_startup_item"
+        | "sys.enable_startup_item" => ResourceClass::ApprovalGated,
         "agent.delegate" => ResourceClass::Delegation,
         "reply" | "finish" => ResourceClass::Terminal,
         _ => ResourceClass::Unknown,
@@ -191,6 +202,16 @@ mod tests {
             assert_eq!(resource_class_for(tool), ResourceClass::PureRead, "{tool}");
         }
         for tool in crate::core::agent::tools::net::NET_FIX_TOOLS {
+            assert_eq!(
+                resource_class_for(tool),
+                ResourceClass::ApprovalGated,
+                "{tool}"
+            );
+        }
+        for tool in crate::core::agent::tools::sys::SYS_DIAGNOSE_TOOLS {
+            assert_eq!(resource_class_for(tool), ResourceClass::PureRead, "{tool}");
+        }
+        for tool in crate::core::agent::tools::sys::SYS_FIX_TOOLS {
             assert_eq!(
                 resource_class_for(tool),
                 ResourceClass::ApprovalGated,
