@@ -30,6 +30,7 @@ import { useOptimisticUserMessage } from '@/hooks/useOptimisticUserMessage'
 import { buildOptimisticUserMessage } from '@/lib/optimisticUserMessage'
 import { useChat } from '@/hooks/use-chat'
 import { useModelProvider } from '@/hooks/useModelProvider'
+import { AgentSpecialistLanes } from '@/containers/AgentSpecialistLanes'
 import { renderInstructions } from '@/lib/instructionTemplate'
 import {
   agentToolPacks,
@@ -984,7 +985,11 @@ function ThreadDetail() {
             rag,
             specialists: buildAgentSpecialists(
               useAssistant.getState().assistants,
-              threadAssistant?.id
+              threadAssistant?.id,
+              (provider, modelId) =>
+                getProviderByName(provider)?.models.find(
+                  (model) => model.id === modelId
+                )
             ),
             tool_packs: agentToolPacks(
               useAssistant
@@ -2016,6 +2021,7 @@ function ThreadDetail() {
 
             {/* Chat Input - Fixed at bottom */}
             <div className="py-4 mx-auto w-full md:w-4/5 xl:w-4/6">
+              <AgentSpecialistLanes lanes={agentRun?.lanes} />
               <ChatInput
                 model={threadModel}
                 onSubmit={handleSubmit}

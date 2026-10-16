@@ -480,6 +480,7 @@ async fn run_task_sample(
             session: &mut session,
             skill_registry,
             cache_dir: &workspace,
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
             pty: &pty,
             bundled_script_runtime: None,
         },

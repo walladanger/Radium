@@ -206,4 +206,76 @@ describe('useAgentRun', () => {
     expect(afterTrim.status).toBe('running')
     expect(afterTrim.trace.tools).toEqual([])
   })
+
+  it('folds specialist events into their own lanes', () => {
+    let state = reduceAgentRunState(
+      createAgentRunState(),
+      {
+        type: 'specialist_started',
+        lane_id: 'run#1',
+        specialist: 'Network',
+        model_id: 'qwen3-8b',
+        task: 'Check the router',
+      },
+      1_000
+    )
+    state = reduceAgentRunState(
+      state,
+      {
+        type: 'specialist_started',
+        lane_id: 'run#2',
+        specialist: 'Storage',
+        model_id: 'claude-sonnet',
+        task: 'Check the disks',
+      },
+      1_001
+    )
+    state = reduceAgentRunState(state, {
+      type: 'specialist_event',
+      lane_id: 'run#1',
+      event: parsed,
+    })
+    state = reduceAgentRunState(state, {
+      type: 'specialist_event',
+      lane_id: 'run#2',
+      event: { type: 'assistant_delta', text: 'Disks ' },
+    })
+    state = reduceAgentRunState(state, {
+      type: 'specialist_event',
+      lane_id: 'run#2',
+      event: { type: 'assistant_delta', text: 'are fine' },
+    })
+    state = reduceAgentRunState(
+      state,
+      {
+        type: 'specialist_finished',
+        lane_id: 'run#2',
+        ok: true,
+        summary: 'Storage answered: Disks are fine',
+      },
+      2_000
+    )
+    // Unknown lanes are ignored rather than invented.
+    state = reduceAgentRunState(state, {
+      type: 'specialist_event',
+      lane_id: 'run#9',
+      event: { type: 'assistant_delta', text: 'stray' },
+    })
+
+    expect(state.lanes?.map((lane) => lane.specialist)).toEqual([
+      'Network',
+      'Storage',
+    ])
+    const [network, storage] = state.lanes ?? []
+    expect(network.status).toBe('running')
+    expect(network.tools.map((tool) => tool.call.tool)).toEqual(['os.fs.read'])
+    expect(network.text).toBe('')
+    expect(storage.status).toBe('done')
+    expect(storage.text).toBe('Disks are fine')
+    expect(storage.summary).toBe('Storage answered: Disks are fine')
+    expect(storage.finishedAtMs).toBe(2_000)
+    // The coordinator's own trace is untouched by lane events.
+    expect(state.trace.tools).toEqual([])
+    expect(state.trace.assistantText).toBe('')
+  })
 })

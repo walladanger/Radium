@@ -251,21 +251,45 @@ model contradicted itself rather than repeating itself.
 ### Specialist delegation
 
 Assistants marked as specialists arrive on the turn request as `specialists`
-(name, description, rendered instructions). The coordinator sees them under
-`### specialists` and calls `agent.delegate { specialist, task }`.
+(name, description, rendered instructions, and optionally their own
+`model_id` / `provider` / `capabilities` / `context_window`). The coordinator
+sees them under `### specialists` and calls `agent.delegate { specialist, task }`.
 `delegation::SpecialistDelegator` runs a nested `run_turn` with:
 
 - the specialist's own stable prefix (its instructions, no roster, no
   `agent.delegate` — delegation is one level deep);
-- a fresh in-memory session (`<session>--<slug>`) that sees only `task`;
-- the coordinator's client, roots, MCP/docs bridges, approval gate and
-  cancellation token, with steps capped at 24.
+- a fresh in-memory session (`<session>--<slug>-<lane>`) that sees only `task`;
+- its own client when it names a model (resolved up front through
+  `resolve_agent_target`, so local llama.cpp/MLX and cloud models all work and a
+  bad model fails the turn before it starts), otherwise the coordinator's;
+- llama.cpp slot `ANY_SLOT` (-1), so specialists never queue behind or evict
+  the coordinator's pinned slot 0;
+- the coordinator's roots, MCP/docs bridges and cancellation token, and its
+  approval and folder-access gates wrapped so prompts from parallel
+  specialists are asked one at a time; steps capped at 24.
 
-Only the specialist's final `AssistantReply` returns, as the tool observation;
-its lifecycle events are not forwarded. `ResourceClass::Delegation` needs no
-approval but runs solo (`runs_solo`), since class groups in a batch execute
-concurrently. Without specialists the tool is disabled everywhere and the
-prefix is byte-identical to a turn without delegation.
+**Parallel lanes.** `ResourceClass::Delegation` needs no approval and never
+shares a batch with other tools (`runs_solo`), but a batch of 2–4 calls that
+are all `agent.delegate` (`is_delegation_batch`) is valid and runs its
+specialists concurrently (`is_parallel_within_group`), capped by a per-turn
+semaphore at `MAX_PARALLEL_DELEGATIONS` = 4.
+
+**Events.** Only the specialist's final `AssistantReply` returns to the
+coordinator, as the tool observation. For the UI, each delegation opens a lane:
+`SpecialistStarted { lane_id, specialist, model_id, task }`, then every event
+of the nested turn as `SpecialistEvent { lane_id, event }`, then
+`SpecialistFinished { lane_id, ok, summary }`. The coordinator's own
+`TurnStarted`/`TurnFinished` stay unwrapped and tied to its run. The web app
+folds lanes into `AgentRunState.lanes` and draws up to four scrolling columns
+above the composer (`AgentSpecialistLanes`).
+
+Without specialists the tool is disabled everywhere and the prefix is
+byte-identical to a turn without delegation.
+
+**Not yet:** parallel specialists share the coordinator's editable roots, so
+two that write the same file race (every write still passes the approval
+gate unless the run auto-approves). Per-lane git worktrees, a structured
+report contract and an orchestrator review loop are the next phases.
 
 ### Attachment contract
 
