@@ -19,10 +19,13 @@ pub mod bridge;
 pub mod commands;
 pub mod host;
 pub mod manifest;
+mod packages;
 pub mod protocol;
 pub mod registry;
 pub mod resolve;
 
+#[cfg(test)]
+mod directory_tests;
 #[cfg(test)]
 mod tests;
 
@@ -37,6 +40,13 @@ use tauri::{Manager, Runtime, UriSchemeContext};
 /// including the move the product rename made, and the override the tests use.
 pub fn panels_root<R: Runtime>(app: &tauri::AppHandle<R>) -> std::path::PathBuf {
     crate::core::app::commands::get_jan_data_folder_path(app.clone()).join("panels")
+}
+
+/// Cordis packages have a separate install directory, discovered by the same panel registry.
+pub fn cordis_plugins_root<R: Runtime>(app: &tauri::AppHandle<R>) -> std::path::PathBuf {
+    crate::core::app::commands::get_jan_data_folder_path(app.clone())
+        .join("plugins")
+        .join("cordis")
 }
 
 /// Per-panel key/value storage, kept out of the panel folders so uninstalling
@@ -74,8 +84,9 @@ pub fn handle_panel_request<R: Runtime>(
         return not_ready("resource directory unavailable");
     };
 
-    protocol::serve(
+    protocol::serve_with_cordis(
         &root,
+        &cordis_plugins_root(app),
         &protocol::contract_dir(&resource_dir),
         &panel_id,
         &path,

@@ -41,7 +41,10 @@ export function PanelBoard({ refreshKey, statusReady = true }: { refreshKey?: nu
   }, [listing])
 
   const broken = useMemo(
-    () => new Map((listing?.broken ?? []).map((entry) => [`panel:${entry.id}`, entry])),
+    // Errors carry a directory scope for safe removal; board identity stays panel:<id>.
+    () => new Map((listing?.broken ?? []).map((entry) => [
+      `panel:${entry.id.replace(/^(panels|cordis):/, '')}`, entry,
+    ])),
     [listing]
   )
 

@@ -42,6 +42,7 @@ export function WorkspaceShell({ standalone = false, statusReady = true }: { sta
   const [available, setAvailable] = useState<{ id: string; name: string }[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
+  const [installSource, setInstallSource] = useState('panels')
 
   const openSet = useMemo(() => new Set(open), [open])
 
@@ -64,6 +65,7 @@ export function WorkspaceShell({ standalone = false, statusReady = true }: { sta
     try {
       const manifest = await invoke<{ id: string; name: string }>('panels_install', {
         sourcePath: source,
+        ...(installSource === 'cordis' ? { source: 'cordis' } : {}),
       })
       addPanel(`panel:${manifest.id}`)
       setRefreshKey((key) => key + 1)
@@ -112,6 +114,15 @@ export function WorkspaceShell({ standalone = false, statusReady = true }: { sta
               </PopoverContent>
             </Popover>
 
+            <select
+              aria-label="Install location"
+              className="rounded border border-border bg-background px-2 py-1 text-xs"
+              value={installSource}
+              onChange={(event) => setInstallSource(event.target.value)}
+            >
+              <option value="panels">Panels</option>
+              <option value="cordis">Cordis plugins</option>
+            </select>
             <Button variant="ghost" size="sm" onClick={() => void install()}>
               <IconPackageImport className="size-3.5" /> Install
             </Button>

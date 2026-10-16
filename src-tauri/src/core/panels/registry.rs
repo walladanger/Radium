@@ -91,6 +91,53 @@ impl PanelRegistry {
         Ok(registry)
     }
 
+    /// Discover both directories through one authority, keeping IDs globally unique.
+    /// Disable both sides of a collision: silently choosing one could transfer bridge
+    /// permissions or saved settings to a different package after a refresh.
+    pub fn load_combined(panels_root: &Path, cordis_root: &Path) -> Result<Self, String> {
+        let mut registry = Self::load(panels_root)?;
+        let mut cordis = Self::load(cordis_root)?;
+        let ids: std::collections::BTreeSet<String> = cordis
+            .panels
+            .keys()
+            .cloned()
+            .chain(cordis.broken.iter().map(|panel| panel.id.clone()))
+            .collect();
+        for id in ids {
+            if registry.panels.contains_key(&id)
+                || registry.broken.iter().any(|panel| panel.id == id)
+            {
+                let error = "Duplicate ID in panels and plugins/cordis; rename one package and its manifest ID.".to_string();
+                registry.panels.remove(&id);
+                cordis.panels.remove(&id);
+                if !registry.broken.iter().any(|panel| panel.id == id) {
+                    registry.broken.push(BrokenPanel {
+                        id: id.clone(),
+                        errors: vec![error.clone()],
+                    });
+                }
+                if !cordis.broken.iter().any(|panel| panel.id == id) {
+                    cordis.broken.push(BrokenPanel {
+                        id,
+                        errors: vec![error],
+                    });
+                }
+            }
+        }
+        for panel in &mut registry.broken {
+            panel.id = format!("panels:{}", panel.id);
+        }
+        registry.panels.extend(cordis.panels);
+        registry
+            .broken
+            .extend(cordis.broken.into_iter().map(|mut panel| {
+                // Scoped error IDs let the existing Remove command locate broken packages too.
+                panel.id = format!("cordis:{}", panel.id);
+                panel
+            }));
+        Ok(registry)
+    }
+
     fn add(&mut self, folder: &str, panel_root: &Path) {
         let manifest_path = panel_root.join("panel.json");
         // A symlinked manifest could point anywhere; the same reasoning as the

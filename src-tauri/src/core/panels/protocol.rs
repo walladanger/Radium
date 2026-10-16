@@ -71,6 +71,36 @@ pub fn serve(
     panel_id: &str,
     request_path: &str,
 ) -> Response<Cow<'static, [u8]>> {
+    serve_from_registry(
+        PanelRegistry::load(panels_root),
+        contract_dir,
+        panel_id,
+        request_path,
+    )
+}
+
+/// Cordis GUI bundles use the same URL, sandbox, SDK and request bridge as panels.
+pub fn serve_with_cordis(
+    panels_root: &Path,
+    cordis_root: &Path,
+    contract_dir: &Path,
+    panel_id: &str,
+    request_path: &str,
+) -> Response<Cow<'static, [u8]>> {
+    serve_from_registry(
+        PanelRegistry::load_combined(panels_root, cordis_root),
+        contract_dir,
+        panel_id,
+        request_path,
+    )
+}
+
+fn serve_from_registry(
+    registry: Result<PanelRegistry, String>,
+    contract_dir: &Path,
+    panel_id: &str,
+    request_path: &str,
+) -> Response<Cow<'static, [u8]>> {
     let relative = request_path.trim_start_matches('/');
     if let Some(shared) = SHARED_FILES.iter().find(|name| **name == relative) {
         return match std::fs::read(contract_dir.join(shared)) {
@@ -79,7 +109,7 @@ pub fn serve(
         };
     }
 
-    let registry = match PanelRegistry::load(panels_root) {
+    let registry = match registry {
         Ok(registry) => registry,
         Err(_) => return text_response(500, "panels directory unavailable"),
     };

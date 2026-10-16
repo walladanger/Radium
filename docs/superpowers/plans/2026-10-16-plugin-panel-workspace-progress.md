@@ -75,3 +75,35 @@ execution. Native acceptance is a gate before calling this UI ready to release.
 - Root orchestration and native/browser acceptance remain blocked as described above. This is a local implementation checkpoint, not a release-ready build.
 
 Continue with packaged Windows acceptance, then one real Cordis GUI contribution through the existing panel bridge. Typed connections and explicit execution follow that adapter.
+
+## Separate Cordis directory follow-up
+
+Requested: separate Cordis plugin directory with exactly the same panel access.
+Implemented: `<data>/plugins/cordis/<id>` alongside `<data>/panels/<id>`; shared
+listing, protocol/CSP/SDK, permission bridge, Add Panel and layout presentation.
+The existing Install flow adds a directory selector; the manager adds a Cordis
+folder button and removes bundles from their discovered root. Defaults preserve
+ordinary-panel installation. Cross-root ID collisions are refused or disabled,
+including broken-package identities; scoped errors still resolve to existing
+board tiles. Pure filesystem helpers moved from commands into packages.rs so
+these operations can be verified without starting the full desktop runtime.
+
+GUI tests: two new controls failed before implementation; scoped error rendering
+also failed before its fix. Native filesystem/registry/protocol regression suite:
+10 passed using actual production modules in tests/panel-host. The native Cargo
+app test build was attempted with the installed toolchain discovered under .cargo/bin;
+compilation was blocked by ring/zstd-sys native build failures (zstd librarian
+LNK1114/error 5). Earlier statement that Cargo was absent meant absent from PATH;
+the toolchain is installed and the lightweight Rust suite now runs successfully.
+No packaged/native IPC acceptance is claimed. Cordis runtime loading remains a
+separate milestone; this follow-up establishes installation/discovery of its GUI
+bundles via the current panel contract.
+
+Final follow-up validation: full web-app suite 347 files passed, 4,177 tests
+passed and 11 skipped (180.87 seconds). Focused panels: 86 passed. Lightweight
+Rust host suite: 10 passed (subset-import dead-code warnings only). Node contracts:
+18 passed. Scoped ESLint: 0 errors, 7 existing warnings. Production Vite bundle:
+passed (9.65 seconds). ES2023 diagnostic typecheck: passed; standard tsc -b rerun
+confirms the same eight diagnostics in unchanged files. Native app build/IPC
+acceptance remains blocked/unverified as described above. Changes remain on the
+local codex/plugin-panel-workspace feature branch; no merge or installation.

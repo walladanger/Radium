@@ -284,3 +284,33 @@ describe('PanelTile', () => {
     expect(button.getAttribute('aria-label')).toBe('Close Logs')
   })
 })
+
+
+describe('Cordis plugin directory access', () => {
+  it('installs a Cordis GUI through the same Install flow and opens it on the board', async () => {
+    picked.path = '/somewhere/fresh-panel'
+    render(<WorkspaceShell />)
+    fireEvent.change(screen.getByLabelText('Install location'), { target: { value: 'cordis' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Install$/ }))
+    await screen.findByText('Installed Fresh panel')
+    expect(invoked.calls.find((call) => call.cmd === 'panels_install')?.args).toEqual({
+      sourcePath: '/somewhere/fresh-panel', source: 'cordis',
+    })
+    expect(useBoard.getState().open).toContain('panel:fresh-panel')
+  })
+
+  it('opens the Cordis directory from the existing Panels manager', async () => {
+    render(<WorkspaceShell />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Cordis plugins folder' }))
+    await waitFor(() => expect(invoked.calls.some((call) => call.cmd === 'panels_open_folder' &&
+      (call.args as { source?: string })?.source === 'cordis')).toBe(true))
+  })
+})
+
+
+it('shows a broken Cordis GUI reason in its existing board tile', async () => {
+  listing.value = { installed: [], broken: [{ id: 'cordis:bad-gui', errors: ['Cordis entry file not found'] }] }
+  useBoard.setState({ open: ['panel:bad-gui'] })
+  render(<PanelBoard />)
+  expect(await screen.findByText('Cordis entry file not found')).toBeTruthy()
+})

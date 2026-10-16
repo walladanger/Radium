@@ -547,7 +547,7 @@ fn an_empty_allowlist_grants_nothing_even_with_the_permission() {
 // Install: what a folder from someone else is allowed to bring with it.
 // ---------------------------------------------------------------------------
 
-use super::commands::install_from;
+use super::packages::install_from;
 
 #[test]
 fn installing_validates_the_manifest_before_copying_anything() {
