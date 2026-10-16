@@ -33,7 +33,13 @@ type ModelLike = {
   }
 }
 
-/** Numeric `ctx_len` of a model, or `undefined` when it has none. */
+/**
+ * Read a positive finite context size from the model's settings.
+ * Strings use parseInt with radix 10, so a leading integer is accepted.
+ *
+ * @param model Model record; absent or unparseable settings return undefined.
+ * @returns The stored number or parsed integer; numeric values are not rounded.
+ */
 export function readModelCtxLen(model: ModelLike | null | undefined): number | undefined {
   const raw = model?.settings?.ctx_len?.controller_props?.value
   if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw
@@ -44,7 +50,12 @@ export function readModelCtxLen(model: ModelLike | null | undefined): number | u
   return undefined
 }
 
-/** `auto_increase_ctx_len` of a model; defaults to on. */
+/**
+ * Read the model's automatic context-growth preference.
+ *
+ * @param model Model record with an optional auto_increase_ctx_len setting.
+ * @returns The stored boolean, or true for absent and non-boolean values.
+ */
 export function readAutoIncreaseCtx(model: ModelLike | null | undefined): boolean {
   const raw = model?.settings?.auto_increase_ctx_len?.controller_props?.value
   return typeof raw === 'boolean' ? raw : true
@@ -54,6 +65,11 @@ export function readAutoIncreaseCtx(model: ModelLike | null | undefined): boolea
  * Training-max context of a local model, asked from its engine. Duck-typed:
  * cloud providers and extensions without `getMaxCtxTrain` yield `undefined`,
  * which leaves the ladder open-ended (as before).
+ *
+ * @param providerId Engine registry id, not a display name.
+ * @param modelId Model id understood by that engine.
+ * @returns The engine's reported limit, or undefined if unsupported or lookup
+ * fails. Failures are logged rather than propagated.
  */
 export async function getModelMaxCtxTrain(
   providerId: string,
@@ -89,6 +105,12 @@ export async function getModelMaxCtxTrain(
  *
  * Only the provider store and the engine session are touched; regenerating
  * or re-sending is the caller's business.
+ *
+ * @param args Provider/model ids, services, and optional desired minimum size.
+ * @returns A growth result or a reason no growth was performed. A successful
+ * result can still be below minCtxLen when the training maximum caps growth.
+ * @throws If stopping the model fails. The provider setting is already updated
+ * at that point and is not rolled back.
  */
 export async function growModelContext(args: {
   providerId: string

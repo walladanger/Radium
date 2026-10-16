@@ -64,6 +64,13 @@ function ttftDebugLog(
   void _data
 }
 
+/**
+ * Pass a pre-send diagnostic to the currently inert debug hook.
+ * Does not start a timing session, record a marker, or emit a console report.
+ *
+ * @param label Diagnostic label.
+ * @param data Optional diagnostic fields passed to the hook.
+ */
 export function ttftPreBegin(label: string, data?: Record<string, unknown>): void {
   ttftDebugLog('ttft-timing.ts:preBegin', label, {
     ...data,
@@ -79,6 +86,11 @@ export function ttftEnabled(): boolean {
   return TTFT_REPORT_ENABLED
 }
 
+/**
+ * Start the module's single timing session at the current epoch millisecond.
+ * Replaces any previous session and resets the one-report guard; concurrent
+ * turns are not isolated by request id.
+ */
 export function ttftBegin(): void {
   // #region agent log
   ttftDebugLog('ttft-timing.ts:ttftBegin', 'alpha set', {
@@ -89,6 +101,11 @@ export function ttftBegin(): void {
   reported = false
 }
 
+/**
+ * Set or overwrite a marker using Date.now(); ignored before ttftBegin.
+ *
+ * @param marker Stage to timestamp in the active session.
+ */
 export function ttftMark(marker: TtftMarker): void {
   // #region agent log
   ttftDebugLog('ttft-timing.ts:ttftMark', marker, {
@@ -101,6 +118,13 @@ export function ttftMark(marker: TtftMarker): void {
   active[marker] = Date.now()
 }
 
+/**
+ * Set or overwrite a backend marker in the active session.
+ *
+ * @param marker Rust proxy or first-token stage.
+ * @param epochMs Backend Unix epoch milliseconds, on the same wall-clock basis
+ * as Date.now(); not a duration or a monotonic-clock timestamp.
+ */
 export function ttftMarkFromRust(
   marker: 'zetaProxyIn' | 'zetaUpstreamHeaders' | 'etaFirstToken',
   epochMs: number
@@ -145,9 +169,18 @@ export type TtftSnapshot = {
   ttft_render_ms?: number
 }
 
+/**
+ * Read available stage durations without clearing the current timing session.
+ *
+ * @returns Null before ttftBegin; otherwise a partial breakdown in milliseconds.
+ * First token prefers the Rust marker, falling back to the first IPC chunk,
+ * which may contain metadata. Missing endpoint pairs are omitted. Wall-clock
+ * differences are not clamped, so clock changes or ordering can yield negatives.
+ */
 export function ttftSnapshot(): TtftSnapshot | null {
   if (!active) return null
   const t = active
+  // IPC arrival is a fallback proxy for first token, not proof of visible text.
   const firstToken = t.etaFirstToken ?? t.epsilonFirstChunk
   const snapshot: TtftSnapshot = {
     ttft_e2e_ms: delta(t.alpha, firstToken),
@@ -165,6 +198,13 @@ export function ttftSnapshot(): TtftSnapshot | null {
   return snapshot
 }
 
+/**
+ * Print at most one developer timing table for the active session.
+ * Enabled in development or with VITE_TTFT_TIMING=true; marker collection and
+ * snapshots remain available when reporting is disabled.
+ *
+ * @param reason Label included in the table; timings remain available afterward.
+ */
 export function ttftReport(reason: string): void {
   if (!TTFT_REPORT_ENABLED || !active || reported) return
   const t = active

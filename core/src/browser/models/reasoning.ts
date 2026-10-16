@@ -125,7 +125,13 @@ const sortByEffort = (values: string[]): string[] =>
 /**
  * Inspect a chat template and report which reasoning controls it accepts.
  *
+ * Uses textual heuristics; it does not execute Jinja or verify backend support.
+ * Effort controls take precedence over a budget knob when both are present.
+ *
  * @param chatTemplate Raw Jinja chat template, e.g. GGUF `tokenizer.chat_template`.
+ * @returns Detected thinking support and optional effort controls. Missing or
+ * unmatched templates report no support; an effort knob without a declared
+ * value set defaults to low, medium, high. Off-like values are separated.
  */
 export const detectReasoningControls = (
   chatTemplate?: string

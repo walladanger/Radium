@@ -32,11 +32,15 @@ export const validationRules: { [key: string]: (value: any) => boolean } = {
 }
 
 /**
- * There are some parameters that need to be normalized before being sent to the server
- * E.g. ctx_len should be an integer, but it can be a float from the input field
- * @param key
- * @param value
- * @returns
+ * Coerce a recognized numeric parameter before validation.
+ *
+ * Integer fields use Math.floor(Number(value)); floating-point fields use
+ * parseFloat and retain the original value when parsing fails. This does not
+ * validate ranges, and integer coercion can return NaN or infinity.
+ *
+ * @param key Flat model parameter name; unknown names pass through unchanged.
+ * @param value Raw value, including values read from input controls.
+ * @returns The coerced number or the unchanged input.
  */
 export const normalizeValue = (key: string, value: any) => {
   if (
@@ -70,9 +74,14 @@ export const normalizeValue = (key: string, value: any) => {
 }
 
 /**
- * Extract inference parameters from flat model parameters
- * @param modelParams
- * @returns
+ * Select and normalize inference parameters without mutating the input.
+ *
+ * Only recognized inference keys are returned. Invalid values use the matching
+ * origin value verbatim when present; otherwise that key is omitted.
+ *
+ * @param modelParams Flat candidate parameters; absence returns an empty object.
+ * @param originParams Optional fallback values, which are not revalidated.
+ * @returns Accepted inference values and any supplied fallbacks.
  */
 export const extractInferenceParams = (
   modelParams?: ModelParams,
@@ -118,9 +127,15 @@ export const extractInferenceParams = (
 }
 
 /**
- * Extract model load parameters from flat model parameters
- * @param modelParams
- * @returns
+ * Select and normalize model-load parameters.
+ *
+ * Unlike extractInferenceParams, an invalid value with an origin fallback is
+ * written back to modelParams and omitted from the returned object. Callers
+ * needing an immutable input must pass a copy.
+ *
+ * @param modelParams Flat candidate parameters; may be mutated on invalid input.
+ * @param originParams Optional fallback values, copied without revalidation.
+ * @returns Accepted load values; invalid keys are omitted even with a fallback.
  */
 export const extractModelLoadParams = (
   modelParams?: ModelParams,
@@ -162,7 +177,9 @@ export const extractModelLoadParams = (
       if (validate && !validate(normalizeValue(key, value))) {
         // Invalid value - fall back to origin value
         if (originParams && key in originParams) {
-          Object.assign(modelParams, {
+          // Preserve the existing input-repair behavior: this fallback does not
+        // enter settingParams, unlike the inference-parameter extractor above.
+        Object.assign(modelParams, {
             ...modelParams,
             [key]: originParams[key as keyof typeof originParams],
           })
@@ -180,17 +197,6 @@ export const extractModelLoadParams = (
 }
 
 /**
- * Compute the next context-window size for the auto-increase flow. This is
- * the single source of truth shared between the web-app UI
- * (`handleContextSizeIncrease` in `$threadId.tsx`) and local backend
- * extensions (`llamacpp-extension`, `mlx-extension`). Mirrors the existing
- * UI steps: `<8192 → 8192 → 32768 → ×1.5` and optionally caps the result at
- * the model's training-max context.
- *
- * @param currentCtxLen Current context window used by the running session.
- * @param maxCtxLen Optional upper bound derived from the model metadata.
- */
-/**
  * Context window assumed when nothing else says otherwise.
  *
  * The one value every fallback reads. Before it existed the tree carried
@@ -202,6 +208,19 @@ export const extractModelLoadParams = (
  */
 export const DEFAULT_CTX_LEN = 16384
 
+/**
+ * Compute the next context-window size for the auto-increase flow. This is
+ * the single source of truth shared between the web-app UI
+ * (`handleContextSizeIncrease` in `$threadId.tsx`) and local backend
+ * extensions (`llamacpp-extension`, `mlx-extension`). Mirrors the existing
+ * UI steps: `<8192 → 8192 → 32768 → ×1.5` and optionally caps the result at
+ * the model's training-max context.
+ *
+ * @param currentCtxLen Current context window used by the running session.
+ * @param maxCtxLen Positive upper bound derived from the model metadata.
+ * @returns The capped step, which can be at or below the current size.
+ * Callers must check for growth before reloading; inputs are not validated.
+ */
 export const computeNextCtxLen = (
   currentCtxLen: number,
   maxCtxLen?: number
