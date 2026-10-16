@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   ChevronRight,
   Clapperboard as MediaIcon,
+  Gauge,
   LayoutGrid as LayoutGridIcon,
 } from 'lucide-react'
 import {
@@ -35,6 +36,7 @@ import { useGeneralSetting } from '@/hooks/useGeneralSetting'
 import { useLeftPanel } from '@/hooks/useLeftPanel'
 import { useProjectDialog } from '@/hooks/useProjectDialog'
 import { useSearchDialog } from '@/hooks/useSearchDialog'
+import { useServiceHub } from '@/hooks/useServiceHub'
 import { useThreadManagement } from '@/hooks/useThreadManagement'
 import { cn } from '@/lib/utils'
 
@@ -64,6 +66,7 @@ export function NavMain() {
   const projectDialogOpen = useProjectDialog((state) => state.open)
   const setProjectDialogOpen = useProjectDialog((state) => state.setOpen)
   const { open: searchOpen, setOpen: setSearchOpen } = useSearchDialog()
+  const serviceHub = useServiceHub()
 
   const isPluginsRoute =
     pathname.startsWith('/connectors') || pathname.startsWith('/skills')
@@ -76,6 +79,17 @@ export function NavMain() {
 
   const handleNewChat = () => {
     navigate({ to: route.home })
+  }
+
+  // Performance telemetry and benchmarking live in the system-monitor route.
+  // It opens in its own window rather than navigating the sidebar: a render can
+  // be watched without leaving the page that is running it.
+  const handleOpenPerformance = async () => {
+    try {
+      await serviceHub.window().openSystemMonitorWindow()
+    } catch (error) {
+      console.error('Failed to open system monitor window:', error)
+    }
   }
 
   const handleCreateProject = async (name: string, assistantId?: string) => {
@@ -272,6 +286,14 @@ export function NavMain() {
               </SidebarMenuButton>
             </SidebarMenuItem>
         </>
+        <SidebarMenuItem>
+          <SidebarMenuButton onClick={handleOpenPerformance}>
+            <Gauge className="text-foreground/70" size={16} />
+            <span>
+              {t('system-monitor:performance', { defaultValue: 'Performance' })}
+            </span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarMenu>
       <AddProjectDialog
         open={projectDialogOpen}
