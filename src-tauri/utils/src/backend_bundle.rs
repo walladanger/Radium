@@ -78,6 +78,12 @@ fn verify_archive(path: &Path, package: &BundlePackage) -> Result<(), String> {
     Ok(())
 }
 
+/// An entry's name for error messages. Lossy on purpose: a name that is not
+/// valid UTF-8 is exactly the kind of entry these messages report.
+fn entry_label<R: std::io::Read>(entry: &zip::read::ZipFile<'_, R>) -> String {
+    String::from_utf8_lossy(entry.name_raw()).into_owned()
+}
+
 fn extract_zip(path: &Path, output: &Path) -> Result<(), String> {
     let file = File::open(path)
         .map_err(|error| format!("open bundled ZIP {}: {error}", path.display()))?;
@@ -102,12 +108,12 @@ fn extract_zip(path: &Path, output: &Path) -> Result<(), String> {
             .map_err(|error| format!("read bundled ZIP entry: {error}"))?;
         let relative = entry
             .enclosed_name()
-            .ok_or_else(|| format!("unsafe ZIP entry path: {}", entry.name()))?;
+            .ok_or_else(|| format!("unsafe ZIP entry path: {}", entry_label(&entry)))?;
         if entry
             .unix_mode()
             .is_some_and(|mode| mode & 0o170000 == 0o120000)
         {
-            return Err(format!("unsafe ZIP entry type: {}", entry.name()));
+            return Err(format!("unsafe ZIP entry type: {}", entry_label(&entry)));
         }
         let destination = output.join(relative);
         if entry.is_dir() {
