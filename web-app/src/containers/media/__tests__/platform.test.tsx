@@ -23,9 +23,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { MediaGenerationForm } from '../MediaGenerationForm'
 import { MediaJobStatus } from '../MediaJobStatus'
 import { MEDIA_TASK } from '@/services/media/contract'
+import type { MediaJobEntry } from '@/services/media/jobManager'
 import type {
   MediaCapabilities,
-  MediaJobSnapshot,
   MediaModelDescriptor,
   MediaParamSpec,
   MediaProviderDescriptor,
@@ -319,12 +319,21 @@ describe('cross-provider routing', () => {
 })
 
 describe('cancel is gated on what the provider can actually do', () => {
-  function job(overrides: Partial<MediaJobSnapshot> = {}): MediaJobSnapshot {
+  function job(overrides: Partial<MediaJobEntry> = {}): MediaJobEntry {
     return {
       client_job_id: 'job-1',
       provider_id: 'alpha',
       state: 'running',
       progress: 40,
+      submitted_at: 0,
+      cancellable: false,
+      request: {
+        client_job_id: 'job-1',
+        provider_id: 'alpha',
+        model_id: 'alpha:sdxl',
+        task: 'text_to_image',
+        params: {},
+      },
       ...overrides,
     }
   }
@@ -333,14 +342,15 @@ describe('cancel is gated on what the provider can actually do', () => {
     overrides: {
       cancellable?: boolean
       onCancel?: () => void
-      snapshot?: MediaJobSnapshot
+      snapshot?: MediaJobEntry
     } = {}
   ) {
     const onCancel = overrides.onCancel ?? vi.fn()
     const result = render(
       <MediaJobStatus
-        job={overrides.snapshot ?? job()}
-        cancellable={overrides.cancellable ?? false}
+        jobs={[
+          overrides.snapshot ?? job({ cancellable: overrides.cancellable ?? false }),
+        ]}
         onCancel={onCancel}
         providers={[ALPHA, BETA]}
         health={{ alpha: { state: 'online' }, beta: { state: 'offline' } }}
@@ -366,7 +376,7 @@ describe('cancel is gated on what the provider can actually do', () => {
   it('does not offer Cancel once the job has finished', () => {
     renderStatus({
       cancellable: true,
-      snapshot: job({ state: 'succeeded', progress: 100 }),
+      snapshot: job({ state: 'succeeded', progress: 100, cancellable: true }),
     })
 
     expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()

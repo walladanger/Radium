@@ -59,8 +59,8 @@ vi.mock('@/hooks/useMediaGeneration', () => ({
   }),
 }))
 
-vi.mock('@/hooks/useMediaJobAsset', () => ({
-  useMediaJobAsset: () => asset,
+vi.mock('@/hooks/useMediaJobAssets', () => ({
+  useMediaJobAssets: () => asset,
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
