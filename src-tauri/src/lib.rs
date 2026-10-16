@@ -145,6 +145,8 @@ pub fn run() {
         core::app::commands::change_app_data_folder,
         core::app::models_folder::get_models_folder,
         core::app::models_folder::set_models_folder,
+        core::app::gguf_scan::scan_gguf_models,
+        core::app::gguf_scan::classify_gguf_files,
         core::app::commands::app_token,
         // Extension commands
         core::extensions::commands::get_jan_extensions_path,
@@ -168,7 +170,6 @@ pub fn run() {
         core::system::commands::clear_claude_code_env,
         core::system::commands::configure_hermes_agent,
         core::system::commands::clear_hermes_agent_config,
-        core::system::commands::configure_atomic_agent,
         core::system::commands::detect_agent_installed,
         core::system::commands::install_agent,
         core::system::commands::configure_codex,
@@ -280,10 +281,6 @@ pub fn run() {
         core::panels::commands::panels_request,
         // Tray status (desktop only runtime behaviour; the symbol exists on mobile as a no-op)
         core::tray_status::update_tray_status,
-        // Telemetry (ATO-113): consent sync + zero-PII context tags for Sentry
-        core::telemetry::commands::set_telemetry_consent,
-        core::telemetry::commands::set_telemetry_context,
-        core::telemetry::commands::set_telemetry_user,
         // Radium Media provider credentials, in the OS credential store. See
         // docs/decisions/2026-09-10-store-media-provider-credentials-in-the-os-
         // credential-store.md. Desktop only, and deliberately no enumeration
@@ -353,6 +350,8 @@ pub fn run() {
         core::app::commands::change_app_data_folder,
         core::app::models_folder::get_models_folder,
         core::app::models_folder::set_models_folder,
+        core::app::gguf_scan::scan_gguf_models,
+        core::app::gguf_scan::classify_gguf_files,
         core::app::commands::app_token,
         // Extension commands
         core::extensions::commands::get_jan_extensions_path,
@@ -376,7 +375,6 @@ pub fn run() {
         core::system::commands::clear_claude_code_env,
         core::system::commands::configure_hermes_agent,
         core::system::commands::clear_hermes_agent_config,
-        core::system::commands::configure_atomic_agent,
         core::system::commands::detect_agent_installed,
         core::system::commands::install_agent,
         core::system::commands::configure_codex,
@@ -545,20 +543,6 @@ pub fn run() {
                     }),
                 ]);
 
-            // ATO-113: on desktop, chain the plugin's logger through Sentry's
-            // SentryLogger so `log::error!` becomes a Sentry event (info/warn ->
-            // breadcrumbs) while stdout / webview / `app.log` still work. We use
-            // `split` (instead of `build`) so we, not the plugin, install the
-            // global logger. Mobile keeps the plain plugin logger (no Sentry).
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            {
-                let (plugin, max_level, logger) = log_builder.split(app.handle())?;
-                let _ = log::set_boxed_logger(crate::core::telemetry::wrap_logger(logger));
-                log::set_max_level(max_level);
-                app.handle().plugin(plugin)?;
-                crate::core::telemetry::set_log_path(log_dir.join("app.log"));
-            }
-            #[cfg(any(target_os = "ios", target_os = "android"))]
             app.handle().plugin(log_builder.build())?;
 
             // Reported only now that the logger exists; the move itself had to
