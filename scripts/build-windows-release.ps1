@@ -300,7 +300,6 @@ Pop-Location
 Copy-Item -Path 'src-tauri/target/release/jan-cli.exe' -Destination 'src-tauri/resources/bin/jan-cli.exe' -Force
 Write-Host '  CLI built: src-tauri/resources/bin/jan-cli.exe'
 
-# ── Build Tauri app (NSIS + MSI, no code signing) ─────────────
 # ── Patch light.exe to skip MSI ICE validation ─────────────────
 # tauri-bundler runs light.exe in a context where ICE01..ICE09 fail with
 # "The Windows Installer Service could not be accessed" (Win32 0x643), even
@@ -321,8 +320,12 @@ if (-not (Test-Path $wixToolsDir)) {
     New-Item -ItemType Directory -Path $wixToolsDir -Force | Out-Null
     $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
     Write-Host "  Downloading $wixZipUrl"
-    Invoke-WebRequest -Uri $wixZipUrl -OutFile $wixZip -UseBasicParsing
-    if ($LASTEXITCODE -ne 0) { Write-Host 'WixTools download failed' -ForegroundColor Red; exit 1 }
+    try {
+        Invoke-WebRequest -Uri $wixZipUrl -OutFile $wixZip -UseBasicParsing
+    } catch {
+        Write-Host "WixTools download failed: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
     $actual = (Get-FileHash -Path $wixZip -Algorithm SHA256).Hash.ToLower()
     if ($actual -ne $wixZipSha) {
         Remove-Item $wixZip -Force -ErrorAction SilentlyContinue
@@ -338,7 +341,7 @@ if (-not (Test-Path $realLight)) {
         Write-Host '  WixTools314 has neither light.exe nor light.real.exe; cannot patch' -ForegroundColor Red
         exit 1
     }
-    Rename-Item $shimLight 'light.real.exe'
+    Move-Item -Path $shimLight -Destination $realLight
 }
 & $rustcExe -O $shimSrc -o $shimLight
 if ($LASTEXITCODE -ne 0) { Write-Host 'light.exe shim build failed' -ForegroundColor Red; exit 1 }
