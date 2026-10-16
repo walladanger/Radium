@@ -582,7 +582,7 @@ pub const ITERATION_ONE_TOOLS: &[ToolDescriptor] = &[
     },
     ToolDescriptor {
         name: "agent.delegate",
-        summary: "Hand one self-contained task to a specialist listed under ### specialists and get its final answer back. The specialist cannot see this conversation, so put every fact it needs into `task`. Must be the only call in its step.",
+        summary: "Hand one self-contained task to a specialist listed under ### specialists and get its final answer back. The specialist cannot see this conversation, so put every fact it needs into `task`. Never mixed with other tools in a step; up to 4 `agent.delegate` calls in one step run their specialists at the same time.",
         args_schema: r#"{ specialist: string, task: string }"#,
         tier: ToolTier::Frequent,
         examples: &[],
@@ -758,7 +758,8 @@ fn render_specialists(specialists: &[SpecialistSummary]) -> String {
     let mut section = String::from(
         "### specialists\nYou coordinate these specialists. When a task clearly fits one, hand it \
          over with `agent.delegate` instead of doing it yourself, then use its answer. Do the \
-         work yourself when none fits.",
+         work yourself when none fits. Independent tasks for different specialists go in \
+         one step as several `agent.delegate` calls (at most 4) so they run in parallel.",
     );
     for specialist in specialists {
         let description = bounded_chars(

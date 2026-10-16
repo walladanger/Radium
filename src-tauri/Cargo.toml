@@ -203,6 +203,10 @@ windows-sys = { version = "0.60.2", features = ["Win32_Storage_FileSystem", "Win
 winreg = "0.52"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+# Radium Media: Lanczos resize to the chosen output size (up to 4K) after the
+# engine's ESRGAN upscale, or on its own when no ESRGAN model is installed.
+# Already in the tree through Tauri; named by the user for this job.
+image = { version = "0.25", default-features = false, features = ["png"] }
 # ATO / Radium Media: provider API keys live in the OS credential store, never
 # in localStorage. See docs/decisions/2026-09-10-store-media-provider-
 # credentials-in-the-os-credential-store.md. These four crates are the ones the
@@ -220,11 +224,6 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-autostart = "2.5.1"
 # GH #45: persist & restore the main window's size/position across restarts.
 tauri-plugin-window-state = "2"
-# ATO-113: Sentry crash/error telemetry (desktop only; never on mobile). The
-# `log` feature bridges `log::error!` -> Sentry via SentryLogger; default
-# features bring the panic hook, backtraces, contexts, and the reqwest/native-tls
-# transport.
-sentry = { version = "0.34", features = ["log"] }
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 reqwest = { version = "0.11", features = ["json", "blocking", "stream", "rustls-tls"], default-features = false }
@@ -244,11 +243,6 @@ strip = "symbols"   # Strip debug symbols from the SHIPPED binary (kept small)
 codegen-units = 1   # Reduce parallel codegen for better optimization
 panic = "abort"     # Don't unwind on panic, saves space (panic hook runs first)
 overflow-checks = false  # Disable overflow checks for size
-# ATO-113: emit debug info into a SEPARATE file (macOS .dSYM / Linux .dwp /
-# Windows .pdb) so `sentry-cli debug-files upload` can symbolicate Rust crash
-# stacks, while `strip = "symbols"` keeps the bundled executable stripped.
-debug = 1           # line tables (enough for symbolication)
-split-debuginfo = "packed"
 debug-assertions = false  # No debug assertions
 incremental = false # Disable incremental compilation for release
 rpath = false       # Don't include rpath

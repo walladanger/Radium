@@ -57,5 +57,8 @@
     "penalties": "Penalties",
     "general": "General",
     "context": "Context"
-  }
+  },
+  "specialistModel": "Specialist model",
+  "specialistModelDesc": "The model this specialist runs on when the agent hands it a task. Pick a local model for private work or a cloud model for harder tasks.",
+  "specialistModelInherit": "Same as the conversation"
 }

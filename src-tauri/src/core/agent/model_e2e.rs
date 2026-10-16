@@ -187,6 +187,7 @@ impl LiveHarness {
                     bundled_script_runtime: None,
                     pty: &PtyRegistry::new(),
                     cache_dir: &std::env::temp_dir(),
+                    slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
                 },
                 |event| collect_event(&mut events, event),
             ),

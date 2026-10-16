@@ -134,3 +134,17 @@ with the manifest path and short temporary target directory passed 35 tests,
 compiled; only the panel subset was executed. Native GUI/window interaction and
 Cordis runtime/plugin execution remain unverified/unimplemented respectively.
 No Cordis marketplace is included. No installed app was upgraded or launched.
+
+## Merge integration with current main
+
+User authorized merging on 2026-10-16. Integrated main f8ef6d2 (six newer commits).
+Resolved the decision-index count, retained the extracted directory-aware install
+helper, and kept both Vite entry points while preserving main's removal of the
+Sentry upload configuration. Updated TypeScript library definitions to ES2023
+for APIs already used by the app; emitted JavaScript target remains ES2020.
+
+Combined-tree verification: 352 frontend test files passed, 4,124 tests passed,
+11 skipped. Normal tsc -b now passes. Both HTML entry points bundle successfully.
+Panel/window/capability/CSP/source-isolation/MCP-approval Node contracts: 36 passed.
+Scoped ESLint: 0 errors, 7 existing builtin warnings. Native integration results
+and hosted checks are recorded on the merge pull request.
