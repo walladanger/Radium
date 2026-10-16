@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-283 records, 2026-05-19 → 2026-10-16.
+284 records, 2026-05-19 → 2026-10-16.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -334,7 +334,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-11** — [Add a unified "Sampling — {assistant}" popover (assistant switcher + sampling params in one place) (ATO-155)](2026-06-11-add-a-unified-sampling-assistant-popover-assistant-switcher.md)
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
-## Other (21)
+## Other (22)
+
+- **2026-10-16** — [Recover security triage with explicit local state](2026-10-16-recover-security-triage-with-explicit-local-state.md)
 
 - **2026-10-10** — [Align Vitest 5 tooling and preserve critical coverage](2026-10-10-align-vitest-5-tooling-and-preserve-critical-coverage.md)
 

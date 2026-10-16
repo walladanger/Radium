@@ -472,7 +472,8 @@ test-quality:
 	node scripts/check-test-quality.mjs
 
 test-hardening-contracts:
-	node --test tests/capabilities.test.mjs \
+	node --test scripts/security-triage.test.mjs \
+		tests/capabilities.test.mjs \
 		tests/registry-contracts.test.mjs \
 		tests/hardware-profiles.test.mjs \
 		tests/no-auto-update.test.mjs \
