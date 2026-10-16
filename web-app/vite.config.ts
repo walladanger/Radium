@@ -176,6 +176,12 @@ export default defineConfig(({ mode }) => {
     // never shipped). Dev/local builds keep the default (no maps).
     build: {
       sourcemap: sentryUpload ? true : false,
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          workspace: path.resolve(__dirname, 'workspace.html'),
+        },
+      },
     },
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

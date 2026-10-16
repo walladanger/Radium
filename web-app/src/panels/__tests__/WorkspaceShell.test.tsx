@@ -58,6 +58,7 @@ beforeEach(() => {
   // product decision that is free to change without rewriting them. The
   // default itself is asserted in `the board store` below.
   useBoard.setState({ open: ['builtin:panels'], locked: false })
+  useBoard.setState({ mode: 'split' })
 })
 
 describe('the registry', () => {
@@ -81,6 +82,23 @@ describe('the registry', () => {
 })
 
 describe('the board', () => {
+  it('requires acknowledgement before a Split transition reloads a custom GUI', async () => {
+    listing.value = { installed: [{ id: 'notes', name: 'Notes', contract: 1, entry: 'index.html' }], broken: [] }
+    useBoard.setState({ open: [] })
+    useBoard.getState().addPanel('panel:notes')
+    render(<PanelBoard />)
+    const frame = await screen.findByTitle('Notes')
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas', exact: true }))
+    expect(useBoard.getState().mode).toBe('split')
+    expect(screen.getByTitle('Notes')).toBe(frame)
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/reload.*unsaved/i))
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas', exact: true }))
+    expect(useBoard.getState().mode).toBe('canvas')
+    expect(await screen.findByTitle('Notes')).not.toBe(frame)
+    confirm.mockRestore()
+  })
   it('shows a broken panel in place, with the reason', async () => {
     listing.value = {
       installed: [],

@@ -38,6 +38,7 @@ import { ServiceHubProvider } from '@/providers/ServiceHubProvider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { LeftSidebar } from '@/components/left-sidebar'
 import { WindowFrame } from '@/components/WindowFrame'
+import { usePanelStatusPublisher } from '@/panels/panelStatus'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -51,6 +52,7 @@ export const Route = createRootRoute({
 })
 
 const AppLayout = () => {
+  usePanelStatusPublisher()
   const { showOnboardingModelReminder } = useOnboardingModelReminder()
   const isLeftPanelOpen = useLeftPanel((state) => state.open)
   const setLeftPanel = useLeftPanel((state) => state.setLeftPanel)

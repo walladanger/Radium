@@ -16,6 +16,8 @@
     "shell:allow-open",
     "core:app:allow-set-app-theme",
     "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
     "os:default",
     "opener:default",
     "log:default",

@@ -5,17 +5,16 @@ import { PanelTile } from './PanelTile'
 import { builtinPanels, listCustomPanels, mergeRegistry, type PanelListing } from './registry'
 import { useBoard } from './useBoard'
 import type { PanelDescriptor } from './types'
+import { LayoutControls, SpatialBoard } from './SpatialBoard'
 
 /**
- * The board: the open panels, side by side, resizable.
- *
- * Horizontal split panes rather than a free-form drag grid. They are already a
- * dependency and already used by the agent workspace, they give
- * keyboard-resizable dividers for nothing, and nobody has yet wanted to drag a
- * panel to an arbitrary spot. A grid library can come later if that changes.
+ * Existing panel hosts, presented in split, Windows or Canvas layout.
+ * Layout never changes the iframe sandbox or the backend permission contract.
  */
-export function PanelBoard({ refreshKey }: { refreshKey?: number }) {
+export function PanelBoard({ refreshKey, statusReady = true }: { refreshKey?: number; statusReady?: boolean }) {
   const open = useBoard((state) => state.open)
+  const instances = useBoard((state) => state.panels)
+  const mode = useBoard((state) => state.mode)
   const locked = useBoard((state) => state.locked)
   const closePanel = useBoard((state) => state.closePanel)
   const [listing, setListing] = useState<PanelListing | null>(null)
@@ -46,15 +45,23 @@ export function PanelBoard({ refreshKey }: { refreshKey?: number }) {
     [listing]
   )
 
+  const definitionId = (id: string) => instances[id]?.definitionId ?? id
+  const titleFor = (id: string) => registry.get(definitionId(id))?.name ?? id
+  if (mode !== 'split') {
+    return <SpatialBoard titleFor={titleFor} renderPanel={(id) => <PanelContent
+      descriptor={registry.get(definitionId(id))} broken={broken.get(definitionId(id))} statusReady={statusReady} />} />
+  }
+
   if (open.length === 0) {
     return (
-      <div className="flex size-full items-center justify-center text-xs text-muted-foreground">
+      <div className="flex size-full flex-col"><LayoutControls /><div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
         No panels open. Add one from the toolbar.
-      </div>
+      </div></div>
     )
   }
 
   return (
+    <div className="flex size-full min-h-0 flex-col"><LayoutControls />
     <PanelGroup direction="horizontal" id="panel-board">
       {open.map((id, index) => (
         <Fragment key={id}>
@@ -70,14 +77,16 @@ export function PanelBoard({ refreshKey }: { refreshKey?: number }) {
           <Panel minSize={15} order={index}>
             <BoardTile
               id={id}
-              descriptor={registry.get(id)}
-              broken={broken.get(id)}
+              descriptor={registry.get(definitionId(id))}
+              broken={broken.get(definitionId(id))}
               onClose={() => closePanel(id)}
+              statusReady={statusReady}
             />
           </Panel>
         </Fragment>
       ))}
     </PanelGroup>
+    </div>
   )
 }
 
@@ -86,19 +95,32 @@ function BoardTile({
   descriptor,
   broken,
   onClose,
+  statusReady,
 }: {
   id: string
   descriptor?: PanelDescriptor
   broken?: { id: string; errors: string[] }
   onClose: () => void
+  statusReady: boolean
 }) {
+  return <PanelTile title={descriptor?.name ?? id} onClose={onClose}>
+    <PanelContent descriptor={descriptor} broken={broken} statusReady={statusReady} />
+  </PanelTile>
+}
+
+function PanelContent({ descriptor, broken, statusReady }: {
+  descriptor?: PanelDescriptor
+  broken?: { id: string; errors: string[] }
+  statusReady: boolean
+}) {
+  if (!statusReady && descriptor?.kind === 'builtin' && descriptor.id !== 'builtin:panels') {
+    return <div role="status" className="p-3 text-xs text-muted-foreground">Main window status is unavailable. Reopen the main window to reconnect.</div>
+  }
   // A broken panel keeps its tile and shows why, rather than vanishing and
   // leaving the user to wonder where it went.
   if (broken) {
     return (
-      <PanelTile title={broken.id} onClose={onClose}>
         <BrokenPanelNotice panel={broken} />
-      </PanelTile>
     )
   }
 
@@ -106,22 +128,20 @@ function BoardTile({
   // disk, say — is said plainly, with the way to clear it.
   if (!descriptor) {
     return (
-      <PanelTile title={id} onClose={onClose}>
         <div className="p-3 text-xs text-muted-foreground">
           This panel is no longer installed. Close the tile to remove it from the board.
         </div>
-      </PanelTile>
     )
   }
 
   const Component = descriptor.component
   return (
-    <PanelTile title={descriptor.name} onClose={onClose}>
+    <>
       {descriptor.kind === 'custom' && descriptor.manifest ? (
         <PanelFrame panel={descriptor.manifest} />
       ) : Component ? (
         <Component />
       ) : null}
-    </PanelTile>
+    </>
   )
 }
