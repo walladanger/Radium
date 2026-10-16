@@ -301,6 +301,50 @@ Copy-Item -Path 'src-tauri/target/release/jan-cli.exe' -Destination 'src-tauri/r
 Write-Host '  CLI built: src-tauri/resources/bin/jan-cli.exe'
 
 # ── Build Tauri app (NSIS + MSI, no code signing) ─────────────
+# ── Patch light.exe to skip MSI ICE validation ─────────────────
+# tauri-bundler runs light.exe in a context where ICE01..ICE09 fail with
+# "The Windows Installer Service could not be accessed" (Win32 0x643), even
+# though the identical command succeeds manually. Replace light.exe with a
+# thin shim that forwards args and appends -sval. See the ADR referenced by
+# scripts/light-shim.rs.
+Write-Step 'Patching light.exe (skip MSI ICE validation)'
+$wixToolsDir = Join-Path $env:LOCALAPPDATA 'tauri\WixTools314'
+$wixZipUrl = 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip'
+$wixZipSha  = '6ac824e1642d6f7277d0ed7ea09411a508f6116ba6fae0aa5f2c7daa2ff43d31'
+$realLight  = Join-Path $wixToolsDir 'light.real.exe'
+$shimLight  = Join-Path $wixToolsDir 'light.exe'
+$shimSrc    = Join-Path $PSScriptRoot 'light-shim.rs'
+$rustcExe   = (Get-Command rustc -ErrorAction Stop).Source
+
+if (-not (Test-Path $wixToolsDir)) {
+    # Extract WixTools now so the shim is in place before tauri's first link.
+    New-Item -ItemType Directory -Path $wixToolsDir -Force | Out-Null
+    $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
+    Write-Host "  Downloading $wixZipUrl"
+    Invoke-WebRequest -Uri $wixZipUrl -OutFile $wixZip -UseBasicParsing
+    if ($LASTEXITCODE -ne 0) { Write-Host 'WixTools download failed' -ForegroundColor Red; exit 1 }
+    $actual = (Get-FileHash -Path $wixZip -Algorithm SHA256).Hash.ToLower()
+    if ($actual -ne $wixZipSha) {
+        Remove-Item $wixZip -Force -ErrorAction SilentlyContinue
+        Write-Host "WixTools sha256 mismatch: expected $wixZipSha, got $actual" -ForegroundColor Red
+        exit 1
+    }
+    Expand-Archive -Path $wixZip -DestinationPath $wixToolsDir -Force
+    Remove-Item $wixZip -Force -ErrorAction SilentlyContinue
+}
+
+if (-not (Test-Path $realLight)) {
+    if (-not (Test-Path $shimLight)) {
+        Write-Host '  WixTools314 has neither light.exe nor light.real.exe; cannot patch' -ForegroundColor Red
+        exit 1
+    }
+    Rename-Item $shimLight 'light.real.exe'
+}
+& $rustcExe -O $shimSrc -o $shimLight
+if ($LASTEXITCODE -ne 0) { Write-Host 'light.exe shim build failed' -ForegroundColor Red; exit 1 }
+Write-Host '  light.exe shim installed'
+
+# ── Build Tauri app (NSIS + MSI, no code signing) ─────────────
 Write-Step 'Building Tauri app (release, unsigned)'
 $env:NODE_OPTIONS = '--max-old-space-size=4196'
 yarn tauri build --config src-tauri/tauri.windows.conf.json
