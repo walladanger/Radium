@@ -332,7 +332,7 @@ lint: install-and-build
 # Testing
 .PHONY: test test-all test-local test-web test-extensions test-rust stub-resources app-icons \
 	test-selective-v2032 rebaseline-selective-v2032 stage-windows-backends verify-windows-backends \
-	typecheck verify-fast verify clippy-rust test-quality test-hardening-contracts \
+	typecheck verify-fast verify clippy-rust test-agent-core clippy-agent-core test-control clippy-control test-quality test-hardening-contracts \
 	test-telemetry-props test-coverage-critical capture-capabilities capture-hw-profile \
 	sync-upstream-baseline gen-amd-rocm-pci-ids test-live test-live-cloud mutants
 
@@ -443,12 +443,12 @@ endif
 # a failure rather than a note nobody reads. Findings that are deliberate are
 # annotated with #[allow(...)] AND a reason at the site.
 clippy-rust: export TAURI_CONFIG := {"bundle":{"icon":["icons/icon.png"]}}
-clippy-rust: stub-resources app-icons
+clippy-rust: stub-resources app-icons clippy-agent-core clippy-control
 	cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets \
 		--no-default-features --features test-tauri -- -D warnings
 
 test-rust: export TAURI_CONFIG := {"bundle":{"icon":["icons/icon.png"]}}
-test-rust: stub-resources app-icons
+test-rust: stub-resources app-icons test-agent-core test-control
 	cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features test-tauri -- --test-threads=1
 	cargo test --manifest-path src-tauri/plugins/tauri-plugin-atomic-audio/Cargo.toml
 	cargo test --manifest-path src-tauri/plugins/tauri-plugin-hardware/Cargo.toml
@@ -458,6 +458,20 @@ ifeq ($(shell uname -s),Darwin)
 	cargo test --manifest-path src-tauri/plugins/tauri-plugin-mlx/Cargo.toml
 endif
 	cargo test --manifest-path src-tauri/utils/Cargo.toml
+
+# Independent crates are path dependencies, not native workspace test members.
+# Exercise their own suites so verify cannot silently omit controller/core tests.
+test-agent-core:
+	cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml
+
+clippy-agent-core:
+	cargo clippy --manifest-path src-tauri/atomic-agent-core/Cargo.toml --all-targets -- -D warnings
+
+test-control:
+	cargo test --manifest-path src-tauri/atomic-control/Cargo.toml
+
+clippy-control:
+	cargo clippy --manifest-path src-tauri/atomic-control/Cargo.toml --all-targets -- -D warnings
 
 # Fast local suite: root Vitest, extension Vitest, and every test-bearing
 # Rust crate supported on the current platform.

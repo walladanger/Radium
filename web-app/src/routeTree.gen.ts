@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SystemMonitorRouteImport } from './routes/system-monitor'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as LogsRouteImport } from './routes/logs'
@@ -22,6 +23,7 @@ import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as ThreadsThreadIdRouteImport } from './routes/threads/$threadId'
 import { Route as SettingsVoiceRouteImport } from './routes/settings/voice'
 import { Route as SettingsShortcutsRouteImport } from './routes/settings/shortcuts'
+import { Route as SettingsRuntimesRouteImport } from './routes/settings/runtimes'
 import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
 import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
 import { Route as SettingsLocalApiServerRouteImport } from './routes/settings/local-api-server'
@@ -45,6 +47,11 @@ import { Route as SettingsProvidersIndexRouteImport } from './routes/settings/pr
 import { Route as SettingsMediaIndexRouteImport } from './routes/settings/media/index'
 import { Route as SettingsProvidersProviderNameRouteImport } from './routes/settings/providers/$providerName'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemMonitorRoute = SystemMonitorRouteImport.update({
   id: '/system-monitor',
   path: '/system-monitor',
@@ -108,6 +115,11 @@ const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
 const SettingsShortcutsRoute = SettingsShortcutsRouteImport.update({
   id: '/settings/shortcuts',
   path: '/settings/shortcuts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRuntimesRoute = SettingsRuntimesRouteImport.update({
+  id: '/settings/runtimes',
+  path: '/settings/runtimes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
@@ -227,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/logs': typeof LogsRoute
   '/media': typeof MediaRoute
   '/system-monitor': typeof SystemMonitorRoute
+  '/tasks': typeof TasksRoute
   '/hub/$modelId': typeof HubModelIdRoute
   '/local-api-server/logs': typeof LocalApiServerLogsRoute
   '/media/library': typeof MediaLibraryRoute
@@ -246,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/settings/local-api-server': typeof SettingsLocalApiServerRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
@@ -264,6 +278,7 @@ export interface FileRoutesByTo {
   '/logs': typeof LogsRoute
   '/media': typeof MediaRoute
   '/system-monitor': typeof SystemMonitorRoute
+  '/tasks': typeof TasksRoute
   '/hub/$modelId': typeof HubModelIdRoute
   '/local-api-server/logs': typeof LocalApiServerLogsRoute
   '/media/library': typeof MediaLibraryRoute
@@ -283,6 +298,7 @@ export interface FileRoutesByTo {
   '/settings/local-api-server': typeof SettingsLocalApiServerRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
@@ -302,6 +318,7 @@ export interface FileRoutesById {
   '/logs': typeof LogsRoute
   '/media': typeof MediaRoute
   '/system-monitor': typeof SystemMonitorRoute
+  '/tasks': typeof TasksRoute
   '/hub/$modelId': typeof HubModelIdRoute
   '/local-api-server/logs': typeof LocalApiServerLogsRoute
   '/media_/library': typeof MediaLibraryRoute
@@ -321,6 +338,7 @@ export interface FileRoutesById {
   '/settings/local-api-server': typeof SettingsLocalApiServerRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
@@ -341,6 +359,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/media'
     | '/system-monitor'
+    | '/tasks'
     | '/hub/$modelId'
     | '/local-api-server/logs'
     | '/media/library'
@@ -360,6 +379,7 @@ export interface FileRouteTypes {
     | '/settings/local-api-server'
     | '/settings/mcp-servers'
     | '/settings/privacy'
+    | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
     | '/threads/$threadId'
@@ -378,6 +398,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/media'
     | '/system-monitor'
+    | '/tasks'
     | '/hub/$modelId'
     | '/local-api-server/logs'
     | '/media/library'
@@ -397,6 +418,7 @@ export interface FileRouteTypes {
     | '/settings/local-api-server'
     | '/settings/mcp-servers'
     | '/settings/privacy'
+    | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
     | '/threads/$threadId'
@@ -415,6 +437,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/media'
     | '/system-monitor'
+    | '/tasks'
     | '/hub/$modelId'
     | '/local-api-server/logs'
     | '/media_/library'
@@ -434,6 +457,7 @@ export interface FileRouteTypes {
     | '/settings/local-api-server'
     | '/settings/mcp-servers'
     | '/settings/privacy'
+    | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
     | '/threads/$threadId'
@@ -453,6 +477,7 @@ export interface RootRouteChildren {
   LogsRoute: typeof LogsRoute
   MediaRoute: typeof MediaRoute
   SystemMonitorRoute: typeof SystemMonitorRoute
+  TasksRoute: typeof TasksRoute
   HubModelIdRoute: typeof HubModelIdRoute
   LocalApiServerLogsRoute: typeof LocalApiServerLogsRoute
   MediaLibraryRoute: typeof MediaLibraryRoute
@@ -472,6 +497,7 @@ export interface RootRouteChildren {
   SettingsLocalApiServerRoute: typeof SettingsLocalApiServerRoute
   SettingsMcpServersRoute: typeof SettingsMcpServersRoute
   SettingsPrivacyRoute: typeof SettingsPrivacyRoute
+  SettingsRuntimesRoute: typeof SettingsRuntimesRoute
   SettingsShortcutsRoute: typeof SettingsShortcutsRoute
   SettingsVoiceRoute: typeof SettingsVoiceRoute
   ThreadsThreadIdRoute: typeof ThreadsThreadIdRoute
@@ -488,6 +514,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system-monitor': {
       id: '/system-monitor'
       path: '/system-monitor'
@@ -577,6 +610,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/shortcuts'
       fullPath: '/settings/shortcuts'
       preLoaderRoute: typeof SettingsShortcutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/runtimes': {
+      id: '/settings/runtimes'
+      path: '/settings/runtimes'
+      fullPath: '/settings/runtimes'
+      preLoaderRoute: typeof SettingsRuntimesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/privacy': {
@@ -741,6 +781,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogsRoute: LogsRoute,
   MediaRoute: MediaRoute,
   SystemMonitorRoute: SystemMonitorRoute,
+  TasksRoute: TasksRoute,
   HubModelIdRoute: HubModelIdRoute,
   LocalApiServerLogsRoute: LocalApiServerLogsRoute,
   MediaLibraryRoute: MediaLibraryRoute,
@@ -760,6 +801,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsLocalApiServerRoute: SettingsLocalApiServerRoute,
   SettingsMcpServersRoute: SettingsMcpServersRoute,
   SettingsPrivacyRoute: SettingsPrivacyRoute,
+  SettingsRuntimesRoute: SettingsRuntimesRoute,
   SettingsShortcutsRoute: SettingsShortcutsRoute,
   SettingsVoiceRoute: SettingsVoiceRoute,
   ThreadsThreadIdRoute: ThreadsThreadIdRoute,

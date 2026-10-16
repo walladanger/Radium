@@ -1,6 +1,7 @@
 export const route = {
   // home as new chat or thread
   home: '/',
+  tasks: '/tasks',
   media: '/media',
   media_library: '/media/library',
   appLogs: '/logs',
@@ -21,6 +22,7 @@ export const route = {
     mcp_servers: '/settings/mcp-servers',
     https_proxy: '/settings/https-proxy',
     hardware: '/settings/hardware',
+    runtimes: '/settings/runtimes' as const,
     media: '/settings/media',
     chat: '/settings/chat',
     cloud: '/settings/cloud',

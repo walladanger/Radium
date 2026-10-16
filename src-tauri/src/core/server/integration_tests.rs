@@ -95,8 +95,25 @@ async fn session_map_with_stub(
     model_id: &str,
     port: u16,
 ) -> Arc<Mutex<HashMap<i32, tauri_plugin_llamacpp::LLamaBackendSession>>> {
-    let child = tokio::process::Command::new("sleep")
-        .arg("120")
+    #[cfg(windows)]
+    let mut placeholder = {
+        let mut command = tokio::process::Command::new("powershell.exe");
+        command.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "Start-Sleep -Seconds 120",
+        ]);
+        command
+    };
+    #[cfg(not(windows))]
+    let mut placeholder = {
+        let mut command = tokio::process::Command::new("sleep");
+        command.arg("120");
+        command
+    };
+    let child = placeholder
+        .kill_on_drop(true)
         .spawn()
         .expect("spawn placeholder child");
     let session = tauri_plugin_llamacpp::LLamaBackendSession {

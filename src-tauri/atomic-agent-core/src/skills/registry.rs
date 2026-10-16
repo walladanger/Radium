@@ -536,7 +536,7 @@ fn write_disabled_state(root: &Path, disabled: &BTreeSet<String>) -> Result<(), 
 }
 
 #[cfg(windows)]
-pub(crate) fn atomic_replace(source: &Path, destination: &Path) -> std::io::Result<()> {
+pub fn atomic_replace(source: &Path, destination: &Path) -> std::io::Result<()> {
     use windows_sys::Win32::Storage::FileSystem::{
         MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
     };
@@ -566,7 +566,7 @@ pub(crate) fn atomic_replace(source: &Path, destination: &Path) -> std::io::Resu
 }
 
 #[cfg(not(windows))]
-pub(crate) fn atomic_replace(source: &Path, destination: &Path) -> std::io::Result<()> {
+pub fn atomic_replace(source: &Path, destination: &Path) -> std::io::Result<()> {
     fs::rename(source, destination)
 }
 

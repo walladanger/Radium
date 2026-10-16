@@ -29,32 +29,7 @@ struct AutoIncreaseDoneEvent {
     reason: Option<String>,
 }
 
-pub(crate) fn is_context_limit_error(status: u16, body: &str) -> bool {
-    if !matches!(status, 400 | 413 | 500 | 503) {
-        return false;
-    }
-    let body = body.to_lowercase();
-    if body.contains("the request exceeds the available context size") {
-        return true;
-    }
-    if body.contains("max_kv_size") || body.contains("max-kv-size") || body.contains("max kv size")
-    {
-        return true;
-    }
-    if body.contains("kv cache")
-        && (body.contains("exceed") || body.contains("overflow") || body.contains("too"))
-    {
-        return true;
-    }
-    body.contains("context")
-        && (body.contains("size")
-            || body.contains("length")
-            || body.contains("limit")
-            || body.contains("exceed")
-            || body.contains("overflow")
-            || body.contains("too long")
-            || body.contains("too large"))
-}
+pub(crate) use atomic_agent_core::transport_helpers::is_context_limit_error;
 
 pub(crate) async fn request_context_increase<R: Runtime>(
     app_handle: &AppHandle<R>,

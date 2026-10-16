@@ -27,9 +27,11 @@ struct ToolFixture {
 }
 
 impl ToolFixture {
-    fn allowed() -> Self {
+    async fn allowed() -> Self {
         let workspace = TestWorkspace::new();
-        let editable_roots = EditableRoots::for_test(workspace.path());
+        let editable_roots = EditableRoots::new(workspace.path(), &[])
+            .await
+            .expect("test workspace roots");
         let skill_registry = workspace.skill_registry();
         Self {
             workspace,
@@ -45,9 +47,11 @@ impl ToolFixture {
         }
     }
 
-    fn denied() -> Self {
+    async fn denied() -> Self {
         let workspace = TestWorkspace::new();
-        let editable_roots = EditableRoots::for_test(workspace.path());
+        let editable_roots = EditableRoots::new(workspace.path(), &[])
+            .await
+            .expect("test workspace roots");
         let skill_registry = workspace.skill_registry();
         Self {
             workspace,
@@ -97,7 +101,7 @@ impl ToolFixture {
 
 #[tokio::test]
 async fn filesystem_tools_apply_real_operations_in_an_isolated_workspace() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture
         .workspace
         .write("source.txt", "alpha\nneedle beta\n");
@@ -201,7 +205,7 @@ async fn filesystem_tools_apply_real_operations_in_an_isolated_workspace() {
 
 #[tokio::test]
 async fn filesystem_grep_is_recursive_bounded_and_skips_non_text_files() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture
         .workspace
         .write("nested/match.txt", "first\nneedle\n");
@@ -261,7 +265,7 @@ async fn filesystem_grep_is_recursive_bounded_and_skips_non_text_files() {
 
 #[tokio::test]
 async fn filesystem_diff_is_unified_and_rejects_non_text_files() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write("left.txt", "alpha\nbefore\n");
     fixture.workspace.write("right.txt", "alpha\nafter\n");
 
@@ -293,7 +297,7 @@ async fn filesystem_diff_is_unified_and_rejects_non_text_files() {
 
 #[tokio::test]
 async fn filesystem_patch_defaults_to_validation_and_prevalidates_every_file() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write("one.txt", "one\n");
     fixture.workspace.write("two.txt", "two\n");
     let valid = "--- one.txt\n+++ one.txt\n@@ -1 +1 @@\n-one\n+ONE\n";
@@ -333,7 +337,7 @@ async fn filesystem_patch_defaults_to_validation_and_prevalidates_every_file() {
 
 #[tokio::test]
 async fn filesystem_trash_moves_directories_through_the_native_trash_api() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write("discard/nested.txt", "recoverable");
     // The FreeDesktop trash is the native mechanism on Linux, so only the other
     // platforms can treat that directory as evidence of a hand-rolled fallback.
@@ -361,7 +365,7 @@ async fn filesystem_trash_moves_directories_through_the_native_trash_api() {
 
 #[tokio::test]
 async fn filesystem_text_tools_reject_oversized_files() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let oversized = vec![b'a'; 1_048_577];
     fixture.workspace.write("huge.txt", &oversized);
 
@@ -387,7 +391,7 @@ async fn filesystem_text_tools_reject_oversized_files() {
 
 #[tokio::test]
 async fn filesystem_write_accepts_empty_content_and_append_mode() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
 
     let empty = fixture
         .call(
@@ -428,7 +432,7 @@ async fn filesystem_write_accepts_empty_content_and_append_mode() {
 
 #[tokio::test]
 async fn filesystem_edit_supports_explicit_replace_all() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write("repeated.txt", "old old old");
 
     let ambiguous = fixture
@@ -461,7 +465,7 @@ async fn filesystem_edit_supports_explicit_replace_all() {
 
 #[tokio::test]
 async fn destructive_filesystem_calls_reject_invalid_args_before_approval() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write("editable.txt", "before");
     fixture.workspace.write("archive.zip", []);
 
@@ -507,7 +511,7 @@ async fn destructive_filesystem_calls_reject_invalid_args_before_approval() {
 
 #[tokio::test]
 async fn filesystem_read_document_extracts_docx_and_honors_character_cap() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let mut archive = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     archive
         .start_file("word/document.xml", zip::write::FileOptions::default())
@@ -542,7 +546,7 @@ async fn filesystem_read_document_extracts_docx_and_honors_character_cap() {
 
 #[tokio::test]
 async fn filesystem_mkdir_creates_empty_directories_without_approval() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let created = fixture
         .call("os.fs.mkdir", serde_json::json!({"path": "parent/empty"}))
         .await;
@@ -561,7 +565,7 @@ async fn filesystem_mkdir_creates_empty_directories_without_approval() {
     assert_eq!(non_recursive.status, ToolStatus::Error);
     assert!(!fixture.workspace.path().join("missing-parent").exists());
 
-    let denied = ToolFixture::denied();
+    let denied = ToolFixture::denied().await;
     let denied_outcome = denied
         .call("os.fs.mkdir", serde_json::json!({"path": "must-not-exist"}))
         .await;
@@ -572,7 +576,7 @@ async fn filesystem_mkdir_creates_empty_directories_without_approval() {
 
 #[tokio::test]
 async fn process_tools_reject_invalid_kill_before_approval_and_list_deterministically() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     for args in [
         serde_json::json!({"pid": 0}),
         serde_json::json!({"pid": -1}),
@@ -597,7 +601,7 @@ async fn process_tools_reject_invalid_kill_before_approval_and_list_deterministi
 
 #[tokio::test]
 async fn code_symbols_lists_definitions_with_lines_and_rejects_unknown_languages() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write(
         "lib.rs",
         "pub struct Registry;\npub fn authorize_call() {}\n",
@@ -625,7 +629,7 @@ async fn code_symbols_lists_definitions_with_lines_and_rejects_unknown_languages
 
 #[tokio::test]
 async fn code_find_locates_a_definition_and_reports_a_partial_match_as_such() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture
         .workspace
         .write("lib.rs", "pub fn authorize_call() {}\n");
@@ -686,7 +690,7 @@ async fn code_find_locates_a_definition_and_reports_a_partial_match_as_such() {
 
 #[tokio::test]
 async fn code_find_filters_by_kind() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture
         .workspace
         .write("lib.rs", "pub struct Target;\npub fn Target_fn() {}\n");
@@ -718,7 +722,7 @@ async fn code_find_filters_by_kind() {
 
 #[tokio::test]
 async fn code_refs_skips_comments_and_strings_and_states_its_limits() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write(
         "caller.rs",
         "// authorize_call in a comment\nfn run() { authorize_call(); }\nconst D: &str = \"authorize_call\";\n",
@@ -751,7 +755,7 @@ async fn code_refs_skips_comments_and_strings_and_states_its_limits() {
 
 #[tokio::test]
 async fn code_tools_cannot_reach_outside_the_workspace() {
-    let fixture = ToolFixture::denied();
+    let fixture = ToolFixture::denied().await;
     for (tool, args) in [
         (
             "os.code.symbols",
@@ -818,7 +822,7 @@ fn proc_id_of(outcome: &ToolOutcome) -> String {
 #[cfg(unix)]
 #[tokio::test]
 async fn spawned_process_streams_output_then_reports_its_exit_status() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let spawned = fixture
         .call(
             "os.proc.spawn",
@@ -858,7 +862,7 @@ async fn spawned_process_streams_output_then_reports_its_exit_status() {
 #[cfg(unix)]
 #[tokio::test]
 async fn the_remembered_cursor_returns_only_new_output() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let spawned = fixture
         .call(
             "os.proc.spawn",
@@ -898,7 +902,7 @@ async fn the_remembered_cursor_returns_only_new_output() {
 #[cfg(unix)]
 #[tokio::test]
 async fn writing_to_a_spawned_process_answers_its_prompt() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let spawned = fixture
         .call(
             "os.proc.spawn",
@@ -927,7 +931,7 @@ async fn writing_to_a_spawned_process_answers_its_prompt() {
 #[cfg(unix)]
 #[tokio::test]
 async fn stop_ends_a_process_that_would_otherwise_run_forever() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let spawned = fixture
         .call(
             "os.proc.spawn",
@@ -970,7 +974,7 @@ async fn stop_ends_a_process_that_would_otherwise_run_forever() {
 
 #[tokio::test]
 async fn process_tools_reject_unknown_ids_and_bad_signals() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     for (tool, args) in [
         ("os.proc.read", serde_json::json!({"procId": "proc-999"})),
         (
@@ -997,7 +1001,7 @@ async fn process_tools_reject_unknown_ids_and_bad_signals() {
 #[cfg(unix)]
 #[tokio::test]
 async fn stopping_a_process_rejects_a_signal_it_does_not_understand() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let spawned = fixture
         .call(
             "os.proc.spawn",
@@ -1024,7 +1028,7 @@ async fn stopping_a_process_rejects_a_signal_it_does_not_understand() {
 async fn spawn_is_gated_by_the_shell_guard_approval_and_cancellation() {
     // A command the guard hard-blocks must not become reachable just because it
     // is spawned instead of run to completion.
-    let allowed = ToolFixture::allowed();
+    let allowed = ToolFixture::allowed().await;
     let blocked = allowed
         .call(
             "os.proc.spawn",
@@ -1034,7 +1038,7 @@ async fn spawn_is_gated_by_the_shell_guard_approval_and_cancellation() {
     assert_eq!(blocked.status, ToolStatus::Denied);
     assert!(allowed.approval.requests().is_empty());
 
-    let denied = ToolFixture::denied();
+    let denied = ToolFixture::denied().await;
     let refused = denied
         .call(
             "os.proc.spawn",
@@ -1044,7 +1048,7 @@ async fn spawn_is_gated_by_the_shell_guard_approval_and_cancellation() {
     assert_eq!(refused.status, ToolStatus::Denied);
     assert!(denied.pty.list("contract-test-session").is_empty());
 
-    let cancelled = ToolFixture::allowed();
+    let cancelled = ToolFixture::allowed().await;
     cancelled.cancellation.cancel();
     let outcome = cancelled
         .call(
@@ -1058,7 +1062,7 @@ async fn spawn_is_gated_by_the_shell_guard_approval_and_cancellation() {
 
 #[tokio::test]
 async fn archive_tools_list_read_extract_and_reject_traversal() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     create_zip(
         &fixture.workspace,
         "safe.zip",
@@ -1151,7 +1155,7 @@ async fn archive_tools_list_read_extract_and_reject_traversal() {
 
 #[tokio::test]
 async fn git_read_tools_report_a_real_repository() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     fixture.workspace.write("tracked.txt", "line one\n");
     git(&fixture.workspace, &["init"]);
     git(
@@ -1197,17 +1201,25 @@ async fn git_read_tools_report_a_real_repository() {
     assert!(branch.summary.contains('*'));
 }
 
+fn shell_sentinel_invocation() -> serde_json::Value {
+    #[cfg(windows)]
+    {
+        serde_json::json!({"cmd": "cmd.exe", "args": ["/D", "/C", "echo SHELL_SENTINEL"]})
+    }
+    #[cfg(not(windows))]
+    {
+        serde_json::json!({"cmd": "printf", "args": ["SHELL_SENTINEL"]})
+    }
+}
+
 #[tokio::test]
 async fn shell_contract_covers_safe_execution_hard_block_denial_and_cancellation() {
-    let allowed = ToolFixture::allowed();
+    let allowed = ToolFixture::allowed().await;
     let safe = allowed
-        .call(
-            "os.shell.run",
-            serde_json::json!({"cmd": "printf", "args": ["SHELL_SENTINEL"]}),
-        )
+        .call("os.shell.run", shell_sentinel_invocation())
         .await;
     assert_eq!(safe.status, ToolStatus::Ok);
-    assert_eq!(safe.summary, "SHELL_SENTINEL");
+    assert_eq!(safe.summary.trim_end(), "SHELL_SENTINEL");
     assert_eq!(allowed.approval.requests().len(), 1);
 
     let blocked = allowed
@@ -1219,7 +1231,7 @@ async fn shell_contract_covers_safe_execution_hard_block_denial_and_cancellation
     assert_eq!(blocked.status, ToolStatus::Denied);
     assert_eq!(allowed.approval.requests().len(), 1);
 
-    let denied = ToolFixture::denied();
+    let denied = ToolFixture::denied().await;
     let no_run = denied
         .call(
             "os.shell.run",
@@ -1228,7 +1240,7 @@ async fn shell_contract_covers_safe_execution_hard_block_denial_and_cancellation
         .await;
     assert_eq!(no_run.status, ToolStatus::Denied);
 
-    let cancelled = ToolFixture::allowed();
+    let cancelled = ToolFixture::allowed().await;
     cancelled.cancellation.cancel();
     let outcome = cancelled
         .call(
@@ -1242,7 +1254,7 @@ async fn shell_contract_covers_safe_execution_hard_block_denial_and_cancellation
 
 #[tokio::test]
 async fn output_contract_is_bounded() {
-    let fixture = ToolFixture::allowed();
+    let fixture = ToolFixture::allowed().await;
     let oversized = "x".repeat(MAX_TOOL_OUTPUT_CHARS + 500);
     create_zip(
         &fixture.workspace,
@@ -1280,7 +1292,9 @@ async fn symlink_escape_requires_folder_access_and_denial_prevents_read() {
     let loaded_skills = LoadedSkills::default();
     let skill_registry = parent.skill_registry();
     let root = parent.path().join("root");
-    let editable_roots = EditableRoots::for_test(&root);
+    let editable_roots = EditableRoots::new(&root, &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
     let outcome = execute(
         &ToolCallPayload {

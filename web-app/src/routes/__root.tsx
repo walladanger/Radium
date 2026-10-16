@@ -37,6 +37,7 @@ import { StartupBackendCoordinator } from '@/providers/StartupBackendCoordinator
 import { ServiceHubProvider } from '@/providers/ServiceHubProvider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { LeftSidebar } from '@/components/left-sidebar'
+import { WorkspacePanel } from '@/containers/WorkspacePanel'
 import { WindowFrame } from '@/components/WindowFrame'
 
 export const Route = createRootRoute({
@@ -83,8 +84,9 @@ const AppLayout = () => {
           <WhatsNewDialog />
           <LeftSidebar />
           <SidebarInset>
-            <div className="bg-neutral-50 dark:bg-background size-full">
-              <Outlet />
+            <div className="bg-neutral-50 dark:bg-background flex size-full min-w-0 flex-col md:flex-row">
+              <WorkspacePanel />
+              <div className="min-h-0 min-w-0 flex-1"><Outlet /></div>
             </div>
           </SidebarInset>
 

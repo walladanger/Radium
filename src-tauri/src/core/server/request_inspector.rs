@@ -696,35 +696,7 @@ pub(crate) struct StreamTelemetry {
 ///
 /// First match wins: a payload that carries two of them describes one stream of
 /// thinking, and counting it twice would inflate the token estimate.
-pub(crate) fn extract_reasoning(choice: &serde_json::Value) -> Option<String> {
-    for field in ["reasoning_content", "reasoning"] {
-        for parent in ["delta", "message"] {
-            if let Some(text) = choice
-                .pointer(&format!("/{parent}/{field}"))
-                .and_then(|v| v.as_str())
-            {
-                if !text.is_empty() {
-                    return Some(text.to_string());
-                }
-            }
-        }
-    }
-    for parent in ["delta", "message"] {
-        if let Some(parts) = choice
-            .pointer(&format!("/{parent}/reasoning_details"))
-            .and_then(|v| v.as_array())
-        {
-            let joined: String = parts
-                .iter()
-                .filter_map(|part| part.get("text").and_then(|t| t.as_str()))
-                .collect();
-            if !joined.is_empty() {
-                return Some(joined);
-            }
-        }
-    }
-    None
-}
+pub(crate) use atomic_agent_core::transport_helpers::extract_reasoning;
 
 /// Appends up to the preview cap, on a character boundary.
 fn append_capped(buffer: &mut String, text: &str) {

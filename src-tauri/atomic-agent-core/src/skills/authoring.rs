@@ -271,10 +271,12 @@ fn find_archive_manifest(archive: &mut zip::ZipArchive<File>) -> Result<usize, S
         let path = entry
             .enclosed_name()
             .ok_or_else(|| "Archive contains an unsafe path".to_string())?;
-        if !entry.is_dir() && path.file_name().is_some_and(|name| name == "SKILL.md")
-            && manifest_index.replace(index).is_some() {
-                return Err("Archive must contain exactly one SKILL.md file".into());
-            }
+        if !entry.is_dir()
+            && path.file_name().is_some_and(|name| name == "SKILL.md")
+            && manifest_index.replace(index).is_some()
+        {
+            return Err("Archive must contain exactly one SKILL.md file".into());
+        }
     }
     manifest_index.ok_or_else(|| "Archive must include a SKILL.md file".into())
 }

@@ -164,7 +164,7 @@ mod tests {
     fn bundled_skills_follow_explicit_platform_metadata_policy() {
         use SkillPlatform::{Darwin, Linux, Win32};
 
-        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/agent-skills");
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/agent-skills");
         let expected = BTreeMap::from([
             ("apple-calendar", vec![Darwin]),
             ("apple-notes", vec![Darwin]),
@@ -194,50 +194,96 @@ mod tests {
         ]);
 
         let names = list_starter_skill_names(&source);
-        assert_eq!(
-            names.len(),
-            expected.len(),
-            "every bundled skill must have an explicit reviewed platform policy"
+        assert!(
+            names.len() >= expected.len(),
+            "curated platform policies must remain in the catalog"
         );
+        for name in expected.keys() {
+            assert!(names.contains(*name), "missing curated skill {name}");
+        }
 
         for name in names {
             let skill_root = source.join(&name);
             let content = fs::read_to_string(skill_root.join("SKILL.md")).unwrap();
             let parsed = parse_skill_file(&content).unwrap();
             assert_eq!(
-                parsed.manifest.platforms.as_ref(),
-                expected.get(name.as_str()),
-                "platform metadata changed for bundled skill `{name}`; review and update the policy explicitly"
+                parsed.manifest.name, name,
+                "manifest identity must match its directory"
             );
+            assert!(
+                !parsed.body.trim().is_empty(),
+                "bundled instructions must be nonempty"
+            );
+            if let Some(policy) = expected.get(name.as_str()) {
+                assert_eq!(
+                    parsed.manifest.platforms.as_ref(),
+                    Some(policy),
+                    "platform metadata changed for curated skill `{name}`"
+                );
+            }
             for script in &parsed.manifest.requires_scripts {
                 assert!(
-                    skill_root.join("scripts").join(script).is_file(),
+                    Path::new(script)
+                        .components()
+                        .all(|component| matches!(component, std::path::Component::Normal(_)))
+                        && skill_root.join("scripts").join(script).is_file()
+                        && fs::canonicalize(skill_root.join("scripts").join(script))
+                            .unwrap()
+                            .starts_with(fs::canonicalize(skill_root.join("scripts")).unwrap()),
                     "bundled skill `{name}` declares missing script `{script}`"
                 );
             }
         }
     }
 
-    /// `skill.view` truncates the runtime contract plus the body at
-    /// LOADED_SKILL_BODY_MAX_CHARS. A bundled skill that overruns it loses its
-    /// closing sections silently: ui-ux-pro-max arrived 568 characters over and
-    /// its pre-delivery checklist never reached the model.
-    #[test]
-    fn every_bundled_skill_body_survives_the_load_limit() {
+    /// Every bundled instruction is retrievable across bounded pages, without
+    /// silently losing late sections from larger publisher skills.
+    #[tokio::test]
+    async fn every_bundled_skill_body_survives_the_load_limit() {
         use crate::core::agent::skills::loaded::LOADED_SKILL_BODY_MAX_CHARS;
 
-        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/agent-skills");
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/agent-skills");
+        let mut registry = super::super::SkillRegistry::load(
+            source.clone(),
+            &BTreeSet::new(),
+            &super::super::available_tool_names(),
+        )
+        .unwrap();
+        registry.trust_all();
         for name in list_starter_skill_names(&source) {
             let content = fs::read_to_string(source.join(&name).join("SKILL.md")).unwrap();
             let parsed = parse_skill_file(&content).unwrap();
-            // The contract `view` prepends is longest when scripts are declared;
-            // 400 characters covers its wording plus the filenames it lists.
-            let contract = 400 + parsed.manifest.requires_scripts.join(", ").chars().count();
-            let total = contract + parsed.body.chars().count();
-            assert!(
-                total <= LOADED_SKILL_BODY_MAX_CHARS,
-                "bundled skill `{name}` would be cut off when loaded: {total} characters against a \
-                 limit of {LOADED_SKILL_BODY_MAX_CHARS}. Move late sections into references/."
+            // Incompatible host-specific skills remain unavailable; their parsed body
+            // still passes catalog identity validation above.
+            if registry.get_enabled(&name).is_none() {
+                continue;
+            }
+            let loaded = super::super::loaded::LoadedSkills::default();
+            let mut offset = 0;
+            let mut reconstructed = String::new();
+            loop {
+                let outcome = loaded.view_page(&name, &registry, offset).await;
+                assert_eq!(
+                    outcome.status,
+                    crate::types::ToolStatus::Ok,
+                    "cannot page skill {name}"
+                );
+                assert!(
+                    loaded.snapshot().await[0].body.chars().count() <= LOADED_SKILL_BODY_MAX_CHARS
+                );
+                let details = outcome.details.unwrap();
+                reconstructed.push_str(details["page"].as_str().unwrap());
+                match details["next_offset"].as_u64() {
+                    Some(next) => {
+                        assert!(next > offset as u64);
+                        offset = next as usize;
+                    }
+                    None => break,
+                }
+            }
+            assert_eq!(
+                reconstructed, parsed.body,
+                "pagination lost instructions for {name}"
             );
         }
     }

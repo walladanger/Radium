@@ -275,6 +275,22 @@ pub fn run() {
         core::media::runtime::media_engine_install,
         core::media::runtime::media_engine_start,
         core::media::runtime::media_engine_stop,
+        core::runtimes::commands::runtimes_catalog,
+        core::runtimes::commands::runtimes_detect,
+        core::runtimes::ollama::commands::ollama_status,
+        core::runtimes::ollama::commands::ollama_install,
+        core::runtimes::ollama::commands::ollama_settings_set,
+        core::runtimes::ollama::commands::ollama_start,
+        core::runtimes::ollama::commands::ollama_stop,
+        core::runtimes::ollama::commands::ollama_restart,
+        core::runtimes::ollama::commands::ollama_take_over,
+        core::runtimes::ollama::commands::ollama_logs,
+        core::runtimes::ollama::commands::ollama_models,
+        core::runtimes::ollama::commands::ollama_pull,
+        core::runtimes::ollama::commands::ollama_pull_cancel,
+        core::runtimes::ollama::commands::ollama_delete_model,
+        core::runtimes::ollama::commands::ollama_load_model,
+        core::runtimes::ollama::commands::ollama_unload_model,
     ]);
 
     // Mobile: the same surface minus the desktop-only commands.
@@ -431,6 +447,9 @@ pub fn run() {
         core::tray_status::update_tray_status,
     ]);
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    let app_builder = app_builder.manage(core::runtimes::ollama::OllamaState::default());
+
     let app = app_builder
         .manage(core::media::runtime::MediaEngineState::default())
         .manage(AppState {
@@ -563,6 +582,13 @@ pub fn run() {
             // init so its actions are recorded in app.log.
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             crate::core::process_reaper::reap_orphan_backends(app.handle());
+
+            // Radium's Ollama, when the user set it to start with Radium. After
+            // the reaper, so a leftover copy from a crash is gone first.
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            tauri::async_runtime::spawn(crate::core::runtimes::ollama::commands::auto_start(
+                app.handle().clone(),
+            ));
 
             // Same rationale for the agent's own children, which the backend
             // reaper cannot recognise: they are arbitrary user commands, so
@@ -755,6 +781,11 @@ pub fn run() {
                     let engine = app_handle.state::<core::media::runtime::MediaEngineState>();
                     tauri::async_runtime::block_on(
                         core::media::runtime::stop_engine_on_exit(&engine),
+                    );
+                    // Radium's Ollama and the models it holds in GPU memory.
+                    let ollama = app_handle.state::<core::runtimes::ollama::OllamaState>();
+                    tauri::async_runtime::block_on(
+                        core::runtimes::ollama::commands::stop_on_exit(&ollama),
                     );
                 }
 
