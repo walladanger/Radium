@@ -1,5 +1,5 @@
 import { webcrypto } from 'node:crypto'
-import { expect, afterEach, vi } from 'vitest'
+import { expect, afterAll, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import * as matchers from '@testing-library/jest-dom/matchers'
 import { clearMocks } from '@tauri-apps/api/mocks'
@@ -130,4 +130,17 @@ afterEach(() => {
   clearMocks()
   useServiceStore.setState({ serviceHub: null })
   cleanup()
+})
+
+// Several app modules start work on import that no test awaits: the provider,
+// staff-picks and model-catalog registries refresh over the network and log
+// when they land. A log that lands while the worker is shutting down after its
+// last file is reported by vitest 5 as an unhandled EnvironmentTeardownError
+// ("Closing rpc while onUserConsoleLog was pending") and fails the whole run,
+// although every test passed. Once a file's tests are done nothing it prints
+// can be asserted on, so drop it. Same cause as 0a49a14d, for every file.
+afterAll(() => {
+  for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+    vi.spyOn(console, method).mockImplementation(() => undefined)
+  }
 })
