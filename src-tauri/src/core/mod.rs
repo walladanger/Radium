@@ -25,4 +25,3 @@ pub mod system;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod threads;
 pub mod tray_status;
-

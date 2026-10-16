@@ -8,6 +8,7 @@
 
 pub mod catalog;
 pub mod engine;
+pub mod resolution;
 pub mod secrets;
 pub mod server;
 pub mod supervisor;
@@ -24,3 +25,7 @@ pub mod runtime;
 /// Desktop only: stitches continuous-session clips with the system ffmpeg.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod stitch;
+
+/// Desktop only: enlarges finished images to the chosen output size.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod upscale;

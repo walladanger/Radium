@@ -159,7 +159,9 @@ impl GpuLedger {
         let used = self
             .reserved_on(uuid)
             .max(gpu.measured_used_mib.unwrap_or(0));
-        gpu.total_mib.saturating_sub(HEADROOM_MIB).saturating_sub(used)
+        gpu.total_mib
+            .saturating_sub(HEADROOM_MIB)
+            .saturating_sub(used)
     }
 
     /// Where an instance needing `need_mib` would go under `profile`.
@@ -183,7 +185,7 @@ impl GpuLedger {
             Profile::Pinned { uuid } => {
                 if !self.gpus.iter().any(|gpu| &gpu.uuid == uuid) {
                     return Err(PlacementError {
-                        message: format!("GPU {uuid} is not present"),
+                        message: format!("GPU {} is not present", gpu_label(uuid)),
                         suggestion: Some(Profile::Auto),
                     });
                 }
@@ -195,9 +197,7 @@ impl GpuLedger {
                     })
                 } else {
                     Err(PlacementError {
-                        message: format!(
-                            "Needs {need_mib} MiB but GPU {uuid} has {free} MiB free"
-                        ),
+                        message: format!("Needs {need_mib} MiB but GPU {} has {free} MiB free", gpu_label(uuid)),
                         suggestion: if need_mib <= best_single.1 {
                             Some(Profile::Pinned {
                                 uuid: best_single.0.clone(),
@@ -226,10 +226,7 @@ impl GpuLedger {
             Profile::SplitTensor => {
                 let count = self.gpus.len() as Mib;
                 let each = need_mib.div_ceil(count);
-                let short = self
-                    .gpus
-                    .iter()
-                    .find(|gpu| self.free_mib(&gpu.uuid) < each);
+                let short = self.gpus.iter().find(|gpu| self.free_mib(&gpu.uuid) < each);
                 match short {
                     None => Ok(Placement {
                         profile: Profile::SplitTensor,
@@ -242,7 +239,7 @@ impl GpuLedger {
                     Some(gpu) => Err(PlacementError {
                         message: format!(
                             "Tensor parallelism needs {each} MiB on every GPU; {} has {} MiB free",
-                            gpu.uuid,
+                            gpu_label(&gpu.uuid),
                             self.free_mib(&gpu.uuid)
                         ),
                         suggestion: (need_mib <= total_free).then_some(Profile::SplitLayer),
@@ -295,7 +292,8 @@ impl GpuLedger {
             let free = self.free_mib(uuid);
             if *mib > free {
                 return Err(format!(
-                    "Needs {mib} MiB on GPU {uuid} but only {free} MiB is free"
+                    "Needs {mib} MiB on GPU {} but only {free} MiB is free",
+                    gpu_label(uuid)
                 ));
             }
         }
@@ -322,6 +320,14 @@ fn too_big(need_mib: Mib, total_free: Mib) -> PlacementError {
         ),
         suggestion: None,
     }
+}
+
+/// A short, stable, non-reversible label for a GPU. The raw hardware UUID is a
+/// device fingerprint, so it is never written into logs or error text.
+fn gpu_label(uuid: &str) -> String {
+    use sha2::Digest;
+    let digest = sha2::Sha256::digest(uuid.as_bytes());
+    hex::encode(&digest[..3])
 }
 
 /// The KV cache of a transformer decoder, in MiB, for `context` tokens:
@@ -384,14 +390,21 @@ mod tests {
         assert_eq!(placement.shares.len(), 2);
         let total: Mib = placement.shares.iter().map(|(_, mib)| mib).sum();
         assert_eq!(total, 40_000);
-        assert_eq!(placement.llama_cpp_args()[..3], ["--split-mode", "layer", "--tensor-split"]);
+        assert_eq!(
+            placement.llama_cpp_args()[..3],
+            ["--split-mode", "layer", "--tensor-split"]
+        );
     }
 
     #[test]
     fn two_cards_are_not_one_48_gb_card() {
         let ledger = two_3090s();
         let error = ledger.plan(2 * PER_CARD + 1, &Profile::Auto).unwrap_err();
-        assert!(error.message.contains("across all GPUs"), "{}", error.message);
+        assert!(
+            error.message.contains("across all GPUs"),
+            "{}",
+            error.message
+        );
         assert_eq!(error.suggestion, None);
     }
 
@@ -428,7 +441,10 @@ mod tests {
     fn tensor_parallelism_needs_an_equal_share_on_every_card() {
         let mut ledger = two_3090s();
         let placement = ledger.plan(30_000, &Profile::SplitTensor).unwrap();
-        assert_eq!(placement.shares, vec![(A.into(), 15_000), (B.into(), 15_000)]);
+        assert_eq!(
+            placement.shares,
+            vec![(A.into(), 15_000), (B.into(), 15_000)]
+        );
         assert_eq!(placement.llama_cpp_args(), ["--split-mode", "tensor"]);
 
         ledger
@@ -499,5 +515,14 @@ mod tests {
     fn estimates_add_a_compute_allowance() {
         assert_eq!(estimate_mib(4_000, 1_024), 4_000 + 1_024 + 512);
         assert_eq!(estimate_mib(40_000, 0), 44_000);
+    }
+
+    #[test]
+    fn gpu_labels_are_short_stable_and_do_not_leak_the_raw_uuid() {
+        let uuid = "00000000-1111-2222-3333-444444444444";
+        let label = gpu_label(uuid);
+        assert_eq!(label.len(), 6);
+        assert!(!label.contains(uuid));
+        assert_eq!(label, gpu_label(uuid));
     }
 }
