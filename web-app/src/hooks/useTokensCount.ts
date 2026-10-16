@@ -221,6 +221,10 @@ export const useTokensCount = (
         void latestCalculationRef.current?.()
       }
     }
+    // `selectedModel?.settings?.ctx_len` is read only for the debug log above;
+    // the value that matters arrives through `getMaxTokens`, so recalculating on
+    // every new settings object would only add token-count calls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedModel?.id,
     selectedProvider,

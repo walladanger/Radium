@@ -14,9 +14,9 @@ import { ModelLogo } from '@/containers/ModelLogo'
 import ProvidersAvatar from '@/containers/ProvidersAvatar'
 import {
   AddCloudProviderDialog,
-  selectCloudGalleryProviders,
   type CloudProviderSaveResult,
 } from '@/containers/dialogs/AddCloudProviderDialog'
+import { selectCloudGalleryProviders } from '@/containers/dialogs/cloudProviderGallery'
 import { useDownloadStore } from '@/hooks/useDownloadStore'
 import { useLocalScanFolder } from '@/hooks/useLocalScanFolder'
 import { useModelProvider } from '@/hooks/useModelProvider'

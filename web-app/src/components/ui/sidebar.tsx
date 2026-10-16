@@ -20,6 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebarResize } from '@/hooks/use-sidebar-resize'
 import { mergeButtonRefs } from '@/lib/merge-button-refs'
 import { cn } from '@/lib/utils'
+import { SidebarContext, useSidebar } from './sidebar-context'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar:state'
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -33,33 +34,6 @@ const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
 //* new constants for sidebar resizing
 const MIN_SIDEBAR_WIDTH = '14rem'
 const MAX_SIDEBAR_WIDTH = '40rem'
-
-type SidebarContext = {
-  state: 'expanded' | 'collapsed'
-  open: boolean
-  setOpen: (open: boolean) => void
-  openMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  isMobile: boolean
-  toggleSidebar: () => void
-  //* new properties for sidebar resizing
-  width: string
-  setWidth: (width: string) => void
-  //* new properties for tracking is dragging rail
-  isDraggingRail: boolean
-  setIsDraggingRail: (isDraggingRail: boolean) => void
-}
-
-const SidebarContext = React.createContext<SidebarContext | null>(null)
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext)
-  if (!context) {
-    throw new Error('useSidebar must be used within a SidebarProvider.')
-  }
-
-  return context
-}
 
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
@@ -181,6 +155,8 @@ const SidebarProvider = React.forwardRef<
         toggleSidebar,
         //* add width to dependencies
         width,
+        // setWidth wraps the onWidthChange prop, so it must not go stale.
+        setWidth,
         //* add isDraggingRail to dependencies
         isDraggingRail,
       ]
@@ -862,5 +838,4 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
 }

@@ -477,10 +477,12 @@ pub async fn unload_mlx_model<R: Runtime>(
     let session = state.mlx_server_process.lock().await.remove(&pid);
 
     if let Some(session) = session {
-        let mut child = session.child;
-
+        // Non-unix: dropping the session kills the child (`kill_on_drop`).
+        #[cfg(not(unix))]
+        drop(session);
         #[cfg(unix)]
         {
+            let mut child = session.child;
             graceful_terminate_process(&mut child).await;
         }
 

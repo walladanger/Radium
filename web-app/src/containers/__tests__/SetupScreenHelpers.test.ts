@@ -18,7 +18,7 @@ import {
   pickPreferredVariant,
   publisherKey,
   sizeStringToGb,
-} from '@/containers/SetupScreen'
+} from '@/containers/setupScreenHelpers'
 import type { HardwareProfile } from '@/lib/hardware-tier'
 import type { CatalogModel, ModelQuant } from '@/services/models/types'
 import type { LocalModelCandidate } from '@/services/models/localScan'

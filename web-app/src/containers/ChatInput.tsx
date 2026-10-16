@@ -2077,7 +2077,9 @@ const ChatInput = memo(function ChatInput({
   }
 
   // Open the image picker dialog (extracted for reuse)
-  const openImagePicker = useCallback(async () => {
+  // Plain function: memoising it bought nothing, since `processImageFiles` is
+  // recreated every render and the only caller is another plain function.
+  const openImagePicker = async () => {
     if (isPlatformTauri()) {
       try {
         const selected = await serviceHub.dialog().open({
@@ -2143,7 +2145,7 @@ const ChatInput = memo(function ChatInput({
       // Fallback to input click for web
       fileInputRef.current?.click()
     }
-  }, [serviceHub, processImageFiles])
+  }
 
   const handleImagePickerClick = async () => {
     if (hasMmproj) {

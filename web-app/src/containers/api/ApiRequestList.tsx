@@ -17,7 +17,8 @@ import type { ApiLogEntry, ApiLogFilter } from '@/types/apiServerLog'
 import { endpointLabel } from '@/utils/apiServerLogNormalize'
 import { formatMs, formatTime } from '@/utils/apiServerStats'
 
-import { REQUEST_TONE, StatusDot } from './ApiStatusIndicators'
+import { StatusDot } from './ApiStatusIndicators'
+import { REQUEST_TONE } from './statusTone'
 
 const FILTERS: ApiLogFilter[] = [
   'all',

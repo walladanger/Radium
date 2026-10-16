@@ -23,7 +23,7 @@ import type { BuiltinPanel } from '../registry'
  * than claimed as all-time. A skill with no record shows no chip at all
  * rather than "0 runs", which would assert it has never been used.
  */
-function SkillsPanel() {
+export function SkillsPanel() {
   const { skills, loading, error, load, setEnabled, approve } = useAgentSkills()
   const messages = useMessages((state) => state.messages)
   const [busy, setBusy] = useState<string | null>(null)

@@ -1,11 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import {
-  MissingModelBadge,
-  ModelSourceBadge,
-  modelSourceLabel,
-} from '@/components/ModelSourceBadge'
+import { MissingModelBadge, ModelSourceBadge } from '@/components/ModelSourceBadge'
+import { modelSourceLabel } from '@/components/modelSource'
 
 describe('ModelSourceBadge', () => {
   it('names the Hugging Face cache after Hugging Face, not Unsloth', () => {

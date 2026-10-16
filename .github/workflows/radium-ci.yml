@@ -81,3 +81,45 @@ jobs:
 
       - name: Run authoritative repository verification
         run: make verify
+
+  # `verify` runs clippy on Linux only, so `#[cfg(unix)]`-shaped code can leave
+  # warnings that exist only on Windows (four did, in tauri-plugin-mlx). Same
+  # command as `make clippy-rust`, on the platform that job cannot see.
+  clippy-windows:
+    name: Clippy (Windows)
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 #@v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 #@stable
+        with:
+          components: clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 #@v2
+        with:
+          workspaces: src-tauri
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Configure Yarn and install root dependencies
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.3 --activate
+          yarn config set -H enableImmutableInstalls false
+          yarn install
+
+      - name: Run clippy with warnings denied
+        shell: bash
+        run: |
+          command -v make >/dev/null || choco install make -y --no-progress
+          make clippy-rust

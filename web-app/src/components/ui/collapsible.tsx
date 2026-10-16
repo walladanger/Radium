@@ -41,12 +41,11 @@ function CollapsibleContent({
  * the target is `auto`. `overflow-hidden` keeps the rows clipped while that
  * height is still moving.
  */
-const collapsiblePanelAnimation =
+export const collapsiblePanelAnimation =
   'overflow-hidden duration-300 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down'
 
 export {
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent,
-  collapsiblePanelAnimation,
 }

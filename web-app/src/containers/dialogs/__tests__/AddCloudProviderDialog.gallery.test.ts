@@ -17,7 +17,7 @@ vi.mock('@/lib/platform/const', () => ({
   >,
 }))
 
-import { selectCloudGalleryProviders } from '../AddCloudProviderDialog'
+import { selectCloudGalleryProviders } from '../cloudProviderGallery'
 
 const apiKeySetting = {
   key: 'api-key',

@@ -25,4 +25,15 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // A built-in panel module is a registry entry: it exports the `panel`
+    // descriptor that names its component, and the two belong together.
+    files: ['src/panels/builtin/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true, allowExportNames: ['panel'] },
+      ],
+    },
+  },
 )

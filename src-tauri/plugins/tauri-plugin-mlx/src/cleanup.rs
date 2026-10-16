@@ -12,9 +12,12 @@ pub async fn cleanup_processes<R: Runtime>(app_handle: &tauri::AppHandle<R>) {
     let pids: Vec<i32> = map.keys().cloned().collect();
     for pid in pids {
         if let Some(session) = map.remove(&pid) {
-            let mut child = session.child;
+            // Non-unix: dropping the session kills the child (`kill_on_drop`).
+            #[cfg(not(unix))]
+            drop(session);
             #[cfg(unix)]
             {
+                let mut child = session.child;
                 use nix::sys::signal::{kill, Signal};
                 use nix::unistd::Pid;
                 use tokio::time::{timeout, Duration};

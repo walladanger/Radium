@@ -3,7 +3,7 @@ import { DownloadIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { useSidebar } from '@/components/ui/sidebar'
+import { useSidebar } from '@/components/ui/sidebar-context'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { cn } from '@/lib/utils'
 import {

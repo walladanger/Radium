@@ -41,7 +41,7 @@ function compareDriverVersions(a: string, b: string): number {
  * janhq mirror and now silently fall back to CPU after the ggml-org
  * switch (ADR 2026-05-22).
  */
-export function findOutdatedNvidiaGpu(gpus: GPU[]): GPU | null {
+function findOutdatedNvidiaGpu(gpus: GPU[]): GPU | null {
   for (const gpu of gpus) {
     if (!gpu?.nvidia_info) continue
     if (!gpu.driver_version) continue

@@ -19,7 +19,7 @@ import type { BuiltinPanel } from '../registry'
  * that `null` is passed straight through to a dash. An ETA invented from a
  * zeroed speed sample is the exact failure this panel must not have.
  */
-function DownloadsPanel() {
+export function DownloadsPanel() {
   const downloads = useDownloadStore((state) => state.downloads)
   const paused = useDownloadStore((state) => state.pausedDownloads)
 

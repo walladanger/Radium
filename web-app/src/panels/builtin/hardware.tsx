@@ -18,7 +18,7 @@ import type { BuiltinPanel } from '../registry'
  * gated on a sample having actually arrived this session, and a sample is
  * recognised by `total_memory` being non-zero, which no real machine reports.
  */
-function HardwarePanel() {
+export function HardwarePanel() {
   const hardwareData = useHardware((state) => state.hardwareData)
   const hardwareReady = useHardware((state) => state.hardwareReady)
   const systemUsage = useHardware((state) => state.systemUsage)

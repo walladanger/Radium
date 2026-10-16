@@ -16,7 +16,7 @@ import type { BuiltinPanel } from '../registry'
  * The API key is reported as set or not set and never printed. A panel is a
  * thing people screen-share.
  */
-function ApiServerPanel() {
+export function ApiServerPanel() {
   const serverStatus = useAppState((state) => state.serverStatus)
   const { serverHost, serverPort, apiPrefix, corsEnabled, trustedHosts, proxyTimeout, apiKey, enableOnStartup, lastServerModels } =
     useLocalApiServer()

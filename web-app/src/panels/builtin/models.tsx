@@ -15,7 +15,7 @@ import type { BuiltinPanel } from '../registry'
  * between turns — printing `0 tok/s` for "we have not measured" would read as
  * a stalled model.
  */
-function ModelsPanel() {
+export function ModelsPanel() {
   const activeModels = useAppState((state) => state.activeModels)
   const loadingModel = useAppState((state) => state.loadingModel)
   const tokenSpeed = useAppState((state) => state.tokenSpeed)

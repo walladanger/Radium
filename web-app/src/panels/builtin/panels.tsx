@@ -14,7 +14,7 @@ import type { BuiltinPanel } from '../registry'
  * menu: a panel declares them in its manifest, and this is where someone can
  * read what they agreed to after the fact.
  */
-function PanelsOverview() {
+export function PanelsOverview() {
   const [listing, setListing] = useState<PanelListing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

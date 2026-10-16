@@ -1680,7 +1680,7 @@ function ThreadDetail() {
     setTimeout(() => {
       handleRegenerate()
     }, 1000)
-  }, [selectedModel, selectedProvider, serviceHub, handleRegenerate])
+  }, [selectedModel, selectedProvider, serviceHub, handleRegenerate, t])
 
   // Keep refs in sync so onFinish always calls the latest versions
   handleContextSizeIncreaseRef.current = handleContextSizeIncrease

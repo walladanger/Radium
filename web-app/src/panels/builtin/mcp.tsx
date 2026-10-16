@@ -22,7 +22,7 @@ import type { BuiltinPanel } from '../registry'
  * different claim from "we have not asked yet" — so until any tool is known,
  * the count is a dash.
  */
-function MCPPanel() {
+export function MCPPanel() {
   const configured = useMCPServers((state) => state.mcpServers)
   const loading = useMCPServers((state) => state.loading)
   const { statusByName } = useMCPServerStatuses()

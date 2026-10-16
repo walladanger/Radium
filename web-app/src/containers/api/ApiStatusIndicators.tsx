@@ -2,13 +2,9 @@ import type { ApiRequestStatus } from '@/types/apiServerLog'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { cn } from '@/lib/utils'
 
-export type StatusTone =
-  | 'ready'
-  | 'busy'
-  | 'idle'
-  | 'error'
-  | 'warning'
-  | 'pending'
+import { REQUEST_TONE, type StatusTone } from './statusTone'
+
+export type { StatusTone }
 
 const DOT_TONE: Record<StatusTone, string> = {
   ready: 'bg-emerald-500',
@@ -36,13 +32,6 @@ export function StatusDot({
       )}
     />
   )
-}
-
-export const REQUEST_TONE: Record<ApiRequestStatus, StatusTone> = {
-  in_flight: 'busy',
-  completed: 'ready',
-  error: 'error',
-  cancelled: 'warning',
 }
 
 // There is no shared `badge` primitive in this codebase; this follows the

@@ -28,8 +28,8 @@ import {
   SidebarMenuItem,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  useSidebar,
 } from '@/components/ui/sidebar'
+import { useSidebar } from '@/components/ui/sidebar-context'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { memo, useMemo, useState, type MouseEvent } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
