@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-277 records, 2026-05-19 → 2026-10-15.
+278 records, 2026-05-19 → 2026-10-15.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -265,8 +265,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-10** — [Throttle crashloop `model_load` failure spam client-side; confirm `model_load.status` / api 404-noise are already-fixed-pending-rollout, not code bugs (ATO-130: ATO-133 + ATO-131 + ATO-132)](2026-06-10-throttle-crashloop-model-load-failure-spam-client-side-confirm.md)
 - **2026-06-09** — [Add zero-PII Sentry crash/error tracking to both the React frontend and the Rust/Tauri desktop, gated behind `productAnalytic` (ATO-113)](2026-06-09-add-zero-pii-sentry-crash-error-tracking-to-both-the-react.md)
 
-## Packaging, installers, autostart & platform policy (16)
+## Packaging, installers, autostart & platform policy (17)
 
+- **2026-10-15** — [Repair an unreadable settings.json instead of falling back to a relative data folder](2026-10-15-repair-an-unreadable-settings-file-instead-of-using-a-relative-data-folder.md)
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
 - **2026-09-12** — [Radium never auto-updates: remove the updater rather than repoint it](2026-09-12-radium-never-auto-updates.md)
 - **2026-09-04** — [Sanitize the AppImage environment before launching host processes](2026-09-04-sanitize-appimage-environment-before-launching-host-processes.md)
