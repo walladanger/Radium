@@ -107,3 +107,30 @@ passed (9.65 seconds). ES2023 diagnostic typecheck: passed; standard tsc -b reru
 confirms the same eight diagnostics in unchanged files. Native app build/IPC
 acceptance remains blocked/unverified as described above. Changes remain on the
 local codex/plugin-panel-workspace feature branch; no merge or installation.
+
+## Requested execution and Windows packaging follow-up
+
+Reran: focused frontend panels 86 passed, lightweight Rust directory suite 10
+passed, original Node contracts 18 passed. No Cordis plugin directory is present
+in the installed app's configured data folder; there are no installed Cordis
+packages to launch, and no Cordis marketplace/runtime was introduced by this work.
+
+The deep-path librarian errors were avoided using a short writable temporary
+CARGO_TARGET_DIR. Native compilation then required normal build assets: existing
+installed sidecars/extension archives were copied into ignored checkout build
+locations, and the icon was generated from the repository's source icon. These
+are local validation inputs, not new shipped binaries or an installer release.
+
+Found and fixed the Windows platform resource override dropping panel-contract:
+added the shared SDK/theme/schema resource directory. Its new regression failed
+before the config fix; all 19 Node contracts pass afterward. The default native
+unit executable compiled but could not start (0xc0000139); build.rs documents
+that Windows tests require the existing test-tauri feature for a Common Controls
+v6 manifest. Reran with that feature; outcome is recorded below.
+
+Final native execution: `cargo test --features test-tauri --lib core::panels::`
+with the manifest path and short temporary target directory passed 35 tests,
+0 failures, 1,105 filtered out (0.07 seconds test time). Full native app test code
+compiled; only the panel subset was executed. Native GUI/window interaction and
+Cordis runtime/plugin execution remain unverified/unimplemented respectively.
+No Cordis marketplace is included. No installed app was upgraded or launched.

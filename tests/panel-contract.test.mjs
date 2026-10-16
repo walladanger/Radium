@@ -265,3 +265,10 @@ test('host-specific permissions stay expressible, so panels remain portable', ()
   // An unnamespaced invention is refused: core names are the portable set.
   assert.ok(validate({ ...base, permissions: ['usage.read'] }).length > 0)
 })
+
+
+test('the Windows bundle includes the SDK and theme required by panel GUIs', () => {
+  const config = JSON.parse(read(path.join(repoRoot, 'src-tauri/tauri.windows.conf.json')))
+  assert.ok(config.bundle.resources.includes('resources/panel-contract/**/*'),
+    'Windows overrides the base resources array and must retain the shared panel contract')
+})

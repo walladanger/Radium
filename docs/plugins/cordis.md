@@ -43,3 +43,10 @@ Run `cargo test --manifest-path tests/panel-host/Cargo.toml` for the real filesy
 registry and protocol regressions without compiling the full desktop runtime.
 Run the web-app panel tests for Install, folder access and board error display.
 Native IPC and packaged Windows acceptance are separate required release checks.
+
+On Windows, use `cargo test --manifest-path src-tauri/Cargo.toml --features test-tauri --lib core::panels::`
+for native panel tests after preparing the normal app build assets. The
+`test-tauri` feature embeds the Common Controls v6 test manifest; omitting it
+can prevent the test executable from starting with `0xc0000139`. A shorter
+`CARGO_TARGET_DIR` inside a writable temporary folder also avoids the native
+librarian path failures encountered with this deep checkout path.
