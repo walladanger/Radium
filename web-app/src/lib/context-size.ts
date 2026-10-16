@@ -37,7 +37,7 @@ type ModelLike = {
  * Read a positive finite context size from the model's settings.
  * Strings use parseInt with radix 10, so a leading integer is accepted.
  *
- * @param model Model record; absent or unparseable settings return undefined.
+ * @param model Model record; absent or unparsable settings return undefined.
  * @returns The stored number or parsed integer; numeric values are not rounded.
  */
 export function readModelCtxLen(model: ModelLike | null | undefined): number | undefined {

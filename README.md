@@ -55,11 +55,12 @@ Start the server under **Settings > Local API Server**. Its default base URL is
 The server routes requests to local engines and registered external providers,
 so a request through a local URL can still use a remote provider.
 
-Set an API key in the server settings, then list the available model ids:
+Set an API key in the server settings and supply it through the
+`RADIUM_API_KEY` environment variable, then list the available model ids:
 
 ```bash
 curl http://127.0.0.1:1337/v1/models \
-  -H "Authorization: Bearer YOUR_RADIUM_API_KEY"
+  -H "Authorization: Bearer $RADIUM_API_KEY"
 ```
 
 Use an id returned by that endpoint in a chat request:
@@ -67,7 +68,7 @@ Use an id returned by that endpoint in a chat request:
 ```bash
 curl http://127.0.0.1:1337/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_RADIUM_API_KEY" \
+  -H "Authorization: Bearer $RADIUM_API_KEY" \
   -d '{"model":"YOUR_MODEL_ID","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
