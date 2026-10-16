@@ -139,8 +139,42 @@ afterEach(() => {
 // ("Closing rpc while onUserConsoleLog was pending") and fails the whole run,
 // although every test passed. Once a file's tests are done nothing it prints
 // can be asserted on, so drop it. Same cause as 0a49a14d, for every file.
-afterAll(() => {
-  for (const method of ['log', 'info', 'warn', 'error', 'debug'] as const) {
-    vi.spyOn(console, method).mockImplementation(() => undefined)
+//
+// The methods are replaced outright, not with `vi.spyOn`: vitest calls
+// `vi.restoreAllMocks()` as soon as a file's hooks have run, which put a spy's
+// original back before the slow part of shutdown (writing coverage) began, and
+// the late log still went out. A later file in the same worker evaluates this
+// setup again and puts the originals back before its own tests.
+const SILENCED_CONSOLE = Symbol.for('radium.test.silenced-console')
+const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug'] as const
+type ConsoleMethod = (typeof CONSOLE_METHODS)[number]
+type SilencedConsoleStash = Partial<
+  Record<ConsoleMethod, Console[ConsoleMethod]>
+>
+const consoleStashHolder = globalThis as unknown as Record<
+  symbol,
+  SilencedConsoleStash | undefined
+>
+
+const stashedConsole = consoleStashHolder[SILENCED_CONSOLE]
+if (stashedConsole) {
+  for (const method of CONSOLE_METHODS) {
+    const silent = console[method] as Console[ConsoleMethod] & {
+      [SILENCED_CONSOLE]?: true
+    }
+    const original = stashedConsole[method]
+    if (silent[SILENCED_CONSOLE] && original) console[method] = original
   }
+  delete consoleStashHolder[SILENCED_CONSOLE]
+}
+
+afterAll(() => {
+  const stash: SilencedConsoleStash = {}
+  for (const method of CONSOLE_METHODS) {
+    stash[method] = console[method]
+    console[method] = Object.assign(() => undefined, {
+      [SILENCED_CONSOLE]: true as const,
+    })
+  }
+  consoleStashHolder[SILENCED_CONSOLE] = stash
 })
