@@ -58,6 +58,7 @@ beforeEach(() => {
   // product decision that is free to change without rewriting them. The
   // default itself is asserted in `the board store` below.
   useBoard.setState({ open: ['builtin:panels'], locked: false })
+  useBoard.setState({ mode: 'split' })
 })
 
 describe('the registry', () => {
@@ -81,6 +82,23 @@ describe('the registry', () => {
 })
 
 describe('the board', () => {
+  it('requires acknowledgement before a Split transition reloads a custom GUI', async () => {
+    listing.value = { installed: [{ id: 'notes', name: 'Notes', contract: 1, entry: 'index.html' }], broken: [] }
+    useBoard.setState({ open: [] })
+    useBoard.getState().addPanel('panel:notes')
+    render(<PanelBoard />)
+    const frame = await screen.findByTitle('Notes')
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas', exact: true }))
+    expect(useBoard.getState().mode).toBe('split')
+    expect(screen.getByTitle('Notes')).toBe(frame)
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/reload.*unsaved/i))
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Canvas', exact: true }))
+    expect(useBoard.getState().mode).toBe('canvas')
+    expect(await screen.findByTitle('Notes')).not.toBe(frame)
+    confirm.mockRestore()
+  })
   it('shows a broken panel in place, with the reason', async () => {
     listing.value = {
       installed: [],
@@ -265,4 +283,34 @@ describe('PanelTile', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(button.getAttribute('aria-label')).toBe('Close Logs')
   })
+})
+
+
+describe('Cordis plugin directory access', () => {
+  it('installs a Cordis GUI through the same Install flow and opens it on the board', async () => {
+    picked.path = '/somewhere/fresh-panel'
+    render(<WorkspaceShell />)
+    fireEvent.change(screen.getByLabelText('Install location'), { target: { value: 'cordis' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Install$/ }))
+    await screen.findByText('Installed Fresh panel')
+    expect(invoked.calls.find((call) => call.cmd === 'panels_install')?.args).toEqual({
+      sourcePath: '/somewhere/fresh-panel', source: 'cordis',
+    })
+    expect(useBoard.getState().open).toContain('panel:fresh-panel')
+  })
+
+  it('opens the Cordis directory from the existing Panels manager', async () => {
+    render(<WorkspaceShell />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Cordis plugins folder' }))
+    await waitFor(() => expect(invoked.calls.some((call) => call.cmd === 'panels_open_folder' &&
+      (call.args as { source?: string })?.source === 'cordis')).toBe(true))
+  })
+})
+
+
+it('shows a broken Cordis GUI reason in its existing board tile', async () => {
+  listing.value = { installed: [], broken: [{ id: 'cordis:bad-gui', errors: ['Cordis entry file not found'] }] }
+  useBoard.setState({ open: ['panel:bad-gui'] })
+  render(<PanelBoard />)
+  expect(await screen.findByText('Cordis entry file not found')).toBeTruthy()
 })

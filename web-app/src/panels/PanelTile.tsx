@@ -19,10 +19,14 @@ export function PanelTile({
   title,
   children,
   onClose,
+  headerActions,
+  titleControl,
 }: {
   title: string
   children: ReactNode
   onClose?: () => void
+  headerActions?: ReactNode
+  titleControl?: ReactNode
 }) {
   return (
     <div className="flex size-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
@@ -31,9 +35,10 @@ export function PanelTile({
         className="flex shrink-0 items-center gap-1.5 border-b border-border bg-sidebar px-2.5 py-1.5"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+        {titleControl ?? <span className="min-w-0 flex-1 truncate text-xs font-semibold">
           {title}
-        </span>
+        </span>}
+        {headerActions}
         {onClose && (
           <button
             type="button"
