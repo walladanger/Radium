@@ -8,6 +8,7 @@ version = "0.6.599"
 dependencies = [
  "apple-native-keyring-store",
  "async-trait",
+ "atomic-agent-core",
  "atomic-code-index",
  "base64 0.22.1",
  "chrono",
@@ -496,6 +497,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f28d99ec8bfea296261ca1af174f24225171fea9664ba9003cbebee704810528"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "atomic-agent-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "dirs 6.0.0",
+ "futures-util",
+ "hex",
+ "log",
+ "reqwest 0.11.27",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "uuid",
+ "windows-sys 0.60.2",
+ "zip 0.6.6",
 ]
 
 [[package]]

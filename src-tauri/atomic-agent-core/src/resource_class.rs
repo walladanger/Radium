@@ -1,0 +1,243 @@
+//! Tool resource-class taxonomy (`TOOL_RESOURCE_CLASS` port).
+
+use serde::{Deserialize, Serialize};
+
+use super::mcp_tools::{McpBridge, MCP_TOOL_PREFIX};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourceClass {
+    PureRead,
+    FsWrite,
+    Browser,
+    MemoryWrite,
+    TasksWrite,
+    Vision,
+    ApprovalGated,
+    Terminal,
+    /// `agent.delegate`: runs a whole specialist turn that may read, write and
+    /// request approvals of its own. Needs no approval itself. It never shares
+    /// a batch with other tools, but a batch made only of delegations runs its
+    /// specialists concurrently (see [`is_delegation_batch`]).
+    Delegation,
+    Unknown,
+}
+
+pub fn resource_class_for(tool_name: &str) -> ResourceClass {
+    match tool_name {
+        "tool.view"
+        | "skill.view"
+        | "os.fs.read"
+        | "os.fs.read_document"
+        | "os.fs.list"
+        | "os.fs.glob"
+        | "os.fs.grep"
+        | "os.fs.hash"
+        | "os.fs.diff"
+        | "os.fs.archive.list"
+        | "os.fs.archive.read_entry"
+        | "os.git.status"
+        | "os.git.log"
+        | "os.git.diff"
+        | "os.git.show"
+        | "os.git.blame"
+        | "os.git.branch"
+        | "os.proc.list"
+        | "os.proc.read"
+        | "os.code.symbols"
+        | "os.code.find"
+        | "os.code.refs"
+        | "os.web.search"
+        | "os.web.fetch"
+        | "docs.list"
+        | "docs.retrieve"
+        | "docs.chunks"
+        | "os.media.transcribe"
+        | "os.media.youtube"
+        | "os.clipboard.read"
+        | "net.system_map"
+        | "net.connectivity"
+        | "net.interfaces"
+        | "net.wifi_status"
+        | "net.dns_lookup"
+        | "net.ping"
+        | "net.traceroute"
+        | "net.neighbors"
+        | "net.port_check"
+        | "sys.overview"
+        | "sys.disk_usage"
+        | "sys.large_items"
+        | "sys.top_processes"
+        | "sys.startup_items"
+        | "sys.pending_updates"
+        | "sys.recent_errors" => ResourceClass::PureRead,
+        "vision.describe" => ResourceClass::Vision,
+        "os.clipboard.write" | "os.notify" => ResourceClass::MemoryWrite,
+        "os.fs.write" | "os.fs.mkdir" | "os.fs.edit" => ResourceClass::FsWrite,
+        "os.fs.trash"
+        | "os.fs.patch"
+        | "os.fs.archive.extract"
+        | "os.shell.run"
+        | "os.proc.kill"
+        | "os.proc.spawn"
+        | "os.proc.write"
+        | "os.proc.stop"
+        | "os.http.request"
+        | "skill.run_script"
+        | "net.dns_flush"
+        | "net.dhcp_renew"
+        | "net.adapter_restart"
+        | "net.set_dns"
+        | "net.wifi_reconnect"
+        | "net.stack_reset"
+        | "sys.clean_temp"
+        | "sys.empty_recycle_bin"
+        | "sys.disable_startup_item"
+        | "sys.enable_startup_item" => ResourceClass::ApprovalGated,
+        "agent.delegate" => ResourceClass::Delegation,
+        "reply" | "finish" => ResourceClass::Terminal,
+        _ => ResourceClass::Unknown,
+    }
+}
+
+/// Class lookup for a concrete call, MCP-aware. Every `mcp.*` name the turn's
+/// bridge resolves is [`ResourceClass::ApprovalGated`]; an unresolved one is
+/// fail-closed `Unknown`.
+///
+/// MCP tools are third-party code acting on the user's behalf, so they ask
+/// first regardless of their annotations: `readOnlyHint` is a claim made by
+/// the server itself and earns neither a skipped approval nor batching.
+pub fn resource_class_for_call(tool_name: &str, mcp: Option<&dyn McpBridge>) -> ResourceClass {
+    if tool_name.starts_with(MCP_TOOL_PREFIX) {
+        return match mcp.and_then(|bridge| bridge.resolve(tool_name)) {
+            Some(_) => ResourceClass::ApprovalGated,
+            None => ResourceClass::Unknown,
+        };
+    }
+    resource_class_for(tool_name)
+}
+
+/// Whether the user's explicit "auto-approve MCP tools" opt-in waives the
+/// approval gate for this call. It covers MCP-origin tools only: built-in
+/// shell/fs/network fixes and skill scripts keep asking (or follow the
+/// run-scoped `auto_approve`), whatever this setting says.
+pub fn mcp_opt_in_waives_approval(tool_name: &str, auto_approve_mcp: bool) -> bool {
+    auto_approve_mcp && tool_name.starts_with(MCP_TOOL_PREFIX)
+}
+
+pub fn is_batchable(class: ResourceClass) -> bool {
+    !matches!(
+        class,
+        ResourceClass::ApprovalGated
+            | ResourceClass::Delegation
+            | ResourceClass::Terminal
+            | ResourceClass::Unknown
+    )
+}
+
+/// Classes that must be the only call in their batch. A batch that mixes one
+/// in is salvaged by keeping the first such call and dropping the rest.
+pub fn runs_solo(class: ResourceClass) -> bool {
+    matches!(
+        class,
+        ResourceClass::ApprovalGated | ResourceClass::Delegation
+    )
+}
+
+pub fn is_parallel_within_group(class: ResourceClass) -> bool {
+    matches!(class, ResourceClass::PureRead | ResourceClass::Delegation)
+}
+
+/// Most specialists one batch may run at once. Matches the four lanes of the
+/// agents view and keeps local runtimes within a sane number of slots.
+pub const MAX_PARALLEL_DELEGATIONS: usize = 4;
+
+/// A batch of 2..=[`MAX_PARALLEL_DELEGATIONS`] calls that are all
+/// `agent.delegate`: the one shape in which a solo-only class may share a
+/// batch, because each specialist runs in its own fresh session.
+pub fn is_delegation_batch(classes: &[ResourceClass]) -> bool {
+    (2..=MAX_PARALLEL_DELEGATIONS).contains(&classes.len())
+        && classes
+            .iter()
+            .all(|class| *class == ResourceClass::Delegation)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::agent::prompt::ITERATION_ONE_TOOLS;
+
+    #[test]
+    fn classifies_every_iteration_one_tool() {
+        for descriptor in ITERATION_ONE_TOOLS {
+            assert_ne!(
+                resource_class_for(descriptor.name),
+                ResourceClass::Unknown,
+                "{} lacks a resource class",
+                descriptor.name
+            );
+        }
+    }
+
+    #[test]
+    fn fails_closed_for_unknown_tools() {
+        assert_eq!(resource_class_for("os.unknown"), ResourceClass::Unknown);
+        assert!(!is_batchable(ResourceClass::Unknown));
+    }
+
+    #[test]
+    fn only_pure_reads_parallelize_within_a_group() {
+        assert!(is_batchable(ResourceClass::PureRead));
+        assert!(is_parallel_within_group(ResourceClass::PureRead));
+        assert!(!is_parallel_within_group(ResourceClass::FsWrite));
+        assert!(is_batchable(ResourceClass::Vision));
+        assert!(!is_parallel_within_group(ResourceClass::Vision));
+        assert!(!is_batchable(ResourceClass::ApprovalGated));
+        assert!(!is_batchable(ResourceClass::Terminal));
+    }
+
+    #[test]
+    fn delegation_batches_run_in_parallel_only_on_their_own() {
+        use ResourceClass::{Delegation, PureRead};
+        assert!(is_parallel_within_group(Delegation));
+        assert!(!is_delegation_batch(&[Delegation]));
+        assert!(is_delegation_batch(&[Delegation, Delegation]));
+        assert!(is_delegation_batch(&[Delegation; MAX_PARALLEL_DELEGATIONS]));
+        assert!(!is_delegation_batch(
+            &[Delegation; MAX_PARALLEL_DELEGATIONS + 1]
+        ));
+        assert!(!is_delegation_batch(&[Delegation, PureRead]));
+    }
+
+    #[test]
+    fn delegation_runs_solo_without_being_approval_gated() {
+        let class = resource_class_for("agent.delegate");
+        assert_eq!(class, ResourceClass::Delegation);
+        assert!(!is_batchable(class));
+        assert!(runs_solo(class));
+        assert!(runs_solo(ResourceClass::ApprovalGated));
+        assert!(!runs_solo(ResourceClass::FsWrite));
+    }
+
+    #[test]
+    fn mcp_opt_in_never_reaches_built_in_or_skill_tools() {
+        assert!(mcp_opt_in_waives_approval("mcp.github.create_issue", true));
+        assert!(!mcp_opt_in_waives_approval(
+            "mcp.github.create_issue",
+            false
+        ));
+        for tool in [
+            "os.shell.run",
+            "os.proc.spawn",
+            "skill.run_script",
+            "net.set_dns",
+        ] {
+            assert!(!mcp_opt_in_waives_approval(tool, true), "{tool}");
+        }
+    }
+
+    #[test]
+    fn classifies_vision_as_a_serial_group() {
+        assert_eq!(resource_class_for("vision.describe"), ResourceClass::Vision);
+    }
+}

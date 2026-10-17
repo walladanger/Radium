@@ -601,5 +601,34 @@
     ],
     "decision": "docs/decisions/2026-10-16-give-the-agent-computer-care-tools-behind-the-computer-tool-pack.md",
     "status": "pending"
+  },
+  {
+    "id": "coordinated-local-tasks",
+    "feature": "Shared local agent workspace",
+    "forUsers": "Plan dependent tasks, inspect durable progress and review isolated local worker outputs through Radium and DeepSeek. Release acceptance remains pending.",
+    "paths": [
+      "src-tauri/atomic-control/**",
+      "src-tauri/atomic-agent-core/**",
+      "web-app/src/routes/tasks*",
+      "web-app/src/lib/atomic-control*",
+      "web-app/src/stores/atomic-tasks-store*"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-control/Cargo.toml",
+        "files": ["src-tauri/atomic-control/tests/kernel.rs", "src-tauri/atomic-control/tests/sandbox.rs"]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml",
+        "files": ["src-tauri/atomic-agent-core/src/runner.rs"]
+      },
+      {
+        "run": "npx vitest run src/routes/tasks.test.tsx src/lib/atomic-control.test.ts src/stores/atomic-tasks-store.test.ts",
+        "cwd": "web-app",
+        "files": ["web-app/src/routes/tasks.test.tsx", "web-app/src/lib/atomic-control.test.ts", "web-app/src/stores/atomic-tasks-store.test.ts"]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-03-own-coordinated-tasks-in-a-local-controller.md",
+    "status": "pending"
   }
 ]

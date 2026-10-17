@@ -42,6 +42,17 @@ impl LoadedSkills {
     }
 
     pub async fn view(&self, name: &str, registry: &SkillRegistry) -> ToolOutcome {
+        self.view_page(name, registry, 0).await
+    }
+
+    /// Read a bounded page of a reviewed skill, in Unicode character offsets.
+    /// Long publisher instructions remain retrievable without increasing prompt limits.
+    pub async fn view_page(
+        &self,
+        name: &str,
+        registry: &SkillRegistry,
+        offset: usize,
+    ) -> ToolOutcome {
         let Some(record) = registry.get_enabled(name) else {
             return ToolOutcome::error(format!(
                 "Skill `{name}` is missing, disabled, incompatible, or unavailable"
@@ -62,10 +73,20 @@ impl LoadedSkills {
                 record.manifest.requires_scripts.join(", ")
             )
         };
-        let body = truncate_chars(
-            &format!("{execution_contract}\n\n{}", record.body),
-            LOADED_SKILL_BODY_MAX_CHARS,
-        );
+        let total = record.body.chars().count();
+        if offset > total || (offset == total && offset != 0) {
+            return ToolOutcome::error("Skill page offset is beyond its instructions");
+        }
+        let page_cap =
+            LOADED_SKILL_BODY_MAX_CHARS.saturating_sub(execution_contract.chars().count() + 300);
+        let page: String = record.body.chars().skip(offset).take(page_cap).collect();
+        let next = offset + page.chars().count();
+        let continuation = if next < total {
+            format!("\n\n[Instructions continue. Call skill.view with name `{name}` and offset {next} before applying sections not yet read.]")
+        } else {
+            String::new()
+        };
+        let body = format!("{execution_contract}\n\n{page}{continuation}");
         let entry = LoadedSkillState {
             name: record.manifest.name.clone(),
             version: record.manifest.version.clone(),
@@ -90,10 +111,14 @@ impl LoadedSkills {
         } else {
             "loaded"
         };
-        ToolOutcome::ok(format!(
+        let mut outcome = ToolOutcome::ok(format!(
             "{state}: # skill: {} (v{})\n{}",
             record.manifest.name, record.manifest.version, body
-        ))
+        ));
+        outcome.details = Some(
+            serde_json::json!({"offset":offset,"next_offset":if next < total { Some(next) } else { None },"total_chars":total,"page":page}),
+        );
+        outcome
     }
 
     pub async fn snapshot(&self) -> Vec<LoadedSkillState> {
