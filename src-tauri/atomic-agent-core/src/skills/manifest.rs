@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::organization::DeclaredOrganization;
 
 const DEFAULT_VERSION: &str = "0.0.0";
-const MAX_DESCRIPTION_CHARS: usize = 512;
+const MAX_DESCRIPTION_CHARS: usize = 1024;
 const MAX_VERSION_CHARS: usize = 64;
 const MAX_REQUIREMENTS: usize = 32;
 const MAX_REQUIREMENT_CHARS: usize = 128;
@@ -57,6 +57,7 @@ pub struct ParsedSkillFile {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(dead_code)] // Publisher metadata is informational and never grants execution permission.
 struct RawSkillManifest {
     name: Option<serde_yaml::Value>,
     description: Option<serde_yaml::Value>,
@@ -157,7 +158,17 @@ pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {
                 .to_string(),
         );
     }
-    let description = required_string(raw.description, "description", &mut issues);
+    let mut description = required_string(raw.description, "description", &mut issues);
+    // Publisher block descriptions are paragraphs; fold them before entering
+    // the single-line prompt catalog. Quoted control-character injection stays invalid.
+    if yaml.lines().any(|line| {
+        line.starts_with("description:")
+            && line["description:".len()..]
+                .trim_start()
+                .starts_with(['|', '>'])
+    }) {
+        description = description.split_whitespace().collect::<Vec<_>>().join(" ");
+    }
     let version = optional_string(raw.version, "version", &mut issues)
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| DEFAULT_VERSION.to_string());
@@ -172,6 +183,17 @@ pub fn parse_skill_file(content: &str) -> Result<ParsedSkillFile, String> {
     validate_one_line(&version, "version", MAX_VERSION_CHARS, &mut issues);
     validate_string_list(&requires_tools, "requires_tools", &mut issues);
     validate_string_list(&requires_scripts, "requires_scripts", &mut issues);
+    if requires_scripts.iter().any(|script| {
+        script.contains(':')
+            || script
+                .split(['/', '\\'])
+                .any(|part| part.is_empty() || part == "." || part == "..")
+    }) {
+        issues.push(
+            "`requires_scripts` must be relative paths within scripts/ without parent traversal"
+                .into(),
+        );
+    }
     let dangerous = optional_bool(raw.dangerous, "dangerous", &mut issues).unwrap_or(false);
     let platforms = platform_list(raw.platforms, &mut issues);
     if !issues.is_empty() {
@@ -339,6 +361,43 @@ fn platform_list(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn publisher_metadata_does_not_expand_native_permissions() {
+        let parsed = parse_skill_file("---\nname: vendor-skill\ndescription: >-\n  First paragraph.\n\n  Second paragraph.\nlicense: Apache-2.0\nmetadata: {author: NVIDIA}\nallowed-tools: Read Bash\npermissions: {network: unrestricted}\nreviewed: true\n---\nBody").unwrap();
+        assert_eq!(
+            parsed.manifest.description,
+            "First paragraph. Second paragraph."
+        );
+        assert!(parsed.manifest.requires_tools.is_empty());
+        assert!(parsed.manifest.requires_scripts.is_empty());
+        assert!(!parsed.manifest.dangerous);
+        for header in ["license: []", "metadata: []"] {
+            let informational = parse_skill_file(&format!(
+                "---\nname: vendor-skill\ndescription: Safe\n{header}\n---\nBody"
+            ))
+            .unwrap();
+            assert!(informational.manifest.requires_tools.is_empty());
+            assert!(informational.manifest.requires_scripts.is_empty());
+            assert!(!informational.manifest.dangerous);
+            assert_eq!(informational.organization, DeclaredOrganization::default());
+        }
+        for header in [
+            "unknown_permission: allow",
+            "requires_scripts: [../escape.py]",
+            "requires_scripts: ['/etc/passwd']",
+            "requires_scripts: ['C:\\escape.py']",
+        ] {
+            assert!(
+                parse_skill_file(&format!(
+                    "---\nname: vendor-skill\ndescription: Safe\n{header}\n---\nBody"
+                ))
+                .is_err(),
+                "unsafe header accepted: {header}"
+            );
+        }
+        assert!(parse_skill_file("---\nname: vendor-skill\ndescription: Safe\nrequires_scripts: [nested/helper.py]\n---\nBody").is_ok());
+    }
 
     #[test]
     fn parses_frontmatter_and_preserves_body() {

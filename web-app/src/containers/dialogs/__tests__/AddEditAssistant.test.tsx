@@ -157,6 +157,8 @@ describe('AddEditAssistant specialist switch', () => {
     )
     await user.click(networkSwitch())
     await user.click(computerSwitch())
+    expect(networkSwitch()).toBeChecked()
+    expect(computerSwitch()).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
     expect(onSave).toHaveBeenCalledTimes(1)

@@ -1,10 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import {
-  ChevronRight,
-  Clapperboard as MediaIcon,
-  LayoutGrid as LayoutGridIcon,
-} from 'lucide-react'
+import { ChevronRight, GitBranch, Users, Workflow, Clapperboard as MediaIcon, LayoutGrid as LayoutGridIcon } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,
@@ -32,6 +28,7 @@ import { SearchDialog } from '@/containers/dialogs/SearchDialog'
 import { route } from '@/constants/routes'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { useGeneralSetting } from '@/hooks/useGeneralSetting'
+import { useWorkspacePanel } from '@/hooks/useWorkspacePanel'
 import { useLeftPanel } from '@/hooks/useLeftPanel'
 import { useProjectDialog } from '@/hooks/useProjectDialog'
 import { useSearchDialog } from '@/hooks/useSearchDialog'
@@ -46,6 +43,7 @@ type AnimatedIconHandle = {
 export function NavMain() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const workspace = useWorkspacePanel()
   const { pathname } = useLocation()
   const newChatIconRef = useRef<AnimatedIconHandle>(null)
   const modelsIconRef = useRef<AnimatedIconHandle>(null)
@@ -120,6 +118,20 @@ export function NavMain() {
                 size={16}
               />
               <span>{t('common:models')}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        {(['agents', 'production'] as const).map(panel => <SidebarMenuItem key={panel}>
+          <SidebarMenuButton isActive={workspace.panel === panel} onClick={() => workspace.toggle(panel)} aria-pressed={workspace.panel === panel} className="data-[active=true]:bg-sidebar-foreground/15">
+            {panel === 'agents' ? <Users className="text-foreground/70" size={16} /> : <Workflow className="text-foreground/70" size={16} />}
+            <span>{t(`workspace-panel:${panel}`)}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>)}
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/tasks')} className="data-[active=true]:bg-sidebar-foreground/15">
+            <Link to={route.tasks}>
+              <GitBranch className="text-foreground/70" size={16} />
+              <span>{t('atomic-tasks:title')}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

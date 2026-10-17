@@ -445,12 +445,12 @@ endif
 # a failure rather than a note nobody reads. Findings that are deliberate are
 # annotated with #[allow(...)] AND a reason at the site.
 clippy-rust: export TAURI_CONFIG := {"bundle":{"icon":["icons/icon.png"]}}
-clippy-rust: stub-resources app-icons
+clippy-rust: stub-resources app-icons clippy-agent-core clippy-control
 	cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets \
 		--no-default-features --features test-tauri -- -D warnings
 
 test-rust: export TAURI_CONFIG := {"bundle":{"icon":["icons/icon.png"]}}
-test-rust: stub-resources app-icons
+test-rust: stub-resources app-icons test-agent-core test-control
 	cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features test-tauri -- --test-threads=1
 	cargo test --manifest-path src-tauri/plugins/tauri-plugin-atomic-audio/Cargo.toml
 	cargo test --manifest-path src-tauri/plugins/tauri-plugin-hardware/Cargo.toml
@@ -460,6 +460,20 @@ ifeq ($(shell uname -s),Darwin)
 	cargo test --manifest-path src-tauri/plugins/tauri-plugin-mlx/Cargo.toml
 endif
 	cargo test --manifest-path src-tauri/utils/Cargo.toml
+
+# Independent crates are path dependencies, not native workspace test members.
+# Exercise their own suites so verify cannot silently omit controller/core tests.
+test-agent-core:
+	cargo test --locked --manifest-path src-tauri/atomic-agent-core/Cargo.toml
+
+clippy-agent-core:
+	cargo clippy --locked --manifest-path src-tauri/atomic-agent-core/Cargo.toml --all-targets -- -D warnings
+
+test-control:
+	cargo test --locked --manifest-path src-tauri/atomic-control/Cargo.toml
+
+clippy-control:
+	cargo clippy --locked --manifest-path src-tauri/atomic-control/Cargo.toml --all-targets -- -D warnings
 
 # Fast local suite: root Vitest, extension Vitest, and every test-bearing
 # Rust crate supported on the current platform.
@@ -543,7 +557,7 @@ stage-windows-backends:
 verify-windows-backends:
 	node scripts/stage-windows-backends.mjs --verify-only
 
-verify: verify-fast clippy-rust test-rust test-selective-v2032
+verify: verify-fast clippy-rust test-rust test-agent-core clippy-agent-core test-control clippy-control test-selective-v2032
 
 # Explicitly live capture commands. The caller supplies paths/identity so these
 # never download artifacts or mutate fixtures during a normal verification run.

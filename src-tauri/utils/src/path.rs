@@ -271,6 +271,7 @@ mod tests {
         ));
     }
 
+    #[cfg(not(windows))]
     #[test]
     fn a_path_with_nothing_existing_is_returned_unchanged() {
         let path = Path::new("/definitely/not/here/at/all.gguf");
