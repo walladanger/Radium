@@ -135,14 +135,14 @@ describe('AddEditAssistant specialist switch', () => {
     expect(networkSwitch()).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Network',
-        specialist: true,
-        tool_packs: ['network'],
-        instructions: expect.stringContaining('net.system_map'),
-      })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    const saved = onSave.mock.calls[0]![0]
+    expect(saved).toMatchObject({
+      name: 'Network',
+      specialist: true,
+      tool_packs: ['network'],
+    })
+    expect(saved.instructions).toContain('net.system_map')
   })
 
   it('offers the template only when creating an assistant', () => {
