@@ -113,12 +113,12 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith('/hub')}
+            isActive={!workspace.panel && pathname.startsWith('/hub')}
             className="data-[active=true]:bg-sidebar-foreground/15"
             onMouseEnter={() => modelsIconRef.current?.startAnimation()}
             onMouseLeave={() => modelsIconRef.current?.stopAnimation()}
           >
-            <Link to={route.hub.index}>
+            <Link to={route.hub.index} onClick={workspace.close}>
               <BlocksIcon
                 ref={modelsIconRef}
                 className="text-foreground/70"
@@ -135,8 +135,8 @@ export function NavMain() {
           </SidebarMenuButton>
         </SidebarMenuItem>)}
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname.startsWith('/tasks')} className="data-[active=true]:bg-sidebar-foreground/15">
-            <Link to={route.tasks}>
+          <SidebarMenuButton asChild isActive={!workspace.panel && pathname.startsWith('/tasks')} className="data-[active=true]:bg-sidebar-foreground/15">
+            <Link to={route.tasks} onClick={workspace.close}>
               <GitBranch className="text-foreground/70" size={16} />
               <span>{t('atomic-tasks:title')}</span>
             </Link>
@@ -151,10 +151,10 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith('/media')}
+            isActive={!workspace.panel && pathname.startsWith('/media')}
             className="data-[active=true]:bg-sidebar-foreground/15"
           >
-            <Link to={route.media}>
+            <Link to={route.media} onClick={workspace.close}>
               <MediaIcon className="text-foreground/70" size={16} />
               <span>{t('media:settings.title', { defaultValue: 'Media' })}</span>
             </Link>
@@ -167,10 +167,10 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith('/workspace')}
+            isActive={!workspace.panel && pathname.startsWith('/workspace')}
             className="data-[active=true]:bg-sidebar-foreground/15"
           >
-            <Link to={route.workspace.index}>
+            <Link to={route.workspace.index} onClick={workspace.close}>
               <LayoutGridIcon className="text-foreground/70" size={16} />
               <span>{t('common:workspace', { defaultValue: 'Workspace' })}</span>
             </Link>
@@ -189,7 +189,7 @@ export function NavMain() {
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
-                isActive={isPluginsRoute && !pluginsExpanded}
+                isActive={!workspace.panel && isPluginsRoute && !pluginsExpanded}
                 className="data-[active=true]:bg-sidebar-foreground/15"
                 onMouseEnter={() => pluginsIconRef.current?.startAnimation()}
                 onMouseLeave={() => pluginsIconRef.current?.stopAnimation()}
@@ -220,10 +220,10 @@ export function NavMain() {
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton
                     asChild
-                    isActive={pathname.startsWith('/connectors')}
+                    isActive={!workspace.panel && pathname.startsWith('/connectors')}
                     className="data-[active=true]:bg-sidebar-foreground/15"
                   >
-                    <Link to={route.connectors.index}>
+                    <Link to={route.connectors.index} onClick={workspace.close}>
                       <span>{t('common:connectors')}</span>
                       {!connectorsBadgeSeen && (
                         <span className="ml-auto shrink-0 rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:bg-blue-400/15 dark:text-blue-400">
@@ -236,10 +236,10 @@ export function NavMain() {
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton
                     asChild
-                    isActive={pathname.startsWith('/skills')}
+                    isActive={!workspace.panel && pathname.startsWith('/skills')}
                     className="data-[active=true]:bg-sidebar-foreground/15"
                   >
-                    <Link to={route.skills.index}>
+                    <Link to={route.skills.index} onClick={workspace.close}>
                       <span>{t('common:skills')}</span>
                     </Link>
                   </SidebarMenuSubButton>
@@ -266,7 +266,7 @@ export function NavMain() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith('/launch')}
+                isActive={!workspace.panel && pathname.startsWith('/launch')}
                 className="data-[active=true]:bg-sidebar-foreground/15"
                 onMouseEnter={() =>
                   integrationsIconRef.current?.startAnimation()
@@ -275,7 +275,7 @@ export function NavMain() {
                   integrationsIconRef.current?.stopAnimation()
                 }
               >
-                <Link to={route.launch.index}>
+                <Link to={route.launch.index} onClick={workspace.close}>
                   <PlugIcon
                     ref={integrationsIconRef}
                     className="text-foreground/70"
