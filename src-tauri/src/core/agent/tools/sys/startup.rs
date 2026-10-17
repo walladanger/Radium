@@ -26,6 +26,7 @@ pub struct StartupItem {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Handle {
     /// `StartupApproved` key path (under HKCU or HKLM) and value name.
+    #[cfg_attr(not(windows), allow(dead_code))]
     WindowsApproved {
         hive_machine: bool,
         subkey: String,
@@ -70,6 +71,7 @@ pub fn find<'a>(items: &'a [StartupItem], name: &str) -> Result<&'a StartupItem,
 }
 
 /// The `StartupApproved` flag: the first byte's low bit set means disabled.
+#[cfg_attr(not(windows), allow(dead_code))]
 pub fn approved_flag_enabled(data: &[u8]) -> bool {
     data.first().is_none_or(|flag| flag & 1 == 0)
 }

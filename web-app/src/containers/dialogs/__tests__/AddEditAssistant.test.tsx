@@ -159,9 +159,10 @@ describe('AddEditAssistant specialist switch', () => {
     await user.click(computerSwitch())
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ tool_packs: ['network', 'computer'] })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onSave.mock.calls[0]![0]).toMatchObject({
+      tool_packs: ['network', 'computer'],
+    })
   })
 
   it('fills in the Computer care specialist from its template', async () => {
@@ -176,14 +177,14 @@ describe('AddEditAssistant specialist switch', () => {
     expect(networkSwitch()).not.toBeChecked()
     await user.click(screen.getByRole('button', { name: 'assistants:save' }))
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Computer care',
-        specialist: true,
-        tool_packs: ['computer'],
-        instructions: expect.stringContaining('sys.overview'),
-      })
-    )
+    expect(onSave).toHaveBeenCalledTimes(1)
+    const saved = onSave.mock.calls[0]![0] as Assistant
+    expect(saved).toMatchObject({
+      name: 'Computer care',
+      specialist: true,
+      tool_packs: ['computer'],
+    })
+    expect(saved.instructions).toContain('sys.overview')
   })
 
   it('offers the template only when creating an assistant', () => {
