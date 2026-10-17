@@ -65,11 +65,13 @@ export function ProductionPanel() {
   const editable = connected && !state.busy && !!plan && ['draft', 'paused'].includes(plan.status)
   return <section aria-label={t('productionTitle', { defaultValue: 'Production' })} className="flex h-full min-w-0 flex-col">
     <header className="space-y-3 border-b p-4">
-      <p className="text-sm text-muted-foreground">{t('productionIntro', { defaultValue: 'Discuss the plan in chat. Keep the agreed steps, instructions, and evidence here for both humans and agents.' })}</p>
-      <label className="block text-sm">{t('plan')}<select className="mt-1 w-full rounded border bg-background p-2" value={plan?.id ?? ''} onChange={event => { setPlanId(event.target.value); setSelectedId('') }}>{state.snapshot?.plans.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+      {view !== 'annotations' && <>
+        <p className="text-sm text-muted-foreground">{t('productionIntro', { defaultValue: 'Discuss the plan in chat. Keep the agreed steps, instructions, and evidence here for both humans and agents.' })}</p>
+        <label className="block text-sm">{t('plan')}<select className="mt-1 w-full rounded border bg-background p-2" value={plan?.id ?? ''} onChange={event => { setPlanId(event.target.value); setSelectedId('') }}>{state.snapshot?.plans.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+      </>}
       <div className="flex flex-wrap gap-2">{(['steps', 'topology', 'branches', 'annotations'] as const).map(mode => <Button key={mode} variant={view === mode ? 'default' : 'outline'} aria-pressed={view === mode} onClick={() => { setView(mode); if (mode === 'annotations') setLogOpened(true) }}>{t(`productionView.${mode}`, { defaultValue: mode === 'steps' ? 'Steps' : mode === 'branches' ? 'Branch plan' : mode === 'annotations' ? 'Annotating' : 'Build topology' })}</Button>)}</div>
       {!connected && view !== 'annotations' && <p role="status" className="text-sm">{t('productionOffline', { defaultValue: 'Connect through Tasks to load the shared plan. Changes are disabled while offline.' })}</p>}
-      {state.error && <p role="alert" className="break-words text-sm text-destructive">{state.error}</p>}
+      {state.error && view !== 'annotations' && <p role="alert" className="break-words text-sm text-destructive">{state.error}</p>}
     </header>
     <div className="flex-1 space-y-4 overflow-auto p-4">
       <div hidden={view !== 'annotations'}>{logOpened && <ProductionLog />}</div>

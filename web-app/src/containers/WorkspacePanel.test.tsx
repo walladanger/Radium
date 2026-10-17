@@ -30,7 +30,17 @@ beforeEach(() => {
     disconnect() {}
   })
 })
-afterEach(() => { cleanup(); useWorkspacePanel.getState().close(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); useWorkspacePanel.getState().close(); useWorkspacePanel.getState().setProductionView('steps'); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks() })
+
+it('opens local annotations without asking for controller credentials', () => {
+  render(<div><WorkspacePanel /><Chat /></div>)
+  fireEvent.change(screen.getByLabelText('Chat draft'), { target: { value: 'Keep my conversation' } })
+  act(() => useWorkspacePanel.getState().openAnnotations())
+  expect(screen.getByText('Production view')).toBeVisible()
+  expect(screen.queryByLabelText(translations.address)).not.toBeInTheDocument()
+  expect(screen.queryByLabelText(translations.token)).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Chat draft')).toHaveValue('Keep my conversation')
+})
 
 it('opens, switches and closes an adjacent panel without remounting its chat sibling', () => {
   render(<div><WorkspacePanel /><Chat /></div>)
