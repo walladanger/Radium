@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SystemMonitorRouteImport } from './routes/system-monitor'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as LogsRouteImport } from './routes/logs'
@@ -48,6 +49,11 @@ import { Route as SettingsProvidersIndexRouteImport } from './routes/settings/pr
 import { Route as SettingsMediaIndexRouteImport } from './routes/settings/media/index'
 import { Route as SettingsProvidersProviderNameRouteImport } from './routes/settings/providers/$providerName'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemMonitorRoute = SystemMonitorRouteImport.update({
   id: '/system-monitor',
   path: '/system-monitor',
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/logs': typeof LogsRoute
   '/media': typeof MediaRoute
   '/system-monitor': typeof SystemMonitorRoute
+  '/tasks': typeof TasksRoute
   '/hub/$modelId': typeof HubModelIdRoute
   '/local-api-server/logs': typeof LocalApiServerLogsRoute
   '/media/library': typeof MediaLibraryRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/logs': typeof LogsRoute
   '/media': typeof MediaRoute
   '/system-monitor': typeof SystemMonitorRoute
+  '/tasks': typeof TasksRoute
   '/hub/$modelId': typeof HubModelIdRoute
   '/local-api-server/logs': typeof LocalApiServerLogsRoute
   '/media/library': typeof MediaLibraryRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/logs': typeof LogsRoute
   '/media': typeof MediaRoute
   '/system-monitor': typeof SystemMonitorRoute
+  '/tasks': typeof TasksRoute
   '/hub/$modelId': typeof HubModelIdRoute
   '/local-api-server/logs': typeof LocalApiServerLogsRoute
   '/media_/library': typeof MediaLibraryRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/media'
     | '/system-monitor'
+    | '/tasks'
     | '/hub/$modelId'
     | '/local-api-server/logs'
     | '/media/library'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/media'
     | '/system-monitor'
+    | '/tasks'
     | '/hub/$modelId'
     | '/local-api-server/logs'
     | '/media/library'
@@ -448,6 +459,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/media'
     | '/system-monitor'
+    | '/tasks'
     | '/hub/$modelId'
     | '/local-api-server/logs'
     | '/media_/library'
@@ -489,6 +501,7 @@ export interface RootRouteChildren {
   LogsRoute: typeof LogsRoute
   MediaRoute: typeof MediaRoute
   SystemMonitorRoute: typeof SystemMonitorRoute
+  TasksRoute: typeof TasksRoute
   HubModelIdRoute: typeof HubModelIdRoute
   LocalApiServerLogsRoute: typeof LocalApiServerLogsRoute
   MediaLibraryRoute: typeof MediaLibraryRoute
@@ -527,6 +540,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system-monitor': {
       id: '/system-monitor'
       path: '/system-monitor'
@@ -801,6 +821,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogsRoute: LogsRoute,
   MediaRoute: MediaRoute,
   SystemMonitorRoute: SystemMonitorRoute,
+  TasksRoute: TasksRoute,
   HubModelIdRoute: HubModelIdRoute,
   LocalApiServerLogsRoute: LocalApiServerLogsRoute,
   MediaLibraryRoute: MediaLibraryRoute,

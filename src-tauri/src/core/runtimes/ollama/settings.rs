@@ -70,7 +70,9 @@ impl Default for OllamaSettings {
             gpus: String::new(),
             spread_across_gpus: false,
             gpu_overhead_mib: 0,
-            no_cloud: false,
+            // A managed Ollama stays local unless the user opts in: cloud
+            // models and web search are off for new or absent settings.
+            no_cloud: true,
             auto_start: false,
             extra_env: String::new(),
         }
@@ -290,11 +292,12 @@ mod tests {
     }
 
     #[test]
-    fn defaults_only_set_the_address_and_keep_alive() {
+    fn defaults_set_address_keep_alive_and_disable_cloud() {
         let env = env_map(&OllamaSettings::default());
         assert_eq!(env.get("OLLAMA_HOST").unwrap(), "127.0.0.1:11434");
         assert_eq!(env.get("OLLAMA_KEEP_ALIVE").unwrap(), "5m");
-        assert_eq!(env.len(), 2, "{env:?}");
+        assert_eq!(env.get("OLLAMA_NO_CLOUD").unwrap(), "1");
+        assert_eq!(env.len(), 3, "{env:?}");
         assert!(OllamaSettings::default().validate().is_ok());
     }
 

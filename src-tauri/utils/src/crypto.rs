@@ -66,6 +66,8 @@ pub async fn compute_file_sha256_with_cancellation(
         total_read += bytes_read as u64;
 
         // Log progress for very large files (every 100MB)
+        // Standalone backend plugins declare Rust 1.77.2; is_multiple_of is newer.
+        #[allow(clippy::manual_is_multiple_of)]
         if total_read % (100 * 1024 * 1024) == 0 {
             #[cfg(feature = "logging")]
             log::debug!("Hash progress: {} MB processed", total_read / (1024 * 1024));
