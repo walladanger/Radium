@@ -464,16 +464,16 @@ endif
 # Independent crates are path dependencies, not native workspace test members.
 # Exercise their own suites so verify cannot silently omit controller/core tests.
 test-agent-core:
-	cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml
+	cargo test --locked --manifest-path src-tauri/atomic-agent-core/Cargo.toml
 
 clippy-agent-core:
-	cargo clippy --manifest-path src-tauri/atomic-agent-core/Cargo.toml --all-targets -- -D warnings
+	cargo clippy --locked --manifest-path src-tauri/atomic-agent-core/Cargo.toml --all-targets -- -D warnings
 
 test-control:
-	cargo test --manifest-path src-tauri/atomic-control/Cargo.toml
+	cargo test --locked --manifest-path src-tauri/atomic-control/Cargo.toml
 
 clippy-control:
-	cargo clippy --manifest-path src-tauri/atomic-control/Cargo.toml --all-targets -- -D warnings
+	cargo clippy --locked --manifest-path src-tauri/atomic-control/Cargo.toml --all-targets -- -D warnings
 
 # Fast local suite: root Vitest, extension Vitest, and every test-bearing
 # Rust crate supported on the current platform.
