@@ -1,4 +1,6 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { useWorkspacePanel } from '@/hooks/useWorkspacePanel'
 // import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import DialogAppUpdater from '@/containers/dialogs/AppUpdater'
@@ -53,6 +55,11 @@ const AppLayout = () => {
   // No-op outside macOS and Windows Tauri builds (see hook implementation).
   useTrayStatusSync()
   const isSetupCompleted = useSetupCompleted()
+  const workspacePanel = useWorkspacePanel(state => state.panel)
+  const closeWorkspacePanel = useWorkspacePanel(state => state.close)
+  const pathname = useRouterState({ select: state => state.location.pathname })
+  // Navigating to any routed page leaves the workspace page.
+  useEffect(() => { closeWorkspacePanel() }, [pathname, closeWorkspacePanel])
 
   // WindowFrame draws Minimize, Maximize and Close where the window has no
   // native title bar (Windows). tests/window-controls.test.mjs keeps it here.
@@ -75,9 +82,11 @@ const AppLayout = () => {
           <WhatsNewDialog />
           <LeftSidebar />
           <SidebarInset>
-            <div className="bg-neutral-50 dark:bg-background flex size-full min-w-0 flex-col md:flex-row">
+            <div className="bg-neutral-50 dark:bg-background flex size-full min-h-0 min-w-0 flex-col">
               <WorkspacePanel />
-              <div className="min-h-0 min-w-0 flex-1"><Outlet /></div>
+              {/* One page per screen: the routed page stays mounted (drafts
+                survive) but is hidden while a workspace page is open. */}
+              <div hidden={!!workspacePanel} className="min-h-0 min-w-0 flex-1 overflow-y-auto"><Outlet /></div>
             </div>
           </SidebarInset>
 
