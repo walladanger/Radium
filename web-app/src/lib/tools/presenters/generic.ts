@@ -237,6 +237,61 @@ const ACTION_LABELS: Record<string, ActionLabel> = {
     completed: 'Reset network stack (restart needed)',
     failed: 'Could not reset network stack',
   },
+  'sys.overview': {
+    active: 'Checking this computer',
+    completed: 'Checked this computer',
+    failed: 'Could not check this computer',
+  },
+  'sys.disk_usage': {
+    active: 'Checking disk space',
+    completed: 'Checked disk space',
+    failed: 'Could not check disk space',
+  },
+  'sys.large_items': {
+    active: 'Finding what takes up space',
+    completed: 'Found what takes up space',
+    failed: 'Could not measure folders',
+  },
+  'sys.top_processes': {
+    active: 'Checking running programs',
+    completed: 'Checked running programs',
+    failed: 'Could not list running programs',
+  },
+  'sys.startup_items': {
+    active: 'Reading startup programs',
+    completed: 'Read startup programs',
+    failed: 'Could not read startup programs',
+  },
+  'sys.pending_updates': {
+    active: 'Checking for updates',
+    completed: 'Checked for updates',
+    failed: 'Could not check for updates',
+  },
+  'sys.recent_errors': {
+    active: 'Reading recent system errors',
+    completed: 'Read recent system errors',
+    failed: 'Could not read system errors',
+  },
+  'sys.clean_temp': {
+    active: 'Cleaning temporary files',
+    completed: 'Cleaned temporary files',
+    failed: 'Could not clean temporary files',
+  },
+  'sys.empty_recycle_bin': {
+    active: 'Emptying the Recycle Bin',
+    completed: 'Emptied the Recycle Bin',
+    failed: 'Could not empty the Recycle Bin',
+  },
+  'sys.disable_startup_item': {
+    active: 'Turning off startup program',
+    completed: 'Turned off startup program',
+    failed: 'Could not turn off startup program',
+  },
+  'sys.enable_startup_item': {
+    active: 'Turning on startup program',
+    completed: 'Turned on startup program',
+    failed: 'Could not turn on startup program',
+  },
   'agent.delegate': {
     active: 'Asking specialist',
     completed: 'Specialist answered',
