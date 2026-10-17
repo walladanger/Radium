@@ -106,8 +106,7 @@ pub fn should_bypass_proxy(url: &str, no_proxy: &[String]) -> bool {
         }
 
         // Simple wildcard matching
-        if entry.starts_with("*.") {
-            let domain = &entry[2..];
+        if let Some(domain) = entry.strip_prefix("*.") {
             if host.ends_with(domain) {
                 return true;
             }
@@ -224,7 +223,7 @@ fn find_process_using_port_windows(port: u16) -> Option<ProcessUsingPort> {
     use std::os::windows::process::CommandExt;
 
     let mut cmd = Command::new("netstat");
-    cmd.args(&["-ano"]);
+    cmd.args(["-ano"]);
 
     #[cfg(windows)]
     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -239,7 +238,7 @@ fn find_process_using_port_windows(port: u16) -> Option<ProcessUsingPort> {
             if let Some(pid_str) = parts.last() {
                 if let Ok(pid) = pid_str.parse::<u32>() {
                     let mut tasklist_cmd = Command::new("tasklist");
-                    tasklist_cmd.args(&["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"]);
+                    tasklist_cmd.args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"]);
 
                     #[cfg(windows)]
                     tasklist_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -294,7 +293,7 @@ fn get_process_command_line(pid: u32) -> Option<Vec<String>> {
     use std::os::windows::process::CommandExt;
 
     let mut cmd = Command::new("wmic");
-    cmd.args(&[
+    cmd.args([
         "process",
         "where",
         &format!("ProcessId={}", pid),
@@ -377,7 +376,7 @@ fn get_process_info_by_pid_windows(pid: u32) -> Option<ProcessUsingPort> {
 
     // Use wmic to get process info by PID
     let mut cmd = Command::new("wmic");
-    cmd.args(&[
+    cmd.args([
         "process",
         "where",
         &format!("ProcessId={}", pid),

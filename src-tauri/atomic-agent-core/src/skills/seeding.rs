@@ -438,7 +438,7 @@ mod tests {
     }
 
     fn bundled_skills_root() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/agent-skills")
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/agent-skills")
     }
 
     #[test]

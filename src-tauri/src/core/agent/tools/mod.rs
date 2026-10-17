@@ -42,41 +42,23 @@ use super::mcp_tools::{McpBridge, MCP_TOOL_PREFIX};
 use super::path_policy::{prepare_call_paths, EditableRoots};
 use super::pty::PtyRegistry;
 use super::rag_bridge::DocsBridge;
-use super::resource_class::{
-    mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass,
-};
+use super::resource_class::{mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass};
 use super::shell_guard::{evaluate_shell_command, join_command_stream, ShellGuardVerdict};
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::types::{
-    ApprovalDecision, ApprovalRequest, ApprovalResource, FolderAccessRequest, ToolCallPayload,
-    ToolOutcome,
+    ApprovalDecision, ApprovalRequest, ApprovalResource, ToolCallPayload, ToolOutcome,
 };
 
 pub const MAX_TOOL_OUTPUT_CHARS: usize = 16_000;
 
-#[async_trait]
-pub trait ApprovalHook: Send + Sync {
-    async fn is_allowed(&self, fingerprint: &str) -> bool;
-    async fn request(&self, request: ApprovalRequest) -> Result<ApprovalDecision, String>;
-}
-
-#[async_trait]
-pub trait FolderAccessHook: Send + Sync {
-    async fn request(&self, request: FolderAccessRequest) -> Result<bool, String>;
-}
+pub use atomic_agent_core::tools::{ApprovalHook, DesktopServices, FolderAccessHook};
 
 /// Runs a specialist's turn for `agent.delegate`. Present only on turns that
 /// carry specialists; a specialist's own turn never gets one, so delegation
-/// is one level deep.
+/// is one level deep. A desktop capability: the shared loop never sees it.
 #[async_trait]
 pub trait DelegateHook: Send + Sync {
     async fn delegate(&self, specialist: &str, task: &str) -> ToolOutcome;
-}
-
-#[async_trait]
-pub trait DesktopServices: Send + Sync {
-    async fn write_clipboard(&self, text: String) -> Result<(), String>;
-    async fn notify(&self, title: String, body: String) -> Result<(), String>;
 }
 
 pub struct ToolContext<'a> {
@@ -666,13 +648,14 @@ pub(super) fn command_outcome(output: std::process::Output) -> Result<ToolOutcom
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
     use std::collections::BTreeSet;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex as StdMutex;
 
     use super::*;
-    use crate::core::agent::types::ToolStatus;
+    use crate::core::agent::types::{FolderAccessRequest, ToolStatus};
 
     #[test]
     fn optional_usize_uses_default_for_zero_and_caps_large_values() {
@@ -806,7 +789,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
 
         for (approved, expected) in [(false, ToolStatus::Denied), (true, ToolStatus::Ok)] {
             let approval = TestApproval {
@@ -877,7 +862,9 @@ mod tests {
             allowed: true,
             calls: AtomicUsize::new(0),
         };
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let loaded_tools = tool_view::LoadedTools::default();
         let loaded_skills = LoadedSkills::default();
         let skill_registry = test_skill_registry(&root);
@@ -940,7 +927,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -992,7 +981,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1057,7 +1048,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1119,7 +1112,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1179,7 +1174,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: true,
             calls: AtomicUsize::new(0),
@@ -1237,7 +1234,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1292,7 +1291,9 @@ mod tests {
         let skill_registry = test_script_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
