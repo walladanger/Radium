@@ -669,9 +669,36 @@
     "status": "pending"
   },
   {
+    "id": "live-generation-context-metrics",
+    "feature": "Live generation and prompt composition metrics",
+    "forUsers": "See the current time in composers, historical message dates, growing generation counts and a context breakdown beside chat. Estimates are marked and unavailable counts remain unknown.",
+    "paths": [
+      "web-app/src/components/ComposerClock.tsx",
+      "web-app/src/containers/TokenSpeedIndicator.tsx",
+      "web-app/src/containers/ContextSizeControl.tsx",
+      "web-app/src/lib/context-usage.ts",
+      "web-app/src/lib/live-generation-metrics.ts",
+      "src-tauri/atomic-agent-core/src/prompt.rs",
+      "src-tauri/atomic-agent-core/src/runner.rs"
+    ],
+    "checks": [
+      {
+        "cwd": "web-app",
+        "run": "npx vitest run src/components/ComposerClock.test.tsx src/containers/TokenSpeedIndicator.test.tsx src/containers/ContextSizeControl.test.tsx src/lib/context-usage.test.ts src/lib/live-generation-metrics.test.ts",
+        "files": ["web-app/src/components/ComposerClock.test.tsx", "web-app/src/containers/TokenSpeedIndicator.test.tsx", "web-app/src/containers/ContextSizeControl.test.tsx", "web-app/src/lib/context-usage.test.ts", "web-app/src/lib/live-generation-metrics.test.ts"]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml --locked prompt::tests::context_categories_group_the_request_without_exporting_prompt_text",
+        "files": ["src-tauri/atomic-agent-core/src/prompt.rs"]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-16-float-annotations-and-report-live-generation-metrics.md",
+    "status": "pending"
+  },
+  {
     "id": "production-annotation-log",
     "feature": "Local screenshot-linked annotation log",
-    "forUsers": "Record edits and quick memory notes with screenshots in a folder of your choice.",
+    "forUsers": "Record edits and quick memory notes with screenshots in a folder of your choice, using an expandable black glass panel and resizable note area.",
     "paths": [
       "src-tauri/src/core/production_log.rs",
       "web-app/src/containers/ProductionLog.tsx",

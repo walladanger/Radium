@@ -96,6 +96,8 @@ export function buildAgentUIMessage(state: AgentRunState): UIMessage {
     role: 'assistant',
     parts: parts as UIMessage['parts'],
     metadata: {
+      contextUsage: state.contextUsage,
+      createdAt: state.startedAtMs,
       agent_run: buildAgentRunSummary(state),
       ...(usage
         ? {

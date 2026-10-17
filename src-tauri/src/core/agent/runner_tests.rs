@@ -244,6 +244,7 @@ fn event_kind(event: &AgentEvent) -> &'static str {
     match event {
         AgentEvent::TurnStarted { .. } => "turn_started",
         AgentEvent::StepStarted { .. } => "step_started",
+        AgentEvent::ContextUsage { .. } => "context_usage",
         AgentEvent::ReasoningDelta { .. } => "reasoning_delta",
         AgentEvent::AssistantDelta { .. } => "assistant_delta",
         AgentEvent::ToolCallParsed { .. } => "tool_call_parsed",
@@ -837,7 +838,9 @@ async fn immediate_reply_preserves_event_order_and_completion_contract() {
         [
             "turn_started",
             "step_started",
+            "context_usage",
             "assistant_delta",
+            "context_usage",
             "tool_call_parsed",
             "tool_call_executed",
             "assistant_reply",
@@ -2522,7 +2525,9 @@ async fn chat_transport_reply_preserves_event_order() {
         [
             "turn_started",
             "step_started",
+            "context_usage",
             "assistant_delta",
+            "context_usage",
             "tool_call_parsed",
             "tool_call_executed",
             "assistant_reply",

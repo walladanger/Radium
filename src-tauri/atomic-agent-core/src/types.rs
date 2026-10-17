@@ -417,6 +417,11 @@ pub enum AgentEvent {
     StepStarted {
         step_index: u32,
     },
+    /// Estimated prompt composition only; never includes prompt text or paths.
+    ContextUsage {
+        categories: std::collections::BTreeMap<String, usize>,
+        context_window: Option<usize>,
+    },
     ReasoningDelta {
         step_index: u32,
         text: String,

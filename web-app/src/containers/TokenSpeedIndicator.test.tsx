@@ -1,10 +1,24 @@
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act, cleanup, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import TokenSpeedIndicator from '@/containers/TokenSpeedIndicator'
 import { useAppState } from '@/hooks/useAppState'
 
 describe('TokenSpeedIndicator', () => {
+  afterEach(() => { cleanup(); vi.useRealTimers() })
+  it('shows growing live metrics and switches to final reported usage', () => {
+    vi.useFakeTimers()
+    const view = render(<TokenSpeedIndicator messageId="live" streaming streamingText="hello" />)
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(screen.getByText(/^≈ .* tok\/sec$/)).toBeInTheDocument()
+    const initial = screen.getByText(/≈ .* tokens/).textContent
+    view.rerender(<TokenSpeedIndicator messageId="live" streaming streamingText="hello world and more generated words" />)
+    expect(screen.getByText(/≈ .* tokens/).textContent).not.toBe(initial)
+    view.rerender(<TokenSpeedIndicator messageId="live" streaming={false} metadata={{ usage: { outputTokens: 12 }, tokenSpeed: { tokenSpeed: 24 } }} />)
+    expect(screen.getByText('12 tokens')).toBeInTheDocument()
+    expect(screen.getByText('24 tok/sec')).toBeInTheDocument()
+    expect(screen.queryByText(/Peak/)).not.toBeInTheDocument()
+  })
   beforeEach(() => {
     useAppState.setState({ tokenSpeed: undefined })
   })

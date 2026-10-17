@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ComposerClock } from '@/components/ComposerClock'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { captureAnnotation, productionLog, readAnnotationPng, type AnnotationImage,
   type ProductionAnnotation, type ProductionLogSnapshot } from '@/lib/production-log'
@@ -77,6 +78,8 @@ export function ProductionLog() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [noteExpanded, setNoteExpanded] = useState(false)
+  const noteId = useId()
   const input = useRef<HTMLInputElement>(null)
   const refresh = async () => { setLog(await productionLog.load()) }
   useEffect(() => {
@@ -121,7 +124,8 @@ export function ProductionLog() {
       const file = [...event.clipboardData.files].find(item => item.type === 'image/png')
       if (file) { event.preventDefault(); void action(async () => { setImage(await readAnnotationPng(file)) }) }
     }}>
-      <label className="block text-sm">{t('annotationNote', { defaultValue: 'Edit or memory note' })}<textarea value={note} maxLength={16000} disabled={busy} onChange={event => { setNote(event.target.value); setSaved(false) }} className="mt-1 min-h-28 w-full rounded border bg-background p-2" /></label>
+      <div className="flex items-center justify-between gap-2"><Button type="button" size="sm" variant="ghost" aria-controls={noteId} aria-expanded={noteExpanded} onClick={() => setNoteExpanded(value => !value)}>{noteExpanded ? 'Restore note size' : 'Expand note'}</Button><ComposerClock /></div>
+      <label className="block text-sm">{t('annotationNote', { defaultValue: 'Edit or memory note' })}<textarea id={noteId} value={note} maxLength={16000} disabled={busy} onChange={event => { setNote(event.target.value); setSaved(false) }} className={`mt-1 ${noteExpanded ? 'min-h-72' : 'min-h-28'} max-h-[60dvh] w-full resize-y rounded border border-white/20 bg-black/30 p-3 text-white placeholder:text-white/50 backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`} /></label>
       <label className="block text-sm">{t('annotationPage', { defaultValue: 'Page address (optional)' })}<Input value={url} maxLength={4096} disabled={busy} onChange={event => setUrl(event.target.value)} /></label>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={busy} onClick={() => void action(async () => { setImage(await captureAnnotation()) })}>{t('annotationCapture', { defaultValue: 'Capture screenshot' })}</Button>

@@ -1,4 +1,5 @@
 import { type ThreadMessage } from '@janhq/core'
+import { useRef, useState } from 'react'
 import { IconArrowDown, IconArrowUp } from '@tabler/icons-react'
 
 import { Button } from '@/components/ui/button'
@@ -17,8 +18,12 @@ import {
 import { useTokensCount } from '@/hooks/useTokensCount'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { cn } from '@/lib/utils'
+import { useAgentRun } from '@/hooks/useAgentRun'
+import { useThreads } from '@/hooks/useThreads'
+import { readContextUsage } from '@/lib/context-usage'
 
 interface ContextSizeControlProps {
+  placement?: 'header' | 'composer'
   messages?: ThreadMessage[]
   additionalTokens?: number
   uploadedFiles?: Array<{
@@ -84,21 +89,32 @@ function getLatestTokenUsage(messages: ThreadMessage[]): LatestTokenUsage {
 }
 
 export function ContextSizeControl({
+  placement = 'header',
   messages = [],
   additionalTokens = 0,
   uploadedFiles = [],
 }: ContextSizeControlProps) {
   const tokenData = useTokensCount(messages, uploadedFiles)
   const latestUsage = getLatestTokenUsage(messages)
+  const threadId = useThreads(state => state.currentThreadId)
+  const liveContext = useAgentRun(state => threadId ? state.runs[threadId]?.contextUsage : undefined)
+  const latestMessage = [...messages].reverse().find(item => item.role === 'assistant')
+  const savedContext = readContextUsage((latestMessage?.metadata as { contextUsage?: unknown } | undefined)?.contextUsage)
+  const validLiveContext = readContextUsage(liveContext)
+  const context = validLiveContext && (!savedContext || validLiveContext.updatedAt >= savedContext.updatedAt) ? validLiveContext : savedContext
+  const contextTotal = context ? Object.values(context.categories).reduce((sum, count) => sum + count, 0) : 0
+  const trigger = useRef<HTMLButtonElement>(null)
+  const [popupSide, setPopupSide] = useState<'right' | 'top'>('top')
   const measuredTokens = tokenData.tokenCount + additionalTokens
-  const totalTokens =
+  const totalTokens = contextTotal > 0 ? contextTotal :
     measuredTokens > 0
       ? measuredTokens
       : latestUsage.totalTokens + additionalTokens
-  const completionTokens = Math.min(totalTokens, latestUsage.outputTokens)
+  const completionTokens = Math.min(totalTokens, context ? (context.categories.completion ?? 0) : latestUsage.outputTokens)
   const promptTokens = Math.max(0, totalTokens - completionTokens)
-  const percentage = tokenData.maxTokens
-    ? (totalTokens / tokenData.maxTokens) * 100
+  const maxTokens = context?.contextWindow || tokenData.maxTokens
+  const percentage = maxTokens
+    ? (totalTokens / maxTokens) * 100
     : 0
   const isOverLimit = percentage > 100
   const progressTone =
@@ -122,14 +138,15 @@ export function ContextSizeControl({
   } = useModelContextLength()
   const { t } = useTranslation()
 
-  if (!available || !contextSetting) return null
+  if (!context && (!available || !contextSetting)) return null
 
-  const percentageLabel = `${percentage.toFixed(1)}%`
+  const percentageLabel = maxTokens ? `${percentage.toFixed(1)}%` : 'Context'
 
   return (
-    <Popover>
+    <Popover onOpenChange={open => { if (open) setPopupSide(window.innerWidth - (trigger.current?.getBoundingClientRect().right ?? window.innerWidth) >= 352 ? 'right' : 'top') }}>
       <PopoverTrigger asChild>
         <Button
+          ref={trigger}
           type="button"
           variant="outline"
           size="sm"
@@ -169,7 +186,8 @@ export function ContextSizeControl({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-3 p-3">
+      <PopoverContent align="end" side={placement === 'composer' ? popupSide : 'bottom'} sideOffset={16} collisionPadding={16} className="dark max-h-[min(75dvh,48rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto space-y-3 rounded-xl border-white/15 bg-black/85 p-4 text-foreground shadow-xl backdrop-blur-xl">
+        <div className="space-y-1"><h3 className="font-medium">Context window</h3><p className="truncate text-xs text-muted-foreground">{context?.estimated ? 'Estimated prompt composition' : 'Prompt and generation usage'}</p></div>
         <div>
           <div className="mb-2 flex items-center justify-between">
             <span
@@ -182,15 +200,31 @@ export function ContextSizeControl({
             </span>
             <span className="font-mono text-sm text-muted-foreground">
               {formatTokenCount(totalTokens)} /{' '}
-              {formatTokenCount(tokenData.maxTokens || 0)}
+              {maxTokens ? formatTokenCount(maxTokens) : 'capacity unknown'}
             </span>
           </div>
-          <Progress
+          {!!maxTokens && <Progress
             aria-label="Context usage"
             value={Math.min(percentage, 100)}
             className="h-1.5 bg-muted"
             indicatorClassName={progressTone}
-          />
+          />}
+        </div>
+        <div className="space-y-2 border-t pt-3" aria-label="Context breakdown">
+          {([
+            ['messages', 'Messages'], ['mcpTools', 'MCP tools'], ['systemTools', 'System tools'],
+            ['systemPrompt', 'System prompt'], ['mcpServerInstructions', 'MCP server instructions'],
+            ['skills', 'Skills'], ['memoryFiles', 'Memory files'], ['customAgents', 'Custom agents'],
+            ['documents', 'Documents'], ['autoCompactBuffer', 'Autocompact buffer'],
+            ['deferredMcpTools', 'MCP tools (deferred)'], ['deferredSystemTools', 'System tools (deferred)'],
+          ] as const).map(([key, label]) => {
+            const value = context?.categories[key]
+            return <div key={key} className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="font-mono tabular-nums">{value === undefined ? <span title="This engine does not report a separate count for this category.">Not reported</span> : <>≈ {formatTokenCount(value)} <span className="text-muted-foreground">{maxTokens ? `${(value / maxTokens * 100).toFixed(1)}%` : ''}</span></>}</span>
+            </div>
+          })}
+          <p className="text-xs text-muted-foreground">{context ? <>Updated <time dateTime={new Date(context.updatedAt).toISOString()}>{new Date(context.updatedAt).toLocaleTimeString()}</time>. Counts describe the last request; send a message to refresh.</> : 'Send a message to measure the prompt composition. Unavailable counts are not treated as zero.'}</p>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
@@ -212,7 +246,7 @@ export function ContextSizeControl({
             </span>
           </div>
         </div>
-        <div className="space-y-3 border-t border-border pt-3">
+        {available && contextSetting && <div className="space-y-3 border-t border-border pt-3">
           <div>
             <div className="flex items-center justify-between gap-3">
               <div className="text-xs font-medium">{contextSetting.title}</div>
@@ -262,7 +296,7 @@ export function ContextSizeControl({
             <span>{formatContextSize(sliderMin)}</span>
             <span>{formatContextSize(sliderMax)}</span>
           </div>
-        </div>
+        </div>}
       </PopoverContent>
     </Popover>
   )

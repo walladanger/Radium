@@ -28,7 +28,9 @@ use super::prompt::{build_prompt_dynamic, build_prompt_parts_dynamic, format_wor
 
 use super::rag_bridge::DocsBridge;
 use super::reply_stream::ReplyStreamScanner;
-use super::resource_class::{is_batchable, is_delegation_batch, resource_class_for_call, runs_solo, ResourceClass};
+use super::resource_class::{
+    is_batchable, is_delegation_batch, resource_class_for_call, runs_solo, ResourceClass,
+};
 use super::session::AgentSessionState;
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::token_budget::{
@@ -241,6 +243,11 @@ pub async fn run_turn_with_deadline(
             input.mcp,
             input.documents_note,
         );
+        let context_categories = prompt.token_categories();
+        emit(AgentEvent::ContextUsage {
+            categories: context_categories.clone(),
+            context_window,
+        })?;
         notice = None;
         let mut request = CompletionRequest {
             reasoning: completion_reasoning.clone(),
@@ -306,6 +313,15 @@ pub async fn run_turn_with_deadline(
         let mut parsed = match completion {
             Ok(completion) => {
                 usage.observe(&completion);
+                let mut categories = context_categories.clone();
+                categories.insert(
+                    "completion".into(),
+                    completion.timing.predicted_tokens.max(0.0) as usize,
+                );
+                emit(AgentEvent::ContextUsage {
+                    categories,
+                    context_window,
+                })?;
                 previous_output.clone_from(&completion.content);
                 if !completion.reasoning_content.is_empty() && !server_reasoning_streamed {
                     emit(AgentEvent::ReasoningDelta {
@@ -743,7 +759,10 @@ fn validate_batch(
         });
     }
     let mut terminal_count = 0;
-    let classes = calls.iter().map(|call| resource_class_for_call(&call.tool, mcp)).collect::<Vec<_>>();
+    let classes = calls
+        .iter()
+        .map(|call| resource_class_for_call(&call.tool, mcp))
+        .collect::<Vec<_>>();
     let delegation_batch = is_delegation_batch(&classes);
     for (index, call) in calls.iter().enumerate() {
         let class = resource_class_for_call(&call.tool, mcp);
@@ -758,7 +777,11 @@ fn validate_batch(
                 kind: BatchValidationKind::ApprovalGatedSolo,
                 message: format!("Tool must run solo: {}", call.tool),
             });
-        } else if calls.len() > 1 && class != ResourceClass::Terminal && !is_batchable(class) && !delegation_batch {
+        } else if calls.len() > 1
+            && class != ResourceClass::Terminal
+            && !is_batchable(class)
+            && !delegation_batch
+        {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::Unknown,
                 message: format!("Tool cannot run in a batch: {}", call.tool),

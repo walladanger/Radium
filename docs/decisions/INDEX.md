@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-293 records, 2026-05-19 → 2026-10-16.
+294 records, 2026-05-19 → 2026-10-16.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -377,3 +377,5 @@ library on disk, and how the frozen surface is allowed to change.
 - [Scope checksum grammar scanner exception to legacy names](2026-10-16-scope-checksum-grammar-scanner-exception-to-legacy-names.md)
 
 - [Pin standalone controller and core build resolutions](2026-10-16-pin-standalone-controller-and-core-build-resolutions.md)
+
+- [Float annotations and report live generation metrics](2026-10-16-float-annotations-and-report-live-generation-metrics.md)

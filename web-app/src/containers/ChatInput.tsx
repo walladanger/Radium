@@ -83,6 +83,8 @@ import { RobotHeadIcon } from '@/components/icons/robot-head'
 import { useServiceHub } from '@/hooks/useServiceHub'
 import { useTools } from '@/hooks/useTools'
 import { TokenCounter } from '@/components/TokenCounter'
+import { ComposerClock } from '@/components/ComposerClock'
+import HeaderContextSize from '@/containers/HeaderContextSize'
 import { useMessages } from '@/hooks/useMessages'
 import { useShallow } from 'zustand/react/shallow'
 import { McpExtensionToolLoader } from './McpExtensionToolLoader'
@@ -2731,6 +2733,7 @@ const ChatInput = memo(function ChatInput({
               onDragOver={attachmentsEnabled ? handleDragOver : undefined}
               onDrop={attachmentsEnabled ? handleDrop : undefined}
             >
+              <div className="flex justify-end px-5 pt-2"><ComposerClock /></div>
               {attachments.length > 0 && (
                 <div className="flex flex-col gap-2 p-2 pb-0">
                   <div className="flex flex-wrap gap-2 items-center">
@@ -3416,6 +3419,7 @@ const ChatInput = memo(function ChatInput({
                 </div>
               </div>
 
+              <HeaderContextSize placement="composer" />
               <div className="flex items-center gap-2">
                 {/* The model rides with the microphone rather than the
                     attachment cluster: both change how the next message is

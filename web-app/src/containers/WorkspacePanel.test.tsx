@@ -40,6 +40,10 @@ it('opens local annotations without asking for controller credentials', () => {
   expect(screen.queryByLabelText(translations.address)).not.toBeInTheDocument()
   expect(screen.queryByLabelText(translations.token)).not.toBeInTheDocument()
   expect(screen.getByLabelText('Chat draft')).toHaveValue('Keep my conversation')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  act(() => useWorkspacePanel.getState().openAnnotations())
+  expect(screen.getByLabelText('Chat draft')).toHaveValue('Keep my conversation')
 })
 
 it('opens, switches and closes an adjacent panel without remounting its chat sibling', () => {

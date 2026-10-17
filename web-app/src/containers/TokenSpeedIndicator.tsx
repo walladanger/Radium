@@ -1,7 +1,8 @@
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useAppState } from '@/hooks/useAppState'
 import { toNumber } from '@/utils/number'
 import { Gauge, WholeWord } from 'lucide-react'
+import { LiveGenerationMeter } from '@/lib/live-generation-metrics'
 
 interface TokenUsage {
   inputTokens?: number
@@ -21,10 +22,23 @@ interface TokenSpeed {
 interface TokenSpeedIndicatorProps {
   metadata?: Record<string, unknown>
   streaming?: boolean
+  messageId?: string
+  streamingText?: string
 }
 
 export const TokenSpeedIndicator = memo(
-  ({ metadata, streaming }: TokenSpeedIndicatorProps) => {
+  ({ metadata, streaming, messageId, streamingText = '' }: TokenSpeedIndicatorProps) => {
+    const [live, setLive] = useState({ tokenCount: 0, tokenSpeed: 0, peak: 0 })
+    const [meter, setMeter] = useState(() => new LiveGenerationMeter())
+    useEffect(() => { setMeter(new LiveGenerationMeter()); setLive({ tokenCount: 0, tokenSpeed: 0, peak: 0 }) }, [messageId, streaming])
+    useEffect(() => {
+      if (!streaming) return
+      const update = () => setLive(meter.sample(streamingText, Date.now()))
+      update()
+      const timer = window.setInterval(update, 250)
+      return () => window.clearInterval(timer)
+    }, [streaming, streamingText, meter])
+    const hasLiveUsage = useAppState(state => !!messageId && state.tokenSpeed?.message === messageId)
     // Get real-time token speed from global state during streaming
     const streamingTokenSpeed = useAppState((state) =>
       state.tokenSpeed ? Math.round(state.tokenSpeed.tokenSpeed) : 0
@@ -52,11 +66,11 @@ export const TokenSpeedIndicator = memo(
 
     // Use streaming data if available, otherwise fall back to metadata
     const displaySpeed = streaming
-      ? streamingTokenSpeed
+      ? (hasLiveUsage ? streamingTokenSpeed : Math.round(live.tokenSpeed))
       : Math.round(toNumber(persistedTokenSpeed))
 
     const displayTokenCount = streaming
-      ? streamingTokenCount
+      ? (hasLiveUsage ? streamingTokenCount : live.tokenCount)
       : (usage?.outputTokens ?? persistedTokenCount)
 
     // Show indicator during streaming OR when we have persisted data
@@ -72,19 +86,20 @@ export const TokenSpeedIndicator = memo(
       draftTotal > 0 ? (draftAccepted / draftTotal) * 100 : null
 
     return (
-      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        {displaySpeed > 0 && (
+      <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs tabular-nums" aria-label="Generation metrics" title={streaming && !hasLiveUsage ? 'Estimated from generated text until the model reports its token usage.' : undefined}>
+        {(streaming || displaySpeed > 0) && (
           <div className="flex items-center gap-1">
             <Gauge size={16} />
-            <span>{displaySpeed} tok/sec</span>
+            <span>{streaming && !hasLiveUsage ? '≈ ' : ''}{displaySpeed} tok/sec</span>
           </div>
         )}
-        {displayTokenCount > 0 && (
+        {(streaming || displayTokenCount > 0) && (
           <div className="flex items-center gap-1">
             <WholeWord size={16} />
-            <span>{displayTokenCount} tokens</span>
+            <span>{streaming && !hasLiveUsage ? '≈ ' : ''}{displayTokenCount} tokens</span>
           </div>
         )}
+        {streaming && live.peak > 0 && !hasLiveUsage && <span>Peak ≈ {Math.round(live.peak)} tok/sec</span>}
         {acceptanceRate !== null && (
           <span>{acceptanceRate.toFixed(1)}% draft tokens accepted</span>
         )}
