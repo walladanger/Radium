@@ -20,7 +20,7 @@ const repoRoot = path.resolve(
 const read = (rel) => readFileSync(path.join(repoRoot, rel), 'utf8')
 
 test('the agent wire request asks unless auto_approve_mcp is sent', () => {
-  const types = read('src-tauri/src/core/agent/types.rs')
+  const types = read('src-tauri/atomic-agent-core/src/types.rs')
   assert.match(
     types,
     /#\[serde\(default\)\]\s*pub auto_approve_mcp: bool,/,

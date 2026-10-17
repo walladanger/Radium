@@ -1797,9 +1797,9 @@ mod tests {
             .ingest(&delta_chunk(json!({"role": "assistant"})))
             .is_none());
         let first = accumulator
-            .ingest(&delta_chunk(json!({"content": "hel"})))
+            .ingest(&delta_chunk(json!({"content": "hel"}))) // codespell:ignore hel
             .expect("first content chunk");
-        assert_eq!(first.delta, "hel");
+        assert_eq!(first.delta, "hel"); // codespell:ignore hel
         assert!(!first.done);
         accumulator
             .ingest(&delta_chunk(json!({"content": "lo"})))

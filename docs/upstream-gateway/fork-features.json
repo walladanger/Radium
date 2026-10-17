@@ -702,7 +702,7 @@
   {
     "id": "agent-computer-care-tools",
     "feature": "Computer care specialist tools",
-    "forUsers": "An assistant with Computer care tools turned on (or the Computer care specialist template) can check disk space, what is using memory and CPU, startup programs, pending updates and recent system errors, and tidy up: delete old temp files, turn startup programs off or back on, and empty the Recycle Bin. Every change asks first and shows what it will affect and whether it can be undone.",
+    "forUsers": "An assistant with Computer care tools turned on (or the Computer care specialist template) can check disk space, what is using memory and CPU, startup programs, pending updates and recent system errors, turn startup programs off or back on, and empty the Recycle Bin. Automatic temporary-file cleanup is unavailable; use operating-system Storage settings. Every change asks first and shows what it will affect and whether it can be undone.",
     "paths": [
       "src-tauri/src/core/agent/tools/sys/**",
       "src-tauri/src/core/agent/tools/blast.rs",

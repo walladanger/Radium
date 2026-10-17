@@ -299,7 +299,7 @@ mod tests {
             &mut scanner,
             &[
                 r#"[{"tool": "re"#,
-                r#"ply", "args": {"te"#,
+                r#"ply", "args": {"te"#, // codespell:ignore te
                 r#"xt": "Hello, "#,
                 r#"world"}}]"#,
             ],

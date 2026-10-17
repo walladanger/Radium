@@ -1544,9 +1544,9 @@ mod tests {
 
     #[test]
     fn parses_multiline_sse_and_done_marker() {
-        let event = "event: message\ndata: {\"content\":\"hel\",\ndata: \"stop\":false}";
+        let event = "event: message\ndata: {\"content\":\"hel\",\ndata: \"stop\":false}"; // codespell:ignore hel
         let parsed = parse_sse_event(event).expect("SSE data should parse");
-        assert_eq!(parsed["content"], "hel");
+        assert_eq!(parsed["content"], "hel"); // codespell:ignore hel
         assert_eq!(parsed["stop"], false);
         assert!(parse_sse_event("data: [DONE]").is_none());
         assert!(parse_sse_event("event: ping").is_none());
