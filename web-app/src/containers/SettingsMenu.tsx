@@ -115,6 +115,14 @@ const SettingsMenu = () => {
       hasSubMenu: false,
       isEnabled: true,
     },
+    // Saved prompts, including the recurring agent jobs. The settings menu is
+    // also where telemetry, sub-agent, IDE and panel settings will be added.
+    {
+      title: 'common:prompts',
+      route: route.settings.prompts,
+      hasSubMenu: false,
+      isEnabled: true,
+    },
     {
       title: 'common:keyboardShortcuts',
       route: route.settings.shortcuts,

@@ -236,7 +236,7 @@ fn log_ttft_prefix_dump(json_body: &serde_json::Value) {
     }
     // Zero-PII (ATO-113): never log message/tool *text* (prompts are PII).
     // Emit only sizes/counts so the diagnostic stays useful for prefix-cache
-    // debugging without leaking conversation content into app.log / Sentry.
+    // debugging without leaking conversation content into app.log.
     if let Some(messages) = json_body.get("messages") {
         let bytes = serde_json::to_string(messages)
             .map(|s| s.len())
@@ -286,7 +286,7 @@ fn transform_anthropic_to_openai(body: &serde_json::Value) -> Option<serde_json:
 
     let openai_messages = convert_messages(messages, body.get("system"))?;
 
-    // Strict chat templates (e.g. AtomicChat/ornith-9b, Qwen3-family GGUFs)
+    // Strict chat templates (e.g. Qwen3-family GGUFs)
     // `raise` "System message must be at the beginning" whenever a request
     // carries more than one system message or a non-leading one. Claude Code
     // triggers this by combining its system prompt with developer/system items,
@@ -2164,6 +2164,21 @@ async fn inner_proxy_request<R: Runtime>(
         log::debug!("Bypassing host validation for whitelisted path: {path}");
     }
 
+    if !is_whitelisted_path && !is_request_origin_allowed(&origin_header, &config.trusted_hosts) {
+        log::warn!("Refusing request from untrusted origin '{origin_header}' to {path}");
+        state.endpoint = Some(endpoint_from_path(path.as_str()));
+        state.error_kind = Some("origin");
+        return Ok(Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header("Vary", "Origin")
+            .body(Body::from(format!(
+                "Origin '{origin_header}' is not allowed. Web pages can only call this server \
+                 from a trusted host; add it in Settings \u{2192} Local API Server \u{2192} \
+                 Trusted Hosts."
+            )))
+            .unwrap());
+    }
+
     if !is_whitelisted_path && !config.proxy_api_key.is_empty() {
         // Check Authorization header (Bearer token)
         let auth_valid = parts
@@ -2577,7 +2592,7 @@ async fn inner_proxy_request<R: Runtime>(
 
                             let (mlx_session_info, mlx_count) = {
                                 let mut mlx_session_info: Option<SessionInfo> = None;
-                                
+
                                 let mlx_guard = mlx_sessions.lock().await;
                                 let mlx_count = mlx_guard.len();
                                 if let Some(session) = mlx_guard.values().find(|s| {
@@ -3811,8 +3826,8 @@ async fn inner_proxy_request<R: Runtime>(
             let error_msg = format!("Proxy request to model failed: {e}");
             // WS1.4: warn! (not error!) — a refused/failed proxy connection is a
             // downstream symptom of the model server not being up, not a root-cause
-            // crash, so it must not flood the SentryLogger bridge. The PostHog
-            // error_kind above still records it for analytics.
+            // crash, so it must not flood the error log. The error_kind above
+            // still records it.
             log::warn!("{error_msg}");
             // ATO-182: A transport error reaching a *local* model server means
             // the backend inference process is down / crashed / not yet
@@ -3846,6 +3861,39 @@ async fn inner_proxy_request<R: Runtime>(
             Ok(error_response.body(Body::from(body)).unwrap())
         }
     }
+}
+
+/// Origins the app's own webview uses when it calls this server: `tauri://localhost`
+/// on macOS/Linux and `http(s)://tauri.localhost` on Windows.
+const APP_WEBVIEW_ORIGINS: [&str; 3] = [
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+];
+
+/// Whether a request carrying this `Origin` header may be served.
+///
+/// Browsers attach `Origin` to every cross-site POST, including `no-cors`
+/// "simple" requests that skip the CORS preflight. Without this check any web
+/// page could make the server run inference — through the user's stored cloud
+/// provider keys — even though the page can never read the reply. Non-browser
+/// clients (SDKs, curl, coding agents) send no `Origin` and are unaffected; the
+/// app's webview and trusted hosts are allowed. Opaque origins (`null`, from
+/// sandboxed iframes or `file:` pages) are refused.
+fn is_request_origin_allowed(origin: &str, trusted_hosts: &[Vec<String>]) -> bool {
+    if origin.is_empty() {
+        return true;
+    }
+    if APP_WEBVIEW_ORIGINS
+        .iter()
+        .any(|app| app.eq_ignore_ascii_case(origin))
+    {
+        return true;
+    }
+    if !origin.contains("://") {
+        return false;
+    }
+    is_valid_host(&extract_host_from_origin(origin), trusted_hosts)
 }
 
 fn add_cors_headers_with_host_and_origin(
@@ -4032,6 +4080,25 @@ async fn start_server_internal<R: Runtime>(
 
     let bound_addr = listener.local_addr()?;
     let actual_port = bound_addr.port();
+
+    // Security: the /v1 API resolves and attaches the user's stored cloud
+    // provider keys server-side, so anything that can reach the socket can
+    // drive those paid accounts. When no API key is set the server performs
+    // no authentication at all, so refuse to listen on any address a remote
+    // host could reach. Loopback stays unrestricted for the common local case.
+    if proxy_api_key.is_empty() && !bound_addr.ip().is_loopback() {
+        log::error!(
+            "Refusing to bind the Local API Server to {} (non-loopback) without an API key",
+            bound_addr.ip()
+        );
+        return Err(Box::<dyn std::error::Error + Send + Sync>::from(
+            "The Local API Server needs an API key before it can listen on a \
+             non-loopback address such as 0.0.0.0 or a LAN IP. Set one in \
+             Settings \u{2192} Local API Server, or keep the host as \
+             127.0.0.1."
+                .to_string(),
+        ));
+    }
 
     let config = ProxyConfig {
         prefix,
@@ -4515,6 +4582,66 @@ async fn forward_non_streaming(
         if sender.send_data(bytes).await.is_err() {
             log::debug!("Client disconnected");
         }
+    }
+}
+
+#[cfg(test)]
+mod request_origin_tests {
+    use super::is_request_origin_allowed;
+
+    /// Allowed with the default settings, i.e. no extra trusted hosts.
+    fn allowed_by_default(origin: &str) -> bool {
+        is_request_origin_allowed(origin, &[vec![]])
+    }
+
+    #[test]
+    fn a_request_without_an_origin_is_allowed() {
+        assert!(allowed_by_default(""));
+    }
+
+    #[test]
+    fn the_app_webview_origins_are_allowed() {
+        for origin in [
+            "tauri://localhost",
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+        ] {
+            assert!(allowed_by_default(origin), "{origin}");
+        }
+    }
+
+    #[test]
+    fn loopback_origins_are_allowed() {
+        for origin in ["http://localhost:1420", "http://127.0.0.1:5173"] {
+            assert!(allowed_by_default(origin), "{origin}");
+        }
+    }
+
+    #[test]
+    fn other_sites_and_opaque_origins_are_refused() {
+        for origin in [
+            "https://evil.example",
+            "http://192.168.1.50:3000",
+            "null",
+            "https://tauri.localhost.evil.example",
+        ] {
+            assert!(!allowed_by_default(origin), "{origin}");
+        }
+    }
+
+    #[test]
+    fn a_trusted_host_is_allowed_as_an_origin() {
+        let trusted = vec![vec!["192.168.1.50".to_string()]];
+        assert!(is_request_origin_allowed(
+            "http://192.168.1.50:3000",
+            &trusted
+        ));
+    }
+
+    #[test]
+    fn a_wildcard_trusted_host_allows_any_origin() {
+        let trusted = vec![vec!["*".to_string()]];
+        assert!(is_request_origin_allowed("https://evil.example", &trusted));
     }
 }
 

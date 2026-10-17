@@ -1,0 +1,8 @@
+---
+# actionlint configuration. Read by a plain `actionlint` run from the repo
+# root and by super-linter (GITHUB_ACTIONS_CONFIG_FILE in super-linter.yml).
+self-hosted-runner:
+  # GitHub-hosted larger runner used by release.yml's macOS build. Older
+  # actionlint builds don't know this label, so declare it explicitly.
+  labels:
+    - macos-latest-xlarge

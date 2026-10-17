@@ -28,7 +28,7 @@ use super::prompt::{build_prompt_dynamic, build_prompt_parts_dynamic, format_wor
 
 use super::rag_bridge::DocsBridge;
 use super::reply_stream::ReplyStreamScanner;
-use super::resource_class::{is_batchable, resource_class_for_call, ResourceClass};
+use super::resource_class::{is_batchable, is_delegation_batch, resource_class_for_call, runs_solo, ResourceClass};
 use super::session::AgentSessionState;
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::token_budget::{
@@ -44,11 +44,14 @@ use super::types::{
 
 pub const MAX_STEPS: u32 = 25;
 pub const MAX_PARALLEL_TOOL_CALLS: usize = 8;
-const AGENT_SLOT_ID: i32 = 0;
+pub const AGENT_SLOT_ID: i32 = 0;
+pub const ANY_SLOT: i32 = -1;
 const REPAIR_MAX_TOKENS: u32 = 1024;
 pub const DEFAULT_COMPLETION_DEADLINE: Duration = Duration::from_secs(600);
 
 pub struct RunTurnInput<'a> {
+    /// Native specialist turns use ANY_SLOT; isolated workers retain their own service slot.
+    pub slot_id: i32,
     pub run_id: &'a str,
     pub session_id: &'a str,
     pub user_message: &'a str,
@@ -245,7 +248,7 @@ pub async fn run_turn_with_deadline(
                 AgentPrompt::parts(prompt.system, prompt.tail),
                 tool_grammar.clone(),
                 response_schema.clone(),
-                AGENT_SLOT_ID,
+                input.slot_id,
             )
         };
         input.sampling.apply(&mut request);
@@ -740,6 +743,8 @@ fn validate_batch(
         });
     }
     let mut terminal_count = 0;
+    let classes = calls.iter().map(|call| resource_class_for_call(&call.tool, mcp)).collect::<Vec<_>>();
+    let delegation_batch = is_delegation_batch(&classes);
     for (index, call) in calls.iter().enumerate() {
         let class = resource_class_for_call(&call.tool, mcp);
         if class == ResourceClass::Unknown {
@@ -748,12 +753,12 @@ fn validate_batch(
                 message: format!("Unknown tool in batch: {}", call.tool),
             });
         }
-        if calls.len() > 1 && class == ResourceClass::ApprovalGated {
+        if calls.len() > 1 && runs_solo(class) && !delegation_batch {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::ApprovalGatedSolo,
                 message: format!("Tool must run solo: {}", call.tool),
             });
-        } else if calls.len() > 1 && class != ResourceClass::Terminal && !is_batchable(class) {
+        } else if calls.len() > 1 && class != ResourceClass::Terminal && !is_batchable(class) && !delegation_batch {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::Unknown,
                 message: format!("Tool cannot run in a batch: {}", call.tool),
@@ -794,7 +799,7 @@ fn trim_to_first_approval_gated(
 ) -> (Vec<ToolCallPayload>, Vec<String>) {
     let kept_index = calls
         .iter()
-        .position(|call| resource_class_for_call(&call.tool, mcp) == ResourceClass::ApprovalGated)
+        .position(|call| runs_solo(resource_class_for_call(&call.tool, mcp)))
         .expect("approval-only validation requires an approval-gated call");
     let kept = calls[kept_index].clone();
     let dropped = calls

@@ -98,10 +98,6 @@ dev-onboarding: install-and-build
 	make build-cli-dev
 	FORCE_ONBOARDING=true yarn dev
 
-# Путь к соседнему чекауту atomic-chat-conf. Переопределяется:
-#   make dev-onboarding-low-spec ATOMIC_CHAT_CONF=~/work/atomic-chat-conf
-ATOMIC_CHAT_CONF ?= ../atomic-chat-conf
-
 # Ступень лестницы, под которую смотрим онбординг. Переопределяется:
 #   make dev-onboarding-low-spec FORCE_HARDWARE_TIER=unified_8
 FORCE_HARDWARE_TIER ?= vram_2
@@ -116,9 +112,8 @@ FORCE_HARDWARE_TIER ?= vram_2
 # unified_32, unified_48, unified_64, unified_64_plus. Прежние `low` и
 # `standard` тоже принимаются и мапятся на ближайшую ступень.
 #
-# Манифест берём из локального чекаута conf, если он есть: ключа `tiers` в
-# удалённом может ещё не быть, но это не мешает — без него клиент штатно
-# берёт встроенную лестницу, которая и есть нужная рекомендация.
+# Манифест — встроенный `web-app/src/registries/recommended-models.json`;
+# чтобы проверить другой, задайте VITE_RECOMMENDED_MODELS_REGISTRY_URL.
 dev-onboarding-low-spec: install-and-build
 	yarn download:bin
 	make download-llamacpp-backend
@@ -126,15 +121,7 @@ dev-onboarding-low-spec: install-and-build
 	make build-mlx-server
 	make build-foundation-models-server-if-exists
 	make build-cli-dev
-	@if [ -f "$(ATOMIC_CHAT_CONF)/models/recommended.json" ]; then \
-		cp "$(ATOMIC_CHAT_CONF)/models/recommended.json" web-app/public/dev-recommended.json; \
-		echo "[dev] манифест: $(ATOMIC_CHAT_CONF)/models/recommended.json"; \
-		FORCE_ONBOARDING=true FORCE_HARDWARE_TIER=$(FORCE_HARDWARE_TIER) \
-			VITE_RECOMMENDED_MODELS_REGISTRY_URL=/dev-recommended.json yarn dev; \
-	else \
-		echo "[dev] $(ATOMIC_CHAT_CONF) не найден — манифест из сети (задайте ATOMIC_CHAT_CONF=...)"; \
-		FORCE_ONBOARDING=true FORCE_HARDWARE_TIER=$(FORCE_HARDWARE_TIER) yarn dev; \
-	fi
+	FORCE_ONBOARDING=true FORCE_HARDWARE_TIER=$(FORCE_HARDWARE_TIER) yarn dev
 
 # ──────────────────────────────────────────────────────────────
 # Windows Development
@@ -332,14 +319,29 @@ lint: install-and-build
 # Testing
 .PHONY: test test-all test-local test-web test-extensions test-rust stub-resources app-icons \
 	test-selective-v2032 rebaseline-selective-v2032 stage-windows-backends verify-windows-backends \
-	typecheck verify-fast verify clippy-rust test-agent-core clippy-agent-core test-control clippy-control test-quality test-hardening-contracts \
-	test-telemetry-props test-coverage-critical capture-capabilities capture-hw-profile \
+	typecheck verify-fast verify clippy-rust test-quality test-hardening-contracts \
+	test-coverage-critical install-extensions \
+	capture-capabilities capture-hw-profile \
 	sync-upstream-baseline gen-amd-rocm-pci-ids test-live test-live-cloud mutants
 
 test-web:
 	yarn test
 
-test-extensions:
+# `extensions/` is its own Yarn project, so the root `yarn install` never
+# reaches it. Any target that runs a command inside it has to install it first:
+# CI's verification job runs `make install-and-build`, which installs only the
+# root project, so without this prerequisite `yarn --cwd extensions ...` aborts
+# with "Couldn't find the node_modules state file". The install is idempotent,
+# so repeat runs are a no-op.
+# --no-immutable because `core/package.tgz` is rebuilt by `yarn build:core` and
+# its hash lands in extensions/yarn.lock. Yarn turns immutable installs on by
+# default whenever CI=true, so without it the install aborts saying the lockfile
+# would be modified — for a freshly repacked tarball that is expected churn, not
+# a dependency change, and the runner's copy is discarded afterwards.
+install-extensions:
+	yarn --cwd extensions install --no-immutable
+
+test-extensions: install-extensions
 	yarn --cwd extensions workspaces foreach -A \
 		--include '@janhq/llamacpp-extension' \
 		--include '@janhq/llamacpp-upstream-extension' \
@@ -498,7 +500,15 @@ test-hardening-contracts:
 		tests/window-controls.test.mjs \
 		tests/scrollbar-arrows.test.mjs \
 		tests/radium-logo.test.mjs \
-		tests/upstream-backend-resolver.test.mjs
+		tests/upstream-backend-resolver.test.mjs \
+		tests/rocm-html-cleanup.test.mjs \
+		tests/panel-contract.test.mjs \
+		tests/panel-sandbox.test.mjs \
+		tests/capability-remote-grants.test.mjs \
+		tests/csp-connect-src.test.mjs \
+		tests/no-atomic-sources.test.mjs \
+		tests/mcp-approval-contract.test.mjs
+	python3 -m unittest discover -s tests -p test_concurrent_demo_security.py
 
 # Every build gets a new version number (tracker D34). VERSION=x.y.z sets one.
 bump-version:
@@ -512,7 +522,7 @@ upstream-gate:
 upstream-post-merge:
 	node scripts/upstream-gateway.mjs post-merge
 
-test-coverage-critical:
+test-coverage-critical: install-extensions
 	yarn test:coverage
 	yarn --cwd extensions workspaces foreach -A \
 		--include '@janhq/llamacpp-extension' \
@@ -526,15 +536,9 @@ test-coverage-critical:
 typecheck:
 	yarn workspace @janhq/web-app run tsc -b
 
-# Reserved PostHog property names. Cheap and independent of any build output,
-# so it runs before the suites that take minutes.
-test-telemetry-props:
-	node scripts/check-telemetry-props.mjs
-
 verify-fast:
 	yarn lint
 	"$(MAKE)" typecheck
-	"$(MAKE)" test-telemetry-props
 	"$(MAKE)" test-quality
 	"$(MAKE)" test-hardening-contracts
 	"$(MAKE)" test-coverage-critical
@@ -552,7 +556,7 @@ stage-windows-backends:
 verify-windows-backends:
 	node scripts/stage-windows-backends.mjs --verify-only
 
-verify: verify-fast clippy-rust test-rust test-selective-v2032
+verify: verify-fast clippy-rust test-rust test-agent-core clippy-agent-core test-control clippy-control test-selective-v2032
 
 # Explicitly live capture commands. The caller supplies paths/identity so these
 # never download artifacts or mutate fixtures during a normal verification run.

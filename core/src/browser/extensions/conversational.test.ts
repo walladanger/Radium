@@ -6,8 +6,8 @@ import { Thread, ThreadAssistantInfo, ThreadMessage } from '../../types'
 // Mock implementation of ConversationalExtension
 class MockConversationalExtension extends ConversationalExtension {
   private threads: Thread[] = []
-  private messages: { [threadId: string]: ThreadMessage[] } = {}
-  private assistants: { [threadId: string]: ThreadAssistantInfo } = {}
+  private messages: { [thread_id: string]: ThreadMessage[] } = {}
+  private assistants: { [thread_id: string]: ThreadAssistantInfo } = {}
 
   constructor() {
     super('http://mock-url.com', 'mock-extension', 'Mock Extension', true, 'A mock extension', '1.0.0')
@@ -44,67 +44,67 @@ class MockConversationalExtension extends ConversationalExtension {
     }
   }
 
-  async deleteThread(threadId: string): Promise<void> {
-    this.threads = this.threads.filter(t => t.id !== threadId)
-    delete this.messages[threadId]
-    delete this.assistants[threadId]
+  async deleteThread(thread_id: string): Promise<void> {
+    this.threads = this.threads.filter(t => t.id !== thread_id)
+    delete this.messages[thread_id]
+    delete this.assistants[thread_id]
   }
 
   async createMessage(message: Partial<ThreadMessage>): Promise<ThreadMessage> {
-    if (!message.threadId) throw new Error('Thread ID is required')
+    if (!message.thread_id) throw new Error('Thread ID is required')
     
     const newMessage: ThreadMessage = {
       id: message.id || `message-${Date.now()}`,
-      threadId: message.threadId,
+      thread_id: message.thread_id,
       content: message.content || '',
       role: message.role || 'user',
       createdAt: message.createdAt || new Date().toISOString(),
     }
     
-    if (!this.messages[message.threadId]) {
-      this.messages[message.threadId] = []
+    if (!this.messages[message.thread_id]) {
+      this.messages[message.thread_id] = []
     }
     
-    this.messages[message.threadId].push(newMessage)
+    this.messages[message.thread_id].push(newMessage)
     return newMessage
   }
 
-  async deleteMessage(threadId: string, messageId: string): Promise<void> {
-    if (this.messages[threadId]) {
-      this.messages[threadId] = this.messages[threadId].filter(m => m.id !== messageId)
+  async deleteMessage(thread_id: string, messageId: string): Promise<void> {
+    if (this.messages[thread_id]) {
+      this.messages[thread_id] = this.messages[thread_id].filter(m => m.id !== messageId)
     }
   }
 
-  async listMessages(threadId: string): Promise<ThreadMessage[]> {
-    return this.messages[threadId] || []
+  async listMessages(thread_id: string): Promise<ThreadMessage[]> {
+    return this.messages[thread_id] || []
   }
 
-  async getThreadAssistant(threadId: string): Promise<ThreadAssistantInfo> {
-    return this.assistants[threadId] || { modelId: '', threadId }
+  async getThreadAssistant(thread_id: string): Promise<ThreadAssistantInfo> {
+    return this.assistants[thread_id] || { modelId: '', thread_id }
   }
 
   async createThreadAssistant(
-    threadId: string,
+    thread_id: string,
     assistant: ThreadAssistantInfo
   ): Promise<ThreadAssistantInfo> {
-    this.assistants[threadId] = assistant
+    this.assistants[thread_id] = assistant
     return assistant
   }
 
   async modifyThreadAssistant(
-    threadId: string,
+    thread_id: string,
     assistant: ThreadAssistantInfo
   ): Promise<ThreadAssistantInfo> {
-    this.assistants[threadId] = assistant
+    this.assistants[thread_id] = assistant
     return assistant
   }
 
   async modifyMessage(message: ThreadMessage): Promise<ThreadMessage> {
-    if (!this.messages[message.threadId]) return message
+    if (!this.messages[message.thread_id]) return message
     
-    const index = this.messages[message.threadId].findIndex(m => m.id === message.id)
+    const index = this.messages[message.thread_id].findIndex(m => m.id === message.id)
     if (index !== -1) {
-      this.messages[message.threadId][index] = message
+      this.messages[message.thread_id][index] = message
     }
     
     return message
@@ -154,7 +154,7 @@ describe('ConversationalExtension', () => {
     const thread = await extension.createThread({ name: 'Test Thread' })
     
     const message = await extension.createMessage({ 
-      threadId: thread.id,
+      thread_id: thread.id,
       content: 'Test message',
       role: 'user'
     })
@@ -170,7 +170,7 @@ describe('ConversationalExtension', () => {
     const thread = await extension.createThread({ name: 'Test Thread' })
     
     const message = await extension.createMessage({ 
-      threadId: thread.id,
+      thread_id: thread.id,
       content: 'Test message',
       role: 'user'
     })
@@ -187,7 +187,7 @@ describe('ConversationalExtension', () => {
     const thread = await extension.createThread({ name: 'Test Thread' })
     
     const message = await extension.createMessage({ 
-      threadId: thread.id,
+      thread_id: thread.id,
       content: 'Test message',
       role: 'user'
     })
@@ -202,7 +202,7 @@ describe('ConversationalExtension', () => {
     const thread = await extension.createThread({ name: 'Test Thread' })
     
     const assistant: ThreadAssistantInfo = {
-      threadId: thread.id,
+      thread_id: thread.id,
       modelId: 'test-model'
     }
     
@@ -216,14 +216,14 @@ describe('ConversationalExtension', () => {
     const thread = await extension.createThread({ name: 'Test Thread' })
     
     const assistant: ThreadAssistantInfo = {
-      threadId: thread.id,
+      thread_id: thread.id,
       modelId: 'test-model'
     }
     
     await extension.createThreadAssistant(thread.id, assistant)
     
     const modifiedAssistant: ThreadAssistantInfo = {
-      threadId: thread.id,
+      thread_id: thread.id,
       modelId: 'modified-model'
     }
     
@@ -237,7 +237,7 @@ describe('ConversationalExtension', () => {
     const thread = await extension.createThread({ name: 'Test Thread' })
     
     const assistant: ThreadAssistantInfo = {
-      threadId: thread.id,
+      thread_id: thread.id,
       modelId: 'test-model'
     }
     

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useWorkspacePanel } from '@/hooks/useWorkspacePanel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTranslation } from '@/i18n/react-i18next-compat'
@@ -7,6 +8,7 @@ import { useAtomicTasks } from '@/stores/atomic-tasks-store'
 import { productionTopology } from '@/lib/production-topology'
 import { RenderMarkdown } from './RenderMarkdown'
 import { ProductionBranchMap } from './ProductionBranchMap'
+import { ProductionLog } from './ProductionLog'
 
 const lines = (value: unknown): string[] => Array.isArray(value)
   ? value.filter((item): item is string => typeof item === 'string') : []
@@ -47,7 +49,10 @@ export function ProductionPanel() {
   const state = useAtomicTasks()
   const [planId, setPlanId] = useState('')
   const [selectedId, setSelectedId] = useState('')
-  const [view, setView] = useState<'steps' | 'topology' | 'branches'>('steps')
+  const view = useWorkspacePanel(state => state.productionView)
+  const setView = useWorkspacePanel(state => state.setProductionView)
+  const [logOpened, setLogOpened] = useState(view === 'annotations')
+  useEffect(() => { if (view === 'annotations') setLogOpened(true) }, [view])
   const plan = state.snapshot?.plans.find(item => item.id === planId) ?? state.snapshot?.plans[0]
   const tasks = useMemo(() => state.snapshot?.tasks.filter(item => item.plan_id === plan?.id) ?? [], [state.snapshot, plan?.id])
   const columns = useMemo(() => taskColumns(tasks), [tasks])
@@ -62,11 +67,13 @@ export function ProductionPanel() {
     <header className="space-y-3 border-b p-4">
       <p className="text-sm text-muted-foreground">{t('productionIntro', { defaultValue: 'Discuss the plan in chat. Keep the agreed steps, instructions, and evidence here for both humans and agents.' })}</p>
       <label className="block text-sm">{t('plan')}<select className="mt-1 w-full rounded border bg-background p-2" value={plan?.id ?? ''} onChange={event => { setPlanId(event.target.value); setSelectedId('') }}>{state.snapshot?.plans.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
-      <div className="flex flex-wrap gap-2">{(['steps', 'topology', 'branches'] as const).map(mode => <Button key={mode} variant={view === mode ? 'default' : 'outline'} aria-pressed={view === mode} onClick={() => setView(mode)}>{t(`productionView.${mode}`, { defaultValue: mode === 'steps' ? 'Steps' : mode === 'branches' ? 'Branch plan' : 'Build topology' })}</Button>)}</div>
-      {!connected && <p role="status" className="text-sm">{t('productionOffline', { defaultValue: 'Connect through Tasks to load the shared plan. Changes are disabled while offline.' })}</p>}
+      <div className="flex flex-wrap gap-2">{(['steps', 'topology', 'branches', 'annotations'] as const).map(mode => <Button key={mode} variant={view === mode ? 'default' : 'outline'} aria-pressed={view === mode} onClick={() => { setView(mode); if (mode === 'annotations') setLogOpened(true) }}>{t(`productionView.${mode}`, { defaultValue: mode === 'steps' ? 'Steps' : mode === 'branches' ? 'Branch plan' : mode === 'annotations' ? 'Annotating' : 'Build topology' })}</Button>)}</div>
+      {!connected && view !== 'annotations' && <p role="status" className="text-sm">{t('productionOffline', { defaultValue: 'Connect through Tasks to load the shared plan. Changes are disabled while offline.' })}</p>}
       {state.error && <p role="alert" className="break-words text-sm text-destructive">{state.error}</p>}
     </header>
     <div className="flex-1 space-y-4 overflow-auto p-4">
+      <div hidden={view !== 'annotations'}>{logOpened && <ProductionLog />}</div>
+      <div hidden={view === 'annotations'} className="space-y-4">
       {view === 'steps' ? <ol className="space-y-2">{ordered.map((task, index) => <li key={task.id}><button className="w-full rounded-lg border p-3 text-left hover:bg-muted" aria-pressed={selectedId === task.id} onClick={() => setSelectedId(task.id)}><span className="font-medium">{index + 1}. {task.title}</span><span className="block text-xs text-muted-foreground">{task.status} · {task.role}</span></button></li>)}</ol>
         : view === 'branches' ? <ProductionBranchMap tasks={tasks} selectedId={selectedId} onSelect={setSelectedId} /> : <div className="space-y-4">
           {tasks.length > 0 && <RenderMarkdown content={`\`\`\`mermaid\n${productionTopology(tasks)}\n\`\`\``} isAnimating={false} />}
@@ -89,6 +96,7 @@ export function ProductionPanel() {
         </div>
         <StepEditor key={selected.id} task={selected} editable={editable && ['planned', 'ready', 'blocked', 'failed'].includes(selected.status) && !activeAttempt} />
       </section>}
+      </div>
     </div>
   </section>
 }

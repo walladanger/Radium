@@ -7,6 +7,7 @@ import {
   importAgentSkill,
   getAgentSkill,
   listAgentSkills,
+  moveAgentSkill,
   refreshAgentSkills,
   setAgentSkillEnabled,
 } from './skills'
@@ -32,6 +33,16 @@ describe('agent skills service', () => {
     })
     await importAgentSkill('/tmp/imported-skill')
     await deleteAgentSkill('custom-skill')
+    await deleteAgentSkill('twin', 'archive/twin')
+    await moveAgentSkill('custom-skill', 'graphics/logos')
+    await createAgentSkill({
+      name: 'logo-helper',
+      description: 'Logos',
+      instructions: 'Draw.',
+      category: 'Graphics & Design',
+      creator: 'Warwick',
+      tags: ['svg'],
+    })
     await refreshAgentSkills()
 
     expect(ipcHandler.mock.calls).toEqual([
@@ -50,6 +61,24 @@ describe('agent skills service', () => {
       ],
       ['agent_import_skill', { sourcePath: '/tmp/imported-skill' }],
       ['agent_delete_skill', { name: 'custom-skill' }],
+      ['agent_delete_skill', { name: 'twin', path: 'archive/twin' }],
+      [
+        'agent_move_skill',
+        { name: 'custom-skill', category: 'graphics/logos' },
+      ],
+      [
+        'agent_create_skill',
+        {
+          request: {
+            name: 'logo-helper',
+            description: 'Logos',
+            instructions: 'Draw.',
+            category: 'Graphics & Design',
+            creator: 'Warwick',
+            tags: ['svg'],
+          },
+        },
+      ],
       ['agent_refresh_skills', {}],
     ])
   })

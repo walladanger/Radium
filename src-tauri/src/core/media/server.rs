@@ -130,6 +130,8 @@ mod tests {
         steps: 1,
         cfg_scale: 1.0,
         sampler: "euler",
+        resolution: crate::core::media::resolution::SD1_RULES,
+        video: None,
     };
 
     const TINY_IMAGE: CatalogModel = CatalogModel {

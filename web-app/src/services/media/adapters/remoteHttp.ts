@@ -41,7 +41,7 @@
  * descriptor and never held on this module. It is written to exactly one place,
  * the `Authorization` header, and deliberately never interpolated into an error
  * message or any string this adapter constructs - an error object is the single
- * most likely thing to reach a log line or a Sentry breadcrumb.
+ * most likely thing to reach a log line.
  */
 
 import { MEDIA_CONTRACT_VERSION, MEDIA_TASK } from '../contract'
@@ -57,6 +57,7 @@ import type {
   MediaProviderHealth,
   NormalizedMediaRequest,
 } from '../contract'
+import { PROMPT } from './sharedParams'
 
 /** Resolves a configured secret by the `setting_key` naming where it lives. */
 export type MediaSecretResolver = (
@@ -114,15 +115,7 @@ const QUALITIES = ['auto', 'low', 'medium', 'high', 'xhigh', 'max']
  */
 function declaredModels(providerId: string): MediaModelDescriptor[] {
   const params: MediaParamSpec[] = [
-    {
-      id: 'prompt',
-      type: 'text',
-      label: 'Prompt',
-      group: 'core',
-      order: 1,
-      required: true,
-      widget: 'textarea',
-    },
+    PROMPT,
     {
       id: 'size',
       type: 'enum',

@@ -1,0 +1,81 @@
+/*
+ * Panel theme — contract v1.
+ *
+ * Served to every panel at `/panel-theme.css`. Link it and a panel inherits
+ * the host's light/dark palette instead of inventing one, so a board of
+ * panels from different authors still reads as one surface.
+ *
+ * A panel runs on its own origin, so it cannot read the host page's CSS
+ * variables. These values are the fallback; the host overrides them on the
+ * iframe's root element when it pushes a theme, which is why every token is
+ * declared here rather than only under a media query.
+ */
+
+:root {
+  color-scheme: light;
+
+  --panel-bg: #fff;
+  --panel-fg: #18181b;
+  --panel-muted: #71717a;
+  --panel-faint: #a1a1aa;
+  --panel-border: #e4e4e7;
+  --panel-card: #fafafa;
+  --panel-code: #f4f4f5;
+  --panel-accent: #2563eb;
+  --panel-danger: #b91c1c;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --panel-bg: #09090b;
+  --panel-fg: #fafafa;
+  --panel-muted: #a1a1aa;
+  --panel-faint: #52525b;
+  --panel-border: #27272a;
+  --panel-card: #18181b;
+  --panel-code: #1c1c1f;
+  --panel-accent: #60a5fa;
+  --panel-danger: #f87171;
+}
+
+/* Honour the OS preference when the host has not said which theme it is in —
+   a panel opened before the first `host:theme` message still looks right. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --panel-bg: #09090b;
+    --panel-fg: #fafafa;
+    --panel-muted: #a1a1aa;
+    --panel-faint: #52525b;
+    --panel-border: #27272a;
+    --panel-card: #18181b;
+    --panel-code: #1c1c1f;
+    --panel-accent: #60a5fa;
+    --panel-danger: #f87171;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 12px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  font:
+    13px/1.5 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+a {
+  color: var(--panel-accent);
+}
+
+code,
+pre {
+  background: var(--panel-code);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

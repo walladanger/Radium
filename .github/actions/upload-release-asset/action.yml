@@ -1,0 +1,54 @@
+---
+name: Upload release asset
+description: >-
+  Uploads one file to a GitHub release through the release's upload_url, with
+  an explicit asset name and Content-Type. Drop-in replacement for the
+  archived actions/upload-release-asset@v1 (Node 12): same inputs, same
+  target release (drafts included, since upload_url carries the release id),
+  and it fails if an asset with that name already exists, as v1 did.
+inputs:
+  upload_url:
+    description: upload_url of the target release, e.g. the create-release step output.
+    required: true
+  asset_path:
+    description: Path of the file to upload.
+    required: true
+  asset_name:
+    description: Name the asset gets on the release.
+    required: true
+  asset_content_type:
+    description: Content-Type of the asset, e.g. application/zip.
+    required: true
+  github_token:
+    description: Token with contents:write on the repository.
+    required: false
+    default: ${{ github.token }}
+outputs:
+  browser_download_url:
+    description: Public download URL of the uploaded asset.
+    value: ${{ steps.upload.outputs.browser_download_url }}
+runs:
+  using: composite
+  steps:
+    - name: Upload asset
+      id: upload
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        UPLOAD_URL: ${{ inputs.upload_url }}
+        ASSET_PATH: ${{ inputs.asset_path }}
+        ASSET_NAME: ${{ inputs.asset_name }}
+        ASSET_CONTENT_TYPE: ${{ inputs.asset_content_type }}
+      run: |
+        set -euo pipefail
+        # upload_url is a URI template such as
+        # https://uploads.github.com/repos/OWNER/REPO/releases/ID/assets{?name,label}
+        base_url="${UPLOAD_URL%%\{*}"
+        encoded_name="$(jq -rn --arg v "${ASSET_NAME}" '$v|@uri')"
+        download_url="$(gh api --method POST \
+          -H "Content-Type: ${ASSET_CONTENT_TYPE}" \
+          --input "${ASSET_PATH}" \
+          --jq '.browser_download_url' \
+          "${base_url}?name=${encoded_name}")"
+        echo "Uploaded ${ASSET_NAME} (${ASSET_CONTENT_TYPE}): ${download_url}"
+        echo "browser_download_url=${download_url}" >> "${GITHUB_OUTPUT}"

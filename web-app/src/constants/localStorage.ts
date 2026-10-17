@@ -12,8 +12,6 @@ export const localStorageKey = {
   settingProxyConfig: 'setting-proxy-config',
   settingHardware: 'setting-hardware',
   settingVulkan: 'setting-vulkan',
-  productAnalyticPrompt: 'productAnalyticPrompt',
-  productAnalytic: 'productAnalytic',
   toolApproval: 'tool-approval',
   toolAvailability: 'tool-availability',
   mcpGlobalPermissions: 'mcp-global-permissions',
@@ -28,6 +26,9 @@ export const localStorageKey = {
   // that had none of their own. Set even when there was nothing to migrate.
   samplingMigratedPerAssistant: 'sampling-migrated-per-assistant',
   favoriteModels: 'favorite-models',
+  // Which panels are on the workspace board, and whether it is locked. Per
+  // device, like the resizable pane sizes beside it.
+  panelBoard: 'panel-board',
   setupCompleted: 'setup-completed',
   // Marks that the user has completed (either Skip or Download) the dedicated
   // Windows-only llama.cpp backend onboarding step. Once set, the extension

@@ -348,7 +348,7 @@
     "paths": [
       "src-tauri/src/core/mcp/review.rs",
       "src-tauri/src/core/mcp/helpers.rs",
-      "src-tauri/src/core/agent/skills/registry.rs",
+      "src-tauri/atomic-agent-core/src/skills/registry.rs",
       "src-tauri/src/core/agent/skills/commands.rs",
       "web-app/src/lib/review-before-use.ts",
       "web-app/src/containers/SkillReviewDialog.tsx",
@@ -366,7 +366,7 @@
         "files": [
           "src-tauri/src/core/mcp/review.rs",
           "src-tauri/src/core/mcp/tests.rs",
-          "src-tauri/src/core/agent/skills/registry.rs"
+          "src-tauri/atomic-agent-core/src/skills/registry.rs"
         ]
       },
       {
@@ -380,6 +380,15 @@
           "web-app/src/hooks/__tests__/useConnectorReview.test.ts",
           "web-app/src/routes/skills/__tests__/SkillsPage.review.test.tsx",
           "web-app/src/routes/connectors/__tests__/index.test.tsx"
+        ]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml skills::",
+        "files": [
+          "src-tauri/atomic-agent-core/src/skills/registry.rs",
+          "src-tauri/atomic-agent-core/src/skills/seeding.rs",
+          "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+          "src-tauri/atomic-agent-core/src/skills/organization.rs"
         ]
       }
     ],
@@ -459,6 +468,169 @@
     "status": "pending"
   },
   {
+    "id": "skill-organization",
+    "feature": "Skills organized by creator and category",
+    "forUsers": "Skills can live in nested category folders, each shows its creator, category, tags and size, and the Skills page groups, sorts and searches them and can move a skill between folders.",
+    "paths": [
+      "src-tauri/src/core/agent/skills/discovery.rs",
+      "src-tauri/src/core/agent/skills/organization.rs",
+      "src-tauri/atomic-agent-core/src/skills/seeding.rs",
+      "src-tauri/resources/agent-skills/_catalog.json",
+      "web-app/src/lib/skill-organization.ts",
+      "web-app/src/containers/AgentSkillMoveDialog.tsx",
+      "web-app/src/containers/AgentSkillOrganizationFields.tsx",
+      "web-app/src/routes/skills/index.tsx"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::skills",
+        "cwd": "src-tauri",
+        "files": [
+          "src-tauri/src/core/agent/skills/discovery.rs",
+          "src-tauri/src/core/agent/skills/organization.rs",
+          "src-tauri/atomic-agent-core/src/skills/seeding.rs"
+        ]
+      },
+      {
+        "run": "npx vitest run src/lib/skill-organization.test.ts src/routes/skills/index.test.tsx src/services/agent/skills.test.ts",
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/lib/skill-organization.test.ts",
+          "web-app/src/routes/skills/index.test.tsx",
+          "web-app/src/services/agent/skills.test.ts"
+        ]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml skills::",
+        "files": [
+          "src-tauri/atomic-agent-core/src/skills/registry.rs",
+          "src-tauri/atomic-agent-core/src/skills/seeding.rs",
+          "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+          "src-tauri/atomic-agent-core/src/skills/organization.rs"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-09-organize-skills-by-creator-and-category.md",
+    "status": "checked"
+  },
+  {
+    "id": "agent-specialists",
+    "feature": "Agent specialists and delegation",
+    "forUsers": "Any assistant can be marked as a specialist. In agent mode the thread's assistant becomes a coordinator that hands matching tasks to those specialists, each working with its own instructions, and uses their answers; every risky action a specialist takes still asks the user first.",
+    "paths": [
+      "src-tauri/src/core/agent/delegation.rs",
+      "src-tauri/src/core/agent/resource_class.rs",
+      "src-tauri/src/core/agent/prompt.rs",
+      "src-tauri/src/core/agent/grammar.rs",
+      "web-app/src/lib/agent-specialists.ts",
+      "web-app/src/containers/dialogs/AddEditAssistant.tsx"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::delegation_tests core::agent::resource_class",
+        "cwd": "src-tauri",
+        "files": [
+          "src-tauri/src/core/agent/delegation_tests.rs",
+          "src-tauri/src/core/agent/resource_class.rs"
+        ]
+      },
+      {
+        "run": "npx vitest run src/lib/__tests__/agent-specialists.test.ts src/containers/dialogs/__tests__/AddEditAssistant.test.tsx",
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/lib/__tests__/agent-specialists.test.ts",
+          "web-app/src/containers/dialogs/__tests__/AddEditAssistant.test.tsx"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-10-let-the-agent-delegate-tasks-to-specialist-assistants.md",
+    "status": "pending"
+  },
+  {
+    "id": "agent-network-tools",
+    "feature": "Network specialist tools",
+    "forUsers": "An assistant with Network tools turned on (or the Network specialist template) can diagnose the connection, Wi-Fi, DNS and devices on the local network, and fix common problems — flush DNS, renew the IP address, restart an adapter, change DNS servers, reconnect Wi-Fi. Every fix asks first and shows what it will affect, how long it disrupts the connection, and how to undo it.",
+    "paths": [
+      "src-tauri/src/core/agent/tools/net/**",
+      "web-app/src/containers/ApprovalBlastRadius.tsx",
+      "web-app/src/lib/blast-radius.ts",
+      "web-app/src/lib/assistant-templates.ts"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::tools::net core::agent::resource_class",
+        "cwd": "src-tauri",
+        "files": [
+          "src-tauri/src/core/agent/tools/net/parse_tests.rs",
+          "src-tauri/src/core/agent/tools/net/mod.rs"
+        ]
+      },
+      {
+        "run": "npx vitest run src/containers/__tests__/ApprovalBlastRadius.test.tsx src/containers/dialogs/__tests__/AddEditAssistant.test.tsx",
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/containers/__tests__/ApprovalBlastRadius.test.tsx",
+          "web-app/src/containers/dialogs/__tests__/AddEditAssistant.test.tsx"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-10-give-the-agent-network-tools-behind-a-tool-pack-with-blast-radius-approvals.md",
+    "status": "pending"
+  },
+  {
+    "id": "boot-screen",
+    "feature": "Boot screen that stays until the app has drawn",
+    "forUsers": "While Radium starts, a static logo with one line of status sits on a frosted, semi-transparent panel. It stays until the app has actually drawn, can always be moved, minimised and closed on Windows, and if startup stalls it says where and offers Keep waiting, Restart, Open the log and Quit. One extension that fails or hangs no longer keeps the whole app from opening.",
+    "paths": [
+      "web-app/public/boot.js",
+      "web-app/index.html",
+      "web-app/src/loader.css",
+      "web-app/src/lib/boot.ts",
+      "web-app/src/components/BootReady.tsx",
+      "web-app/src/lib/extension.ts",
+      "web-app/src/providers/ExtensionProvider.tsx",
+      "web-app/src/routes/__root.tsx"
+    ],
+    "checks": [
+      {
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/lib/__tests__/boot-screen.test.ts",
+          "web-app/src/lib/__tests__/extension-load-isolation.test.ts"
+        ],
+        "run": "npx vitest run src/lib/__tests__/boot-screen.test.ts src/lib/__tests__/extension-load-isolation.test.ts"
+      }
+    ],
+    "decision": "docs/decisions/2026-10-15-boot-screen-stays-until-the-app-has-drawn.md",
+    "status": "checked"
+  },
+  {
+    "id": "deferred-engine-downloads",
+    "feature": "No unrequested engine downloads at startup; plain download list",
+    "forUsers": "A fresh install downloads nothing before you have chosen something, and never for an engine that is switched off; engine updates start a little after the app is up. Downloads show as a plain list beside the sidebar's Downloads button, which opens only when you open it; a download you start shows a toast with a View button.",
+    "paths": [
+      "extensions/llamacpp-extension/src/index.ts",
+      "extensions/llamacpp-upstream-extension/src/index.ts",
+      "web-app/src/providers/StartupBackendCoordinator.tsx",
+      "web-app/src/lib/startupBackendRecommendations.ts",
+      "web-app/src/containers/downloads/DownloadDrawer.tsx",
+      "web-app/src/containers/downloads/DownloadPanel.tsx",
+      "web-app/src/stores/download-drawer-store.ts"
+    ],
+    "checks": [
+      {
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/containers/downloads/__tests__/DownloadDrawer.test.tsx",
+          "web-app/src/providers/__tests__/StartupBackendCoordinator.test.ts"
+        ],
+        "run": "npx vitest run src/containers/downloads/__tests__/DownloadDrawer.test.tsx src/providers/__tests__/StartupBackendCoordinator.test.ts src/stores/__tests__/saved-prompts-store.test.ts"
+      }
+    ],
+    "decision": "docs/decisions/2026-10-15-start-unrequested-engine-downloads-after-onboarding.md",
+    "status": "checked"
+  },
+  {
     "id": "coordinated-local-tasks",
     "feature": "Shared local agent workspace",
     "forUsers": "Plan dependent tasks, inspect durable progress and review isolated local worker outputs through Radium and DeepSeek. Release acceptance remains pending.",
@@ -472,19 +644,59 @@
     "checks": [
       {
         "run": "cargo test --manifest-path src-tauri/atomic-control/Cargo.toml",
-        "files": ["src-tauri/atomic-control/tests/kernel.rs", "src-tauri/atomic-control/tests/sandbox.rs"]
+        "files": [
+          "src-tauri/atomic-control/tests/kernel.rs",
+          "src-tauri/atomic-control/tests/sandbox.rs"
+        ]
       },
       {
         "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml",
-        "files": ["src-tauri/atomic-agent-core/src/runner.rs"]
+        "files": [
+          "src-tauri/atomic-agent-core/src/runner.rs"
+        ]
       },
       {
         "run": "npx vitest run src/routes/tasks.test.tsx src/lib/atomic-control.test.ts src/stores/atomic-tasks-store.test.ts",
         "cwd": "web-app",
-        "files": ["web-app/src/routes/tasks.test.tsx", "web-app/src/lib/atomic-control.test.ts", "web-app/src/stores/atomic-tasks-store.test.ts"]
+        "files": [
+          "web-app/src/routes/tasks.test.tsx",
+          "web-app/src/lib/atomic-control.test.ts",
+          "web-app/src/stores/atomic-tasks-store.test.ts"
+        ]
       }
     ],
     "decision": "docs/decisions/2026-10-03-own-coordinated-tasks-in-a-local-controller.md",
+    "status": "pending"
+  },
+  {
+    "id": "production-annotation-log",
+    "feature": "Local screenshot-linked annotation log",
+    "forUsers": "Record edits and quick memory notes with screenshots in a folder of your choice.",
+    "paths": [
+      "src-tauri/src/core/production_log.rs",
+      "web-app/src/containers/ProductionLog.tsx",
+      "web-app/src/lib/production-log.ts",
+      "web-app/src/containers/HeaderPage.tsx",
+      "web-app/src/hooks/useWorkspacePanel.ts"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features test-tauri --lib core::production_log::tests",
+        "files": [
+          "src-tauri/src/core/production_log.rs"
+        ]
+      },
+      {
+        "cwd": "web-app",
+        "run": "npx vitest run src/lib/production-log.test.ts src/containers/__tests__/ProductionLog.test.tsx src/hooks/useWorkspacePanel.test.ts",
+        "files": [
+          "web-app/src/lib/production-log.test.ts",
+          "web-app/src/containers/__tests__/ProductionLog.test.tsx",
+          "web-app/src/hooks/useWorkspacePanel.test.ts"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-16-keep-annotation-screenshots-with-their-production-log-entry.md",
     "status": "pending"
   }
 ]

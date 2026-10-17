@@ -1,0 +1,12 @@
+{
+  "contract": 1,
+  "id": "mcp-tool-browser",
+  "name": "MCP tool browser",
+  "description": "Lists the tools one MCP server offers and runs the one you pick.",
+  "version": "1.0.0",
+  "author": "radium",
+  "entry": "index.html",
+  "permissions": ["mcp.read", "mcp.call", "storage"],
+  "mcpServers": ["filesystem"],
+  "defaultSize": { "w": 5, "h": 7 }
+}

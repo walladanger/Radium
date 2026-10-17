@@ -24,6 +24,7 @@ const hook = vi.hoisted(() => ({
     addCreated: vi.fn(),
     addImported: vi.fn(),
     remove: vi.fn(),
+    move: vi.fn(),
     update: vi.fn(),
     exportSkill: vi.fn(),
   },

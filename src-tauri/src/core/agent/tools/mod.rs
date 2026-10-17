@@ -9,6 +9,7 @@ mod git;
 mod http;
 mod mcp_call;
 mod media;
+pub mod net;
 mod notify;
 mod proc;
 mod shell;
@@ -37,7 +38,9 @@ use super::mcp_tools::{McpBridge, MCP_TOOL_PREFIX};
 use super::path_policy::{prepare_call_paths, EditableRoots};
 use super::pty::PtyRegistry;
 use super::rag_bridge::DocsBridge;
-use super::resource_class::{resource_class_for_call, ResourceClass};
+use super::resource_class::{
+    mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass,
+};
 use super::shell_guard::{evaluate_shell_command, join_command_stream, ShellGuardVerdict};
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::types::{
@@ -46,7 +49,7 @@ use super::types::{
 
 pub const MAX_TOOL_OUTPUT_CHARS: usize = 16_000;
 
-pub use atomic_agent_core::tools::{ApprovalHook, DesktopServices, FolderAccessHook};
+pub use atomic_agent_core::tools::{ApprovalHook, DesktopServices, FolderAccessHook, DelegateHook};
 pub struct ToolContext<'a> {
     /// Owning agent session. Scopes the process registry so one thread can
     /// never read or signal another thread's processes.
@@ -78,6 +81,8 @@ pub struct ToolContext<'a> {
     /// Auto-approve MCP-origin tools (legacy chat `allowAllMCPPermissions`).
     /// Never widens approval for built-in tools.
     pub auto_approve_mcp: bool,
+    /// Runs `agent.delegate`. `None` when the turn has no specialists.
+    pub delegate: Option<&'a dyn DelegateHook>,
 }
 
 pub async fn execute(call: &ToolCallPayload, context: &ToolContext<'_>) -> ToolOutcome {
@@ -145,6 +150,8 @@ pub async fn execute(call: &ToolCallPayload, context: &ToolContext<'_>) -> ToolO
         "skill.run_script" => skill_run_script::execute(&call.args, context).await,
         "skill.view" => skill_view::execute(&call.args, context).await,
         "tool.view" => tool_view::execute(&call.args, context.loaded_tools, context.mcp).await,
+        tool if tool.starts_with("net.") => net::execute(tool, &call.args, context).await,
+        "agent.delegate" => delegate(&call.args, context).await,
         "reply" => required_string(&call.args, "text")
             .map(ToolOutcome::ok)
             .map_err(ToolOutcome::error),
@@ -154,6 +161,22 @@ pub async fn execute(call: &ToolCallPayload, context: &ToolContext<'_>) -> ToolO
         _ => Err(ToolOutcome::error(format!("Unknown tool: {}", call.tool))),
     };
     result.unwrap_or_else(|outcome| outcome)
+}
+
+async fn delegate(args: &Value, context: &ToolContext<'_>) -> Result<ToolOutcome, ToolOutcome> {
+    let Some(hook) = context.delegate else {
+        return Err(ToolOutcome::error(
+            "No specialists are available in this conversation",
+        ));
+    };
+    let specialist = required_string(args, "specialist").map_err(ToolOutcome::error)?;
+    let task = required_string(args, "task").map_err(ToolOutcome::error)?;
+    if task.trim().is_empty() {
+        return Err(ToolOutcome::error(
+            "`task` must describe the work to hand over",
+        ));
+    }
+    Ok(hook.delegate(specialist.trim(), &task).await)
 }
 
 async fn authorize_call(
@@ -231,11 +254,9 @@ async fn authorize_call(
         }
         skill_invocation = Some(invocation);
     }
-    let is_mcp = prepared.call.tool.starts_with(MCP_TOOL_PREFIX);
-    let is_approval_gated = resource_class_for_call(&prepared.call.tool, context.mcp) == ResourceClass::ApprovalGated
-            // The legacy chat pipeline auto-approved every MCP tool; the
-            // migrated setting keeps that contract for MCP-origin tools only.
-            && !(is_mcp && context.auto_approve_mcp);
+    let is_approval_gated = resource_class_for_call(&prepared.call.tool, context.mcp)
+        == ResourceClass::ApprovalGated
+        && !mcp_opt_in_waives_approval(&prepared.call.tool, context.auto_approve_mcp);
     if is_approval_gated {
         reasons.push("tool is approval-gated".to_string());
     }
@@ -265,10 +286,23 @@ async fn authorize_call(
             operation: "execute".into(),
         });
     }
+    let mut preview = safe_preview(&prepared.call);
+    // A network fix gets a second opinion from a separate reviewer call,
+    // shown on the card next to its blast radius; the user still decides.
+    if let Some(review) =
+        net::review_for_approval(&prepared.call.tool, &prepared.call.args, context).await
+    {
+        if let Some(object) = preview.as_object_mut() {
+            object.insert(
+                "review".into(),
+                serde_json::to_value(&review).unwrap_or(Value::Null),
+            );
+        }
+    }
     let request = ApprovalRequest {
         tool: prepared.call.tool.clone(),
         reason: reasons.join("; "),
-        preview: safe_preview(&prepared.call),
+        preview,
         affected_resources: resources,
         fingerprint,
         can_remember,
@@ -323,6 +357,27 @@ fn safe_preview(call: &ToolCallPayload) -> Value {
             if let Some(value) = args.get(key) {
                 preview.insert(key.into(), value.clone());
             }
+        }
+    }
+    // A network fix shows its blast radius — what changes, what drops, how
+    // to undo it — before the user decides.
+    if let Some(radius) = net::blast_radius(&call.tool, &call.args) {
+        preview.insert("action".into(), Value::String(radius.action.clone()));
+        preview.insert(
+            "blastRadius".into(),
+            serde_json::to_value(&radius).unwrap_or(Value::Null),
+        );
+        if let Some(adapter) = call.args.get("adapter") {
+            preview.insert("adapter".into(), adapter.clone());
+        }
+        if let Some(servers) = call.args.get("servers") {
+            preview.insert("servers".into(), servers.clone());
+        }
+        if let Some(reason) = call.args.get("reason").and_then(Value::as_str) {
+            preview.insert(
+                "agentReason".into(),
+                Value::String(reason.chars().take(400).collect()),
+            );
         }
     }
     match call.tool.as_str() {
@@ -755,6 +810,7 @@ mod tests {
                 docs: None,
                 disabled_tools: &std::collections::BTreeSet::new(),
                 auto_approve_mcp: true,
+                delegate: None,
             };
             let outcome = execute(
                 &ToolCallPayload {
@@ -822,6 +878,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
 
         let outcome = execute(
@@ -885,6 +942,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
         let outcome = execute(
             &ToolCallPayload {
@@ -938,6 +996,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
 
         let clipboard = execute(
@@ -1004,6 +1063,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
 
         let blocked = authorize_call(
@@ -1067,6 +1127,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
         let original = ToolCallPayload {
             tool: "os.fs.trash".into(),
@@ -1128,6 +1189,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
         let escaped = ToolCallPayload {
             tool: "os.fs.trash".into(),
@@ -1187,6 +1249,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
 
         let denied = authorize_call(
@@ -1243,6 +1306,7 @@ mod tests {
             docs: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
         };
 
         let denied = execute(
@@ -1293,7 +1357,7 @@ mod tests {
                 "script": "inspect.ts",
                 "args": [
                     "--repo",
-                    "AtomicBot-ai/Atomic-Chat",
+                    "walladanger/Radium",
                     "Authorization: Bearer secret",
                     "https://user:password@example.com/path?token=secret"
                 ],
@@ -1302,7 +1366,7 @@ mod tests {
         });
 
         assert_eq!(preview["args"][0], "--repo");
-        assert_eq!(preview["args"][1], "AtomicBot-ai/Atomic-Chat");
+        assert_eq!(preview["args"][1], "walladanger/Radium");
         assert_eq!(preview["args"][2], "<redacted>");
         assert_eq!(preview["args"][3], "https://example.com/path");
         assert_eq!(preview["argument_count"], 4);

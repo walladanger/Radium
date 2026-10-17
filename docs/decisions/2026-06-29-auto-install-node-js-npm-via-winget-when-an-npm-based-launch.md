@@ -14,8 +14,8 @@ title: "Auto-install Node.js/npm via `winget` when an npm-based Launch-page agen
  ("Install Node.js from https://nodejs.org, then restart Radium Chat"). So a
  fresh Windows machine with no Node couldn't one-click-install any npm-based
  agent — the user had to leave the app, install Node, restart, and retry.
-- **Decision (per the user-chosen options — `winget`, **Windows-only**,
- **graceful** fallback; no IPC/schema/contract change):** Before giving up on
+- **Decision (per the user-chosen options — `winget`, Windows-only,
+ graceful fallback; no IPC/schema/contract change):** Before giving up on
  a missing **npm** prereq, attempt to auto-install Node.js LTS (which bundles
  npm) via the Windows Package Manager. New `#[cfg(windows)]`
  `try_bootstrap_npm_via_winget(app_handle, event, proxy)` (a `#[cfg(not(windows))]`

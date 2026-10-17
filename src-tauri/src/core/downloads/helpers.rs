@@ -41,6 +41,15 @@ const MAX_STREAM_RETRIES: u32 = 5;
 #[cfg(not(test))]
 const RETRY_BASE_DELAY_MS: u64 = 1_000;
 const RETRY_RESET_PROGRESS_BYTES: u64 = 1024 * 1024;
+/// How long a transfer may go without receiving a single byte before it is
+/// treated as a stream error and resumed with a Range request. reqwest 0.11 has
+/// no read timeout, and a whole-request `timeout` would cut off every large
+/// model download, so without this a CDN that stops sending mid-transfer left
+/// the download - and anything awaiting it - waiting forever.
+#[cfg(not(test))]
+const STREAM_STALL_TIMEOUT: Duration = Duration::from_secs(60);
+#[cfg(test)]
+const STREAM_STALL_TIMEOUT: Duration = Duration::from_millis(200);
 
 #[derive(Debug)]
 enum DownloadRequestError {
@@ -176,15 +185,13 @@ async fn validate_downloaded_file(
 
     // Use model_id from item if available, otherwise extract from save path
     // Path structure: llamacpp/models/{modelId}/model.gguf or llamacpp/models/{modelId}/mmproj.gguf
-    let model_id = item
-        .model_id.as_deref()
-        .unwrap_or_else(|| {
-            save_path
-                .parent() // get parent directory (modelId folder)
-                .and_then(|p| p.file_name())
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-        });
+    let model_id = item.model_id.as_deref().unwrap_or_else(|| {
+        save_path
+            .parent() // get parent directory (modelId folder)
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+    });
 
     if emit_event {
         app.emit(
@@ -366,6 +373,13 @@ pub fn should_bypass_proxy(url: &str, no_proxy: &[String]) -> bool {
     false
 }
 
+/// Whether the user explicitly opted in to skipping TLS certificate
+/// verification for traffic routed through the configured proxy.
+/// Defaults to `false` (verification enabled) when unset.
+pub fn proxy_ignores_ssl(proxy_config: &ProxyConfig) -> bool {
+    proxy_config.ignore_ssl == Some(true)
+}
+
 pub fn _get_client_for_item(
     item: &DownloadItem,
     header_map: &HeaderMap,
@@ -382,12 +396,6 @@ pub fn _get_client_for_item(
 
     // Add proxy configuration if provided
     if let Some(proxy_config) = &item.proxy {
-        // Handle SSL verification settings
-        if proxy_config.ignore_ssl.unwrap_or(false) {
-            client_builder = client_builder.danger_accept_invalid_certs(true);
-            log::info!("SSL certificate verification disabled for URL {}", item.url);
-        }
-
         // Note: reqwest doesn't have fine-grained SSL verification controls
         // for verify_proxy_ssl, verify_proxy_host_ssl, verify_peer_ssl, verify_host_ssl
         // These settings are handled by the underlying TLS implementation
@@ -398,6 +406,20 @@ pub fn _get_client_for_item(
             let proxy = create_proxy_from_config(proxy_config)?;
             client_builder = client_builder.proxy(proxy);
             log::info!("Using proxy {} for URL {}", proxy_config.url, item.url);
+
+            // The user's explicit "ignore SSL" proxy setting exists for
+            // TLS-intercepting (corporate) proxies. Only honour it for
+            // requests that actually go through that proxy; direct
+            // connections (no_proxy matches) always keep certificate
+            // verification enabled.
+            let accept_invalid_certs = proxy_ignores_ssl(proxy_config);
+            if accept_invalid_certs {
+                log::warn!(
+                    "SSL certificate verification disabled (proxy 'ignore SSL' setting) for URL {}",
+                    item.url
+                );
+            }
+            client_builder = client_builder.danger_accept_invalid_certs(accept_invalid_certs);
         } else {
             log::info!("Bypassing proxy for URL {}", item.url);
         }
@@ -903,12 +925,16 @@ async fn download_single_file(
 
     // write chunk to file
     loop {
-        let stream_error = match stream.next().await {
-            None if expected_size > 0 && total_transferred < expected_size => Some(format!(
+        let stream_error = match tokio::time::timeout(STREAM_STALL_TIMEOUT, stream.next()).await {
+            Err(_) => Some(format!(
+                "no data received for {}s",
+                STREAM_STALL_TIMEOUT.as_secs_f32()
+            )),
+            Ok(None) if expected_size > 0 && total_transferred < expected_size => Some(format!(
                 "stream ended after {total_transferred} of {expected_size} bytes"
             )),
-            None => break,
-            Some(Ok(chunk)) => {
+            Ok(None) => break,
+            Ok(Some(Ok(chunk))) => {
                 if cancel_token.is_cancelled() {
                     if !keep_partial_on_cancel && !should_resume {
                         tokio::fs::remove_dir_all(&save_path.parent().unwrap())
@@ -951,7 +977,7 @@ async fn download_single_file(
                 }
                 None
             }
-            Some(Err(error)) => Some(error.to_string()),
+            Ok(Some(Err(error))) => Some(error.to_string()),
         };
 
         if let Some(stream_error) = stream_error {

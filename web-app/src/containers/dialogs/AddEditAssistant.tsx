@@ -12,8 +12,11 @@ import { IconMoodSmile } from '@tabler/icons-react'
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
 
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { NETWORK_SPECIALIST_TEMPLATE } from '@/lib/assistant-templates'
 
 import { useTheme } from '@/hooks/useTheme'
+import { useModelProvider } from '@/hooks/useModelProvider'
 import { defaultAssistant } from '@/hooks/useAssistant'
 import { AvatarEmoji } from '@/containers/AvatarEmoji'
 import { useTranslation } from '@/i18n/react-i18next-compat'
@@ -41,6 +44,15 @@ export default function AddEditAssistant({
   )
   const [instructions, setInstructions] = useState(
     initialData?.instructions || ''
+  )
+  const [specialist, setSpecialist] = useState(initialData?.specialist === true)
+  const [specialistError, setSpecialistError] = useState<string | null>(null)
+  const [specialistModel, setSpecialistModel] = useState<
+    Assistant['specialist_model']
+  >(initialData?.specialist_model)
+  const providers = useModelProvider((state) => state.providers)
+  const [networkPack, setNetworkPack] = useState(
+    initialData?.tool_packs?.includes('network') === true
   )
   const { isDark } = useTheme()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -78,6 +90,10 @@ export default function AddEditAssistant({
       setName(initialData.name)
       setDescription(initialData.description)
       setInstructions(initialData.instructions)
+      setSpecialist(initialData.specialist === true)
+      setSpecialistModel(initialData.specialist_model)
+      setNetworkPack(initialData.tool_packs?.includes('network') === true)
+      setSpecialistError(null)
       setShowEmojiPicker(false)
       // setToolStepsInput(String(initialData.tool_steps ?? 20))
     } else if (open) {
@@ -91,6 +107,10 @@ export default function AddEditAssistant({
     setName('')
     setDescription(undefined)
     setInstructions('')
+    setSpecialist(false)
+    setSpecialistModel(undefined)
+    setNetworkPack(false)
+    setSpecialistError(null)
     setNameError(null)
     setShowEmojiPicker(false)
     // setToolStepsInput('20')
@@ -102,6 +122,13 @@ export default function AddEditAssistant({
       return
     }
     setNameError(null)
+    // A specialist is chosen by its description; without one the agent
+    // could never tell when to delegate to it.
+    if (specialist && !description?.trim()) {
+      setSpecialistError(t('assistants:specialistNeedsDescription'))
+      return
+    }
+    setSpecialistError(null)
 
     // const parsedToolSteps = Number(toolStepsInput)
     const assistant: Assistant = {
@@ -116,6 +143,9 @@ export default function AddEditAssistant({
       // built-in defaults so the popover opens on sane values.
       parameters: initialData?.parameters ?? { ...defaultAssistant.parameters },
       sampling_overridden: initialData?.sampling_overridden,
+      specialist,
+      specialist_model: specialist ? specialistModel : undefined,
+      tool_packs: networkPack ? ['network'] : [],
       // tool_steps: isNaN(parsedToolSteps) ? 20 : parsedToolSteps,
     }
     onSave(assistant)
@@ -135,6 +165,27 @@ export default function AddEditAssistant({
               : t('assistants:addAssistant')}
           </DialogTitle>
         </DialogHeader>
+        {!editingKey && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => {
+              const template = NETWORK_SPECIALIST_TEMPLATE
+              setAvatar(template.avatar)
+              setName(template.name)
+              setDescription(template.description)
+              setInstructions(template.instructions)
+              setSpecialist(template.specialist)
+              setNetworkPack(template.tool_packs.includes('network'))
+              setNameError(null)
+              setSpecialistError(null)
+            }}
+          >
+            {t('assistants:useNetworkTemplate')}
+          </Button>
+        )}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -225,6 +276,106 @@ export default function AddEditAssistant({
             <div className="text-xs text-muted-foreground">
               {t('assistants:instructionsDateHint')}
             </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-4 pt-2">
+            <div className="space-y-1">
+              <label htmlFor="assistant-specialist" className="text-sm">
+                {t('assistants:specialist')}
+              </label>
+              <div className="text-xs text-muted-foreground">
+                {t('assistants:specialistDesc')}
+              </div>
+              {specialistError && (
+                <div className="text-xs text-destructive">
+                  {specialistError}
+                </div>
+              )}
+            </div>
+            <Switch
+              id="assistant-specialist"
+              checked={specialist}
+              onCheckedChange={(checked) => {
+                setSpecialist(checked)
+                if (!checked) setSpecialistError(null)
+              }}
+            />
+          </div>
+
+          {specialist && (
+            <div className="space-y-1">
+              <label htmlFor="assistant-specialist-model" className="text-sm">
+                {t('assistants:specialistModel')}
+              </label>
+              <div className="text-xs text-muted-foreground">
+                {t('assistants:specialistModelDesc')}
+              </div>
+              <select
+                id="assistant-specialist-model"
+                className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+                value={
+                  specialistModel
+                    ? `${specialistModel.provider}\u0000${specialistModel.id}`
+                    : ''
+                }
+                onChange={(event) => {
+                  const [provider, id] = event.target.value.split('\u0000')
+                  setSpecialistModel(
+                    provider && id ? { provider, id } : undefined
+                  )
+                }}
+              >
+                <option value="">
+                  {t('assistants:specialistModelInherit')}
+                </option>
+                {specialistModel &&
+                  !providers.some(
+                    (provider) =>
+                      provider.provider === specialistModel.provider &&
+                      provider.models.some(
+                        (model) => model.id === specialistModel.id
+                      )
+                  ) && (
+                    <option
+                      value={`${specialistModel.provider}\u0000${specialistModel.id}`}
+                    >
+                      {specialistModel.provider} / {specialistModel.id}
+                    </option>
+                  )}
+                {providers
+                  .filter(
+                    (provider) => provider.active && provider.models.length
+                  )
+                  .map((provider) => (
+                    <optgroup key={provider.provider} label={provider.provider}>
+                      {provider.models.map((model) => (
+                        <option
+                          key={`${provider.provider}:${model.id}`}
+                          value={`${provider.provider}\u0000${model.id}`}
+                        >
+                          {model.displayName ?? model.name ?? model.id}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-start justify-between gap-4 pt-2">
+            <div className="space-y-1">
+              <label htmlFor="assistant-network-pack" className="text-sm">
+                {t('assistants:networkPack')}
+              </label>
+              <div className="text-xs text-muted-foreground">
+                {t('assistants:networkPackDesc')}
+              </div>
+            </div>
+            <Switch
+              id="assistant-network-pack"
+              checked={networkPack}
+              onCheckedChange={setNetworkPack}
+            />
           </div>
         </div>
 

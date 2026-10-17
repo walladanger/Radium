@@ -15,14 +15,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   MEDIA_REGISTRY_SCHEMA_VERSION,
+  bundledMediaResult,
   clearMediaRegistryCache,
+  getCachedMediaManifest,
   getMediaProvidersOrFallback,
 } from '../media-registry'
 import { BASELINE_MEDIA_PROVIDERS } from '@/constants/mediaProviders'
 
 const URL = 'https://example.invalid/media/registry.json'
 
-function manifest(providers: unknown[], schemaVersion = MEDIA_REGISTRY_SCHEMA_VERSION) {
+function manifest(
+  providers: unknown[],
+  schemaVersion = MEDIA_REGISTRY_SCHEMA_VERSION
+) {
   return {
     schema_version: schemaVersion,
     updated_at: '2026-09-10T00:00:00Z',
@@ -63,6 +68,19 @@ afterEach(() => {
 })
 
 describe('the seven failure modes', () => {
+  it.each(['a1111', 'replicate', 'fal-ai', 'stability-ai'])(
+    'accepts the bundled %s adapter from the registry',
+    async (adapter) => {
+      vi.stubGlobal(
+        'fetch',
+        respondWith(manifest([remoteProvider({ id: adapter, adapter })]))
+      )
+      const result = await getMediaProvidersOrFallback({ url: URL })
+      expect(result.providers).toContainEqual(
+        expect.objectContaining({ id: adapter, adapter })
+      )
+    }
+  )
   it('fetch succeeds: returns remote and caches it', async () => {
     vi.stubGlobal('fetch', respondWith(manifest([remoteProvider()])))
 
@@ -106,7 +124,22 @@ describe('the seven failure modes', () => {
     expect(result.providers.some((p) => p.id === 'hosted-images')).toBe(true)
   })
 
-  it('fetch fails with no cache: falls back to the bundled baseline', async () => {
+  it('no override: serves the bundled snapshot without any network I/O', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy as unknown as typeof fetch)
+
+    const result = await getMediaProvidersOrFallback({ url: null, force: true })
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(result.source).toBe('bundled')
+    expect(result.error).toBeUndefined()
+    expect(result.providers.length).toBeGreaterThanOrEqual(
+      BASELINE_MEDIA_PROVIDERS.length
+    )
+    expect(getCachedMediaManifest()).toBeNull()
+  })
+
+  it('fetch fails with no cache: falls back to the bundled snapshot', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
@@ -116,8 +149,8 @@ describe('the seven failure modes', () => {
 
     const result = await getMediaProvidersOrFallback({ url: URL })
 
-    expect(result.source).toBe('baseline')
-    expect(result.providers).toHaveLength(BASELINE_MEDIA_PROVIDERS.length)
+    expect(result.source).toBe('bundled')
+    expect(result.providers).toHaveLength(bundledMediaResult().providers.length)
   })
 
   it('schema_version above support: refuses the payload entirely', async () => {
@@ -125,12 +158,14 @@ describe('the seven failure modes', () => {
     // configure providers from fields this build does not know how to read.
     vi.stubGlobal(
       'fetch',
-      respondWith(manifest([remoteProvider()], MEDIA_REGISTRY_SCHEMA_VERSION + 1))
+      respondWith(
+        manifest([remoteProvider()], MEDIA_REGISTRY_SCHEMA_VERSION + 1)
+      )
     )
 
     const result = await getMediaProvidersOrFallback({ url: URL })
 
-    expect(result.source).toBe('baseline')
+    expect(result.source).toBe('bundled')
     expect(result.providers.some((p) => p.id === 'hosted-images')).toBe(false)
   })
 
@@ -139,7 +174,7 @@ describe('the seven failure modes', () => {
 
     const result = await getMediaProvidersOrFallback({ url: URL })
 
-    expect(result.source).toBe('baseline')
+    expect(result.source).toBe('bundled')
   })
 
   it('never throws, whatever the network does', async () => {
@@ -161,7 +196,9 @@ describe('the registry is untrusted input', () => {
   it('drops a provider naming an adapter this build does not have', async () => {
     vi.stubGlobal(
       'fetch',
-      respondWith(manifest([remoteProvider({ adapter: 'some-future-adapter' })]))
+      respondWith(
+        manifest([remoteProvider({ adapter: 'some-future-adapter' })])
+      )
     )
 
     const result = await getMediaProvidersOrFallback({ url: URL })
@@ -173,7 +210,9 @@ describe('the registry is untrusted input', () => {
     // file:// or a custom scheme would point the app at something local.
     vi.stubGlobal(
       'fetch',
-      respondWith(manifest([remoteProvider({ base_url: 'file:///etc/passwd' })]))
+      respondWith(
+        manifest([remoteProvider({ base_url: 'file:///etc/passwd' })])
+      )
     )
 
     const result = await getMediaProvidersOrFallback({ url: URL })
@@ -206,7 +245,10 @@ describe('the registry is untrusted input', () => {
       respondWith(
         manifest([
           remoteProvider({
-            auth: { type: 'api_key', setting_key: 'media.someone-elses.api_key' },
+            auth: {
+              type: 'api_key',
+              setting_key: 'media.someone-elses.api_key',
+            },
           }),
         ])
       )

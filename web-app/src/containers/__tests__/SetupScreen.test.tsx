@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import posthog from 'posthog-js'
 import SetupScreen from '../SetupScreen'
 import { localStorageKey } from '@/constants/localStorage'
 import { seedServiceHub } from '@/test/service-hub'
@@ -35,6 +34,17 @@ const mocks = vi.hoisted(() => {
     // The Hub's curated picks, listed under the offer; mutable per test.
     staffPicks: [] as unknown[],
     engine: { import: vi.fn() },
+    downloadState: {
+      downloads: {} as Record<string, {
+        name: string; progress: number; current: number; total: number
+      }>,
+      localDownloadingModels: new Set<string>(),
+      resumableDownloads: new Set<string>(),
+      addLocalDownloadingModel: vi.fn(),
+      removeLocalDownloadingModel: vi.fn(),
+      markResumableDownload: vi.fn(),
+      clearResumableDownload: vi.fn(),
+    },
     // Mutable so a test can move the machine to another rung of the ladder.
     // `profile` is what the "why this one" line reads its memory figure from.
     hardwareTier: {
@@ -107,15 +117,7 @@ vi.mock('@/hooks/useChatGptAuth', () => ({
 }))
 
 vi.mock('@/hooks/useDownloadStore', () => ({
-  useDownloadStore: () => ({
-    downloads: {},
-    localDownloadingModels: new Set(),
-    resumableDownloads: new Set(),
-    addLocalDownloadingModel: vi.fn(),
-    removeLocalDownloadingModel: vi.fn(),
-    markResumableDownload: vi.fn(),
-    clearResumableDownload: vi.fn(),
-  }),
+  useDownloadStore: () => mocks.downloadState,
 }))
 
 vi.mock('@/hooks/useGeneralSetting', () => {
@@ -196,12 +198,6 @@ vi.mock('@/hooks/useOnboardingModelReminder', () => ({
 
 vi.mock('../HeaderPage', () => ({
   default: () => <header data-testid="setup-header" />,
-}))
-
-vi.mock('posthog-js', () => ({
-  // `has_opted_in_capturing` is what `queuedCapture` checks before sending;
-  // without it every event would sit in the startup queue instead.
-  default: { capture: vi.fn(), has_opted_in_capturing: () => true },
 }))
 
 vi.mock('sonner', () => ({
@@ -286,6 +282,12 @@ describe('SetupScreen', () => {
     }
     mocks.hardwareTier.ready = true
     mocks.modelProviderState.providers = []
+    mocks.modelProviderState.getProviderByName.mockImplementation((name: string) =>
+      mocks.modelProviderState.providers.find((provider) => provider.provider === name)
+    )
+    mocks.downloadState.downloads = {}
+    mocks.downloadState.localDownloadingModels.clear()
+    mocks.downloadState.resumableDownloads.clear()
     // Onboarding imports never settle by default, so a test can assert on the
     // in-flight state without racing the import event handler.
     mocks.engine.import.mockReturnValue(new Promise(() => {}))
@@ -316,6 +318,23 @@ describe('SetupScreen', () => {
     expect(await screen.findByText('setup:welcomeTitle')).toBeInTheDocument()
     expect(mocks.leftPanel.open).toBe(true)
     unmount()
+  })
+
+  it('opens the picker after its deadline when local scanning and hardware detection hang', async () => {
+    vi.useFakeTimers()
+    mocks.scanLocalModels.mockReturnValue(new Promise(() => {}))
+    mocks.hardwareTier.ready = false
+    const view = render(<SetupScreen />)
+    try {
+      expect(screen.getByText('common:loading')).toBeInTheDocument()
+      await act(async () => { vi.advanceTimersByTime(4_000) })
+      expect(screen.getByText('setup:welcomeTitle')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'setup:skip' })).toBeEnabled()
+      expect(mocks.navigate).not.toHaveBeenCalled()
+    } finally {
+      view.unmount()
+      vi.useRealTimers()
+    }
   })
 
   it('bypasses the registry cache when the model step opens', async () => {
@@ -973,12 +992,6 @@ describe('SetupScreen', () => {
         expect(
           screen.getByText('setup:downloadStartedOpening')
         ).toBeInTheDocument()
-        // Position 1: the row after the offer, the same index its impression
-        // carried.
-        expect(vi.mocked(posthog.capture)).toHaveBeenCalledWith(
-          'recommended_model_clicked',
-          expect.objectContaining({ position: 1 })
-        )
 
         await act(async () => {
           vi.advanceTimersByTime(3_000)
@@ -992,55 +1005,6 @@ describe('SetupScreen', () => {
       } finally {
         vi.useRealTimers()
       }
-    })
-
-    it('reports every row it paints as an impression, in the order painted', async () => {
-      const { unmount } = await renderPicker()
-
-      const shown = vi
-        .mocked(posthog.capture)
-        .mock.calls.filter(([event]) => event === 'recommended_model_shown')
-        .map(([, props]) => props as Record<string, unknown>)
-      expect(shown.map((props) => [props.position, props.section])).toEqual([
-        [0, 'pending'],
-        [1, 'pending'],
-        [2, 'pending'],
-      ])
-      unmount()
-    })
-
-    it('reports a pick that resolves after the first paint, once', async () => {
-      // The Hub resolves picks the seed catalog does not carry with one
-      // Hugging Face round-trip each, so a row can sit as a placeholder after
-      // the screen painted. It gets its impression when its card lands — a
-      // placeholder has no id to attribute a click to — and only then.
-      const lfm = staffPick('LiquidAI/LFM2.5-1.2B-Instruct-GGUF', {
-        title: 'LFM2.5 1.2B',
-        size: '697 MB',
-      })
-      mocks.staffPicks = [gemma, nemotron, { pick: lfm.pick, model: null }]
-      const { rerender, unmount } = await renderPicker()
-      expect(screen.getByText('LFM2.5 1.2B')).toBeInTheDocument()
-      vi.mocked(posthog.capture).mockClear()
-      const shown = () =>
-        vi
-          .mocked(posthog.capture)
-          .mock.calls.filter(([event]) => event === 'recommended_model_shown')
-          .map(([, props]) => props as Record<string, unknown>)
-
-      mocks.staffPicks = [gemma, nemotron, lfm]
-      rerender(<SetupScreen />)
-      await act(async () => {})
-
-      expect(shown().map((props) => [props.position, props.section])).toEqual([
-        [3, 'pending'],
-      ])
-
-      // Painting the same list again is not a new impression.
-      rerender(<SetupScreen />)
-      await act(async () => {})
-      expect(shown()).toHaveLength(1)
-      unmount()
     })
 
     it('lists the picks on their own when the registry has no offer', async () => {
@@ -1059,35 +1023,7 @@ describe('SetupScreen', () => {
       expect(buttons[0]).toHaveAttribute('data-variant', 'secondary')
       expect(buttons[1]).toHaveAttribute('data-variant', 'secondary')
 
-      // Positions start at 0: there is no offer to leave room for.
-      const positions = vi
-        .mocked(posthog.capture)
-        .mock.calls.filter(([event]) => event === 'recommended_model_shown')
-        .map(([, props]) => (props as Record<string, unknown>).position)
-      expect(positions).toEqual([0, 1])
-
       fireEvent.click(buttons[0])
-      expect(vi.mocked(posthog.capture)).toHaveBeenCalledWith(
-        'recommended_model_clicked',
-        expect.objectContaining({ position: 0 })
-      )
-      unmount()
-    })
-
-    it('reports no impressions while an auto-start hides the picker', async () => {
-      // A model found on disk is started without the picker ever painting.
-      // Rows behind the status line were not seen, so they get no impression
-      // for a click to divide by.
-      const finishLocalScan = deferLocalScan([detectedModel])
-      const { unmount } = render(<SetupScreen />)
-      await finishLocalScan()
-      expect(
-        await screen.findByText('setup:localStep.autoStarting')
-      ).toBeInTheDocument()
-
-      expect(
-        vi.mocked(posthog.capture).mock.calls.map(([event]) => event)
-      ).not.toContain('recommended_model_shown')
       unmount()
     })
 
@@ -1187,6 +1123,138 @@ describe('SetupScreen', () => {
     })
   })
 
+  describe('local model download and library handoff', () => {
+    const mlx = {
+      rec: {
+        modelName: 'mlx-community/Qwen3.5-4B-4bit',
+        descriptionKey: 'hub:recEverydayUse',
+      },
+      model: {
+        model_name: 'mlx-community/Qwen3.5-4B-4bit',
+        developer: 'mlx-community',
+        is_mlx: true,
+        safetensors_files: [{ file_size: '2 GB' }],
+      },
+    }
+    const gguf = {
+      rec: { modelName: 'AtomicChat/Qwen3.5-4B-GGUF', descriptionKey: 'hub:recEverydayUse' },
+      model: {
+        model_name: 'AtomicChat/Qwen3.5-4B-GGUF',
+        developer: 'AtomicChat',
+        quants: [{ model_id: 'Qwen3.5-4B-Q4_K_M', path: 'https://example.test/model.gguf', file_size: '2 GB' }],
+        mmproj_models: [],
+      },
+    }
+    const mlxId = 'Qwen3.5-4B-4bit'
+
+    beforeEach(() => {
+      mocks.scanLocalModels.mockResolvedValue([])
+    })
+
+    it('imports MLX weights with their companion files and selects the verified model', async () => {
+      mocks.recommended = [mlx]
+      const refreshed = [{ provider: 'mlx', models: [{ id: mlxId }] }] as ModelProvider[]
+      const fetchRepo = vi.fn().mockResolvedValue({ siblings: [
+        { rfilename: 'model.safetensors' },
+        { rfilename: 'config.json' },
+        { rfilename: 'tokenizer.json' },
+      ] })
+      seedServiceHub({
+        models: { fetchHuggingFaceRepo: fetchRepo } as never,
+        providers: { getProviders: vi.fn().mockResolvedValue(refreshed) } as never,
+      })
+      mocks.switchToModel.mockRejectedValueOnce(new Error('model load failed'))
+      const view = render(<SetupScreen />)
+      fireEvent.click(await screen.findByRole('button', { name: /hub:download/ }))
+      await waitFor(() => expect(mocks.engine.import).toHaveBeenCalledWith(mlxId, {
+        modelPath: 'https://huggingface.co/mlx-community/Qwen3.5-4B-4bit/resolve/main/model.safetensors',
+        files: [
+          { url: 'https://huggingface.co/mlx-community/Qwen3.5-4B-4bit/resolve/main/config.json', filename: 'config.json' },
+          { url: 'https://huggingface.co/mlx-community/Qwen3.5-4B-4bit/resolve/main/tokenizer.json', filename: 'tokenizer.json' },
+        ],
+        resume: false,
+      }))
+      const verified = vi.mocked(events.on).mock.calls.find(([name]) =>
+        name === 'onFileDownloadAndVerificationSuccess'
+      )?.[1] as (payload: { modelId: string }) => void
+      await act(async () => { verified({ modelId: mlxId }) })
+      expect(JSON.parse(localStorage.getItem(localStorageKey.lastUsedModel)!)).toEqual({
+        provider: 'mlx', model: mlxId,
+      })
+      expect(mocks.modelProviderState.selectModelProvider).toHaveBeenCalledWith('mlx', mlxId)
+      expect(mocks.navigate).toHaveBeenCalledWith(expect.objectContaining({
+        search: { threadModel: { id: mlxId, provider: 'mlx' } },
+      }))
+      view.unmount()
+    })
+
+    it.each([
+      [{ siblings: [] }, 'Failed to fetch repository files'],
+      [{ siblings: [{ rfilename: 'config.json' }] }, 'No safetensors file found in repository'],
+    ])('reports an unusable MLX repository and makes its download resumable', async (repo, message) => {
+      mocks.recommended = [mlx]
+      seedServiceHub({ models: { fetchHuggingFaceRepo: vi.fn().mockResolvedValue(repo) } as never })
+      const view = render(<SetupScreen />)
+      fireEvent.click(await screen.findByRole('button', { name: /hub:download/ }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to download MLX model', {
+        description: message,
+      }))
+      expect(mocks.engine.import).not.toHaveBeenCalled()
+      expect(mocks.downloadState.markResumableDownload).toHaveBeenCalledWith(mlxId)
+      expect(mocks.downloadState.removeLocalDownloadingModel).toHaveBeenCalledWith(mlxId)
+      view.unmount()
+    })
+
+    it.each([
+      ['mlx', mlxId, mlx],
+      ['llamacpp-upstream', 'Qwen3.5-4B-Q4_K_M', gguf],
+    ] as const)('runs an installed %s recommendation without downloading it again', async (provider, id, item) => {
+      mocks.recommended = [item]
+      mocks.modelProviderState.providers = [{ provider, models: [{ id }] }] as ModelProvider[]
+      const view = render(<SetupScreen />)
+      fireEvent.click(await screen.findByRole('button', { name: /setup:localStep.run/ }))
+      expect(JSON.parse(localStorage.getItem(localStorageKey.lastUsedModel)!)).toEqual({ provider, model: id })
+      expect(mocks.navigate).toHaveBeenCalledWith(expect.objectContaining({
+        search: { threadModel: { id, provider } },
+      }))
+      expect(mocks.pullModelWithMetadata).not.toHaveBeenCalled()
+      expect(mocks.engine.import).not.toHaveBeenCalled()
+      view.unmount()
+    })
+
+    it('renders live byte progress and prevents a duplicate download', async () => {
+      mocks.recommended = [gguf]
+      mocks.downloadState.downloads.active = {
+        name: 'Qwen3.5-4B-Q4_K_M', progress: 0.25,
+        current: 100 * 1024 ** 2, total: 400 * 1024 ** 2,
+      }
+      const view = render(<SetupScreen />)
+      expect(await screen.findByRole('button', { name: /setup:downloading/ })).toBeDisabled()
+      expect(screen.getByText('25% · 100 / 400 MB')).toBeInTheDocument()
+      expect(mocks.pullModelWithMetadata).not.toHaveBeenCalled()
+      view.unmount()
+    })
+
+    it('allows retrying a failed detected-model import and refreshes background imports', async () => {
+      mocks.scanLocalModels.mockResolvedValue([detectedModel, biggerDetectedModel])
+      mocks.engine.import
+        .mockRejectedValueOnce(new Error('first model failed'))
+        .mockRejectedValueOnce(new Error('background model failed'))
+      const getProviders = vi.fn().mockResolvedValue([])
+      seedServiceHub({ providers: { getProviders } as never })
+      const view = render(<SetupScreen />)
+      const buttons = await screen.findAllByRole('button', { name: /setup:localStep.run/ })
+      await waitFor(() => expect(getProviders).toHaveBeenCalledOnce())
+      fireEvent.click(buttons[0])
+      expect(screen.getByRole('button', { name: /setup:localStep.running/ })).toBeDisabled()
+      expect(mocks.engine.import.mock.calls).toEqual([
+        expectedImport(detectedModel), expectedImport(biggerDetectedModel), expectedImport(detectedModel),
+      ])
+      expect(mocks.modelProviderState.setProviders).toHaveBeenCalledWith([])
+      view.unmount()
+    })
+  })
+
   describe('leaving without a model', () => {
     beforeEach(() => {
       vi.useFakeTimers()
@@ -1224,12 +1292,6 @@ describe('SetupScreen', () => {
       expect(localStorage.getItem(localStorageKey.setupCompleted)).toBe('true')
       expect(localStorage.getItem(localStorageKey.lastUsedModel)).toBeNull()
       expect(mocks.reminder.pending).toBe(false)
-      // Pressing a button and running out a clock are different acts; the
-      // legacy `skipped` and the retired `timeout` must not be reused.
-      expect(vi.mocked(posthog.capture)).toHaveBeenCalledWith(
-        'onboarding_completed',
-        expect.objectContaining({ exit_path: 'dismissed' })
-      )
       expect(mocks.leftPanel.open).toBe(true)
       expect(mocks.navigate.mock.calls).toEqual([
         [{ to: '/', replace: true, search: {} }],

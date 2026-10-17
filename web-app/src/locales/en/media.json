@@ -10,6 +10,7 @@
     "baseUrl": "Base URL",
     "adapter": "Adapter",
     "apiKey": "API key",
+    "basicAuth": "API credentials (only if started with --api-auth)",
     "save": "Save provider",
     "cancel": "Cancel",
     "remove": "Remove",
@@ -27,7 +28,11 @@
       "atomic-media-worker": "Radium Media Worker",
       "comfyui": "ComfyUI",
       "openai-images": "OpenAI-compatible images",
-      "custom-http": "Custom HTTP"
+      "custom-http": "Custom HTTP",
+      "a1111": "AUTOMATIC1111",
+      "replicate": "Replicate",
+      "fal-ai": "fal.ai",
+      "stability-ai": "Stability AI"
     },
     "modelCount": "Models: {{count}}",
     "checkForNew": "Check for new providers"
@@ -70,7 +75,19 @@
   "studio": {
     "brand": "Radium Media",
     "title": "Media Studio",
-    "noProvider": "No media provider"
+    "noProvider": "No media provider",
+    "tabs": {
+      "label": "Media views",
+      "create": "Create",
+      "library": "Library"
+    },
+    "rerun": {
+      "busy": "Wait for the current job to finish first."
+    },
+    "continue": {
+      "builtinOnly": "Continue is available for locally generated videos for now.",
+      "failed": "Could not read the last frame: {{message}}"
+    }
   },
   "status": {
     "providers": "Providers",
@@ -93,7 +110,20 @@
     "model": "Model",
     "device": "Device",
     "prompt": "Prompt",
+    "generate": "Generate",
     "generatingWith": "Generating with {{model}}",
-    "selectModel": "Select a model to begin"
+    "selectModel": "Select a model to begin",
+    "taskNames": {
+      "text_to_image": "Image",
+      "image_to_image": "Edit image",
+      "text_to_video": "Video",
+      "image_to_video": "Animate image",
+      "text_to_audio": "Audio",
+      "text_to_speech": "Speech",
+      "upscale": "Upscale",
+      "inpaint": "Inpaint",
+      "outpaint": "Outpaint",
+      "interpolate": "Interpolate"
+    }
   }
 }

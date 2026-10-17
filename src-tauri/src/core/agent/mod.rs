@@ -29,6 +29,7 @@ pub mod attachments;
 
 pub mod commands;
 pub mod compressor;
+pub mod delegation;
 #[cfg(feature = "gaia-eval")]
 pub mod eval;
 pub mod folder_access;
@@ -58,6 +59,8 @@ pub mod tools;
 pub mod types;
 pub mod workspace;
 
+#[cfg(test)]
+mod delegation_tests;
 #[cfg(test)]
 mod model_e2e;
 #[cfg(test)]

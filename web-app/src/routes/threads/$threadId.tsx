@@ -11,6 +11,7 @@ import { ensureRemoteProviderReady } from '@/utils/ensureRemoteProviderReady'
 
 import HeaderPage from '@/containers/HeaderPage'
 import HeaderContextSize from '@/containers/HeaderContextSize'
+import MediaChatSettingsDialog from '@/containers/MediaChatSettingsDialog'
 import { useThreads } from '@/hooks/useThreads'
 import ChatInput from '@/containers/ChatInput'
 import { useShallow } from 'zustand/react/shallow'
@@ -29,7 +30,12 @@ import { useOptimisticUserMessage } from '@/hooks/useOptimisticUserMessage'
 import { buildOptimisticUserMessage } from '@/lib/optimisticUserMessage'
 import { useChat } from '@/hooks/use-chat'
 import { useModelProvider } from '@/hooks/useModelProvider'
+import { AgentSpecialistLanes } from '@/containers/AgentSpecialistLanes'
 import { renderInstructions } from '@/lib/instructionTemplate'
+import {
+  agentToolPacks,
+  buildAgentSpecialists,
+} from '@/lib/agent-specialists'
 import {
   Conversation,
   ConversationAutoScroll,
@@ -37,6 +43,13 @@ import {
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation'
 import { generateId } from 'ai'
+import {
+  defaultChatGenerationDeps,
+  generateMediaForChat,
+  type ChatMediaOverrides,
+} from '@/services/media/chatGeneration'
+import { useMediaChatMode } from '@/stores/media-chat-mode-store'
+import { useMediaChatSettings } from '@/stores/media-chat-settings-store'
 import type { UIMessage } from '@ai-sdk/react'
 import { useChatSessions } from '@/stores/chat-session-store'
 import { useThreadReadStatus } from '@/stores/thread-read-store'
@@ -50,25 +63,7 @@ import {
   ttftBegin,
   ttftMark,
   ttftPreBegin,
-  ttftSnapshot,
 } from '@/lib/ttft-timing'
-import {
-  agentOutcome,
-  agentResponseShape,
-  attachmentTelemetry,
-  beginChatTurn,
-  captureChatRequest,
-  captureChatResponse,
-  contextTelemetry,
-  currentChatTurn,
-  responseShapeFromMessage,
-  type AttachmentTelemetry,
-  type ChatEngine,
-  type ChatOutcome,
-  type ChatTurnSource,
-} from '@/lib/chat-telemetry'
-import { type RouteReason } from '@/lib/agent-route'
-import { classifyChatFailure, lengthBucket } from '@/lib/telemetry'
 import {
   ThreadMessage,
   MessageStatus,
@@ -109,12 +104,13 @@ import {
 } from '@/utils/error'
 import {
   DEFAULT_CTX_LEN, growModelContext } from '@/lib/context-size'
-import { captureHandledError } from '@/lib/sentry'
 import { Button } from '@/components/ui/button'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
-import { useToolApproval } from '@/hooks/useToolApproval'
-import { resolveMcpAutoApprove } from '@/lib/mcp-approval'
+import {
+  approveChatToolCall,
+  resolveMcpAutoApprove,
+} from '@/lib/mcp-approval'
 import { ExtensionTypeEnum, VectorDBExtension } from '@janhq/core'
 import { ExtensionManager } from '@/lib/extension'
 import { buildAgentRagRequest } from '@/lib/agent-rag-request'
@@ -340,95 +336,6 @@ function ThreadDetail() {
     null
   )
 
-  // What the in-flight turn was started by, and what was attached to it, so
-  // `chat_response_received` can be attributed back to the send that caused it.
-  // Set on every send path; the response arrives long after those locals are
-  // gone, hence a ref rather than threading it through the AI SDK.
-  const turnContextRef = useRef<{
-    source: ChatTurnSource
-    attachments: AttachmentTelemetry
-    engine?: ChatEngine
-    routeReason?: RouteReason
-  }>({ source: 'chat', attachments: attachmentTelemetry([]) })
-
-  /**
-   * A retry reuses the previous turn's prompt and attachments, so only the
-   * source changes. Regenerate and edit previously emitted nothing at all,
-   * which left the send count — the funnel's denominator — short.
-   */
-  const captureRetryRequest = useCallback(
-    (source: 'regenerate' | 'edit', routeReason?: RouteReason) => {
-      turnContextRef.current = {
-        ...turnContextRef.current,
-        source,
-        engine: 'chat-transport',
-        routeReason: routeReason ?? turnContextRef.current.routeReason,
-      }
-      captureChatRequest({
-        ...turnContextRef.current.attachments,
-        turn_id: beginChatTurn(threadId),
-        thread_id: threadId,
-        source,
-        engine: turnContextRef.current.engine,
-        route_reason: turnContextRef.current.routeReason,
-        model_id: useModelProvider.getState().selectedModel?.id,
-        provider: useModelProvider.getState().selectedProvider,
-        turn_index: chatMessagesRef.current.length,
-      })
-    },
-    [threadId]
-  )
-
-  /**
-   * Emit the single terminal event for a chat turn. Deduped inside
-   * `captureChatResponse` (onFinish fires more than once per message and can
-   * race the error path), so callers may fire optimistically.
-   */
-  const captureTurnOutcome = useCallback(
-    (
-      outcome: ChatOutcome,
-      message?: Parameters<typeof responseShapeFromMessage>[0],
-      error?: unknown
-    ) => {
-      const shape = responseShapeFromMessage(
-        message,
-        useAppState.getState().ragToolNames,
-        useAppState.getState().mcpToolNames
-      )
-      const meta = (message?.metadata ?? {}) as Record<string, unknown>
-      const ctxLen =
-        (useModelProvider.getState().selectedModel?.settings?.ctx_len
-          ?.controller_props?.value as number) ?? null
-      const { source, attachments } = turnContextRef.current
-
-      captureChatResponse({
-        ...shape,
-        ...attachments,
-        ...contextTelemetry(shape.tokens_total as number | null, ctxLen),
-        ...ttftSnapshot(),
-        turn_id: currentChatTurn(threadId),
-        thread_id: threadId,
-        source,
-        engine: turnContextRef.current.engine,
-        route_reason: turnContextRef.current.routeReason,
-        outcome,
-        error,
-        model_id:
-          (meta.modelId as string | undefined) ??
-          useModelProvider.getState().selectedModel?.id ??
-          null,
-        provider:
-          (meta.providerId as string | undefined) ??
-          useModelProvider.getState().selectedProvider ??
-          null,
-        turn_index: chatMessagesRef.current.length,
-        ctx_overflow: outcome.startsWith('truncated'),
-        ctx_auto_increased: outcome === 'truncated_continued',
-      })
-    },
-    [threadId]
-  )
-
   // Use the AI SDK chat hook
   const {
     messages: chatMessages,
@@ -454,18 +361,6 @@ function ThreadDetail() {
     // a long enough answer still stalls. See
     // docs/decisions/2026-09-04-bound-streaming-reasoning-render-cost.md.
     experimental_throttle: 50,
-    // The AI SDK's own error hook was never registered — failures only ever
-    // surfaced through the reactive `error` value, so a failed turn produced no
-    // telemetry at all. A user-initiated stop can surface here as an abort
-    // error and race `onFinish`; whichever lands first wins the dedup, so it
-    // must not report a cancellation as a failure.
-    onError: (err) => {
-      captureTurnOutcome(
-        classifyChatFailure(err) === 'aborted' ? 'aborted' : 'error',
-        undefined,
-        err
-      )
-    },
     onFinish: ({ message, isAbort }) => {
       const msgMeta = message.metadata as Record<string, unknown> | undefined
       const finishReason = msgMeta?.finishReason as string | undefined
@@ -476,7 +371,6 @@ function ThreadDetail() {
         // below, and a stale placeholder would flip the indicator row to
         // "Growing the Mind..." on every later send in this thread.
         setPendingContinueMessage(null)
-        captureTurnOutcome('aborted', message)
       }
 
       // Context limit hit: send partial content as prefill so the model continues
@@ -512,32 +406,11 @@ function ThreadDetail() {
             handleContextSizeIncreaseRef.current?.()
           } else {
             setContextLimitError(new Error(OUT_OF_CONTEXT_SIZE))
-            // ATO-113: surface context-overflow (auto-increase disabled) to
-            // Sentry as a warning with zero-PII numeric context.
-            captureHandledError(new Error(OUT_OF_CONTEXT_SIZE), 'warning', {
-              feature: 'context_overflow',
-              model_id: selectedModelState?.id,
-              context_length: ctxLen,
-              total_tokens: totalTokens,
-            })
           }
         }
         if (!willContinue) {
           setIsChatRequestActive(false)
         }
-        // A continuation is a second model call, so this event closes the
-        // first one; `captureChatResponse` releases the turn id and the
-        // continuation's own finish gets a fresh one. `finishReason: 'length'`
-        // without a context hit is just max_output_tokens — an ordinary
-        // completion, not a truncation.
-        captureTurnOutcome(
-          willContinue
-            ? 'truncated_continued'
-            : isContextLimit
-              ? 'truncated_stopped'
-              : 'success',
-          message
-        )
         return
       }
 
@@ -545,9 +418,6 @@ function ThreadDetail() {
 
       if (!isAbort && sessionData.tools.length === 0) {
         setIsChatRequestActive(false)
-        // Terminal only when no tool calls are queued: with tools, onFinish
-        // fires once per step and the turn continues after they resolve.
-        captureTurnOutcome('success', message)
       }
 
       // Persist assistant message to backend (skip if aborted).
@@ -605,17 +475,8 @@ function ThreadDetail() {
           threadId,
           ragToolNames,
           mcpToolNames,
-          // The composer's approval select governs chat tool calls too: an
-          // explicit "skip" runs them silently, an explicit "manual" prompts
-          // even while the global MCP auto-approve switch is on.
-          approve: (toolName, currentThreadId, input) =>
-            resolveMcpAutoApprove(currentThreadId)
-              ? Promise.resolve(true)
-              : useToolApproval
-                  .getState()
-                  .showApprovalModal(toolName, currentThreadId, input, {
-                    bypassGlobalAutoApprove: true,
-                  }),
+          // Same rule as the agent engine: ask unless the user opted in.
+          approve: approveChatToolCall,
           callRagTool: (args) => serviceHub.rag().callTool(args),
           callMcpTool: (args) => serviceHub.mcp().callTool(args),
           // Resolve project scope from the live route-keyed thread record.
@@ -823,25 +684,6 @@ function ThreadDetail() {
       const run = useAgentRun.getState().getRun(threadId)
       if (event.type === 'turn_finished') {
         persistAgentRun(run)
-        const shape = agentResponseShape(
-          run,
-          useAppState.getState().ragToolNames,
-          useAppState.getState().mcpToolNames
-        )
-        captureChatResponse({
-          ...shape,
-          ...turnContextRef.current.attachments,
-          turn_id: currentChatTurn(threadId),
-          thread_id: threadId,
-          source: turnContextRef.current.source,
-          engine: turnContextRef.current.engine,
-          route_reason: turnContextRef.current.routeReason,
-          outcome: agentOutcome(event.reason),
-          error: run.trace.error,
-          model_id: useModelProvider.getState().selectedModel?.id ?? null,
-          provider: useModelProvider.getState().selectedProvider ?? null,
-          turn_index: chatMessagesRef.current.length,
-        })
         return
       }
       if (!run.runId) return
@@ -900,11 +742,7 @@ function ThreadDetail() {
       files?: InitialMessageFile[],
       documentsFromPayload?: Attachment[],
       agentSkillName?: string,
-      persistUserMessage = true,
-      // Distinguishes a fresh send from a retry of the same prompt, so the
-      // funnel does not read regenerations as new conversations.
-      source: ChatTurnSource = 'agent',
-      routeReason: RouteReason = 'user-selected-agent'
+      persistUserMessage = true
     ) => {
       const agentProvider = getProviderByName(selectedProvider)
       const blockReason = agentProviderBlockReason(agentProvider)
@@ -1094,27 +932,6 @@ function ThreadDetail() {
 
       const runId = generateId()
       useAgentRun.getState().startRun(threadId, runId)
-      const agentAttachments = attachmentTelemetry(combinedAttachments)
-      turnContextRef.current = {
-        source,
-        attachments: agentAttachments,
-        engine: 'agent-ipc',
-        routeReason,
-      }
-      captureChatRequest({
-        ...agentAttachments,
-        turn_id: beginChatTurn(threadId),
-        thread_id: threadId,
-        source,
-        engine: 'agent-ipc',
-        route_reason: routeReason,
-        model_id: selectedModel.id,
-        provider: selectedProvider,
-        turn_index: chatMessagesRef.current.length,
-        prompt_len_bucket: lengthBucket(text.length),
-        is_agent_mode: true,
-        agent_skill: agentSkillName ?? null,
-      })
 
       // The Agent backend has no chat-template parser of its own, so the
       // thinking level is resolved here and shipped as a decision.
@@ -1166,6 +983,20 @@ function ThreadDetail() {
               .getState()
               .getDisabledToolsForThread(threadId),
             rag,
+            specialists: buildAgentSpecialists(
+              useAssistant.getState().assistants,
+              threadAssistant?.id,
+              (provider, modelId) =>
+                getProviderByName(provider)?.models.find(
+                  (model) => model.id === modelId
+                )
+            ),
+            tool_packs: agentToolPacks(
+              useAssistant
+                .getState()
+                .assistants.find((a) => a.id === threadAssistant?.id) ??
+                threadAssistant
+            ),
           },
           applyAgentEvent
         )
@@ -1207,11 +1038,115 @@ function ThreadDetail() {
       syncAgentSessionIfNeeded,
       systemMessage,
       t,
+      threadAssistant,
       threadId,
     ]
   )
 
   // Consolidated function to process and send a message
+  /**
+   * A media-mode turn: the prompt goes to the image or video model chosen on
+   * the Media page (its last used settings), not to the language model, and the
+   * result is shown inline in the assistant's reply.
+   */
+  const processMediaMessage = useCallback(
+    async (
+      text: string,
+      task: 'text_to_image' | 'text_to_video',
+      overrides?: ChatMediaOverrides
+    ) => {
+      await useThreads.getState().awaitThreadPersistence(threadId)
+
+      const userMessage = newUserThreadContent(threadId, text, [])
+      addMessage(userMessage)
+      const userUi = convertThreadMessagesToUIMessages([userMessage])[0]
+      if (userUi) useChatSessions.getState().upsertMessage(threadId, userUi)
+      useOptimisticUserMessage.getState().clear(threadId)
+
+      const thread = useThreads.getState().getThreadById(threadId)
+      if (thread && (thread.title === 'New Thread' || !thread.title)) {
+        useThreads.getState().updateThread(threadId, {
+          title: text.length > 50 ? `${text.slice(0, 47)}...` : text,
+        })
+      }
+
+      const assistantId = generateId()
+      const build = (
+        textValue: string,
+        status: MessageStatus,
+        media?: unknown[]
+      ): ThreadMessage => ({
+        type: 'text',
+        role: ChatCompletionRole.Assistant,
+        content: [
+          {
+            type: ContentType.Text,
+            text: { value: textValue, annotations: [] },
+          },
+        ],
+        id: assistantId,
+        object: 'thread.message',
+        thread_id: threadId,
+        status,
+        created_at: Date.now(),
+        completed_at: Date.now(),
+        metadata: media ? { media } : {},
+      })
+
+      // Show a placeholder straight away - video can take minutes.
+      const pending = build(
+        task === 'text_to_video' ? 'Generating video…' : 'Generating image…',
+        MessageStatus.Pending
+      )
+      const pendingUi = convertThreadMessagesToUIMessages([pending])[0]
+      if (pendingUi) useChatSessions.getState().upsertMessage(threadId, pendingUi)
+
+      let finished: ThreadMessage
+      try {
+        const result = await generateMediaForChat(
+          task,
+          text,
+          await defaultChatGenerationDeps(),
+          {
+            onUpdate: (entry) => {
+              const percent =
+                typeof entry.progress === 'number'
+                  ? ` ${Math.round(entry.progress * (entry.progress <= 1 ? 100 : 1))}%`
+                  : ''
+              const label = `${task === 'text_to_video' ? 'Generating video' : 'Generating image'}…${percent}`
+              const ui = convertThreadMessagesToUIMessages([
+                build(label, MessageStatus.Pending),
+              ])[0]
+              if (ui) useChatSessions.getState().upsertMessage(threadId, ui)
+            },
+          },
+          overrides
+        )
+        finished = build(
+          `${result.model_label}: “${text}”`,
+          MessageStatus.Ready,
+          result.assets.map((asset) => ({
+            asset_id: asset.asset_id,
+            path: asset.path,
+            mime: asset.mime,
+            media_type: asset.media_type,
+            model_label: result.model_label,
+            prompt: text,
+          }))
+        )
+      } catch (error) {
+        finished = build(
+          error instanceof Error ? error.message : String(error),
+          MessageStatus.Error
+        )
+      }
+      addMessage(finished)
+      const finishedUi = convertThreadMessagesToUIMessages([finished])[0]
+      if (finishedUi) useChatSessions.getState().upsertMessage(threadId, finishedUi)
+    },
+    [addMessage, threadId]
+  )
+
   const processAndSendMessage = useCallback(
     async (
       text: string,
@@ -1219,6 +1154,14 @@ function ThreadDetail() {
       documentsFromPayload?: Attachment[],
       agentSkillName?: string
     ) => {
+      // Media mode: generate instead of asking the language model. Park the
+      // prompt in the settings popup so the user can pick "use last used
+      // settings" or an explicit resolution/length before anything runs.
+      const mediaTask = useMediaChatMode.getState().task
+      if (mediaTask) {
+        useMediaChatSettings.getState().open({ task: mediaTask, text })
+        return
+      }
       // Documents may be passed explicitly via the initial-message payload
       // (home → new thread flow). In that case the store has already been
       // cleared synchronously on send to avoid the chip lingering in the
@@ -1238,9 +1181,7 @@ function ThreadDetail() {
           files,
           documentsFromPayload,
           agentSkillName,
-          true,
-          'agent',
-          executionRoute.reason
+          true
         )
         return
       }
@@ -1413,49 +1354,6 @@ function ThreadDetail() {
       })
       console.log('[processAndSendMessage] sendMessage called successfully')
 
-      const chatAttachments = attachmentTelemetry(processedAttachments)
-      turnContextRef.current = {
-        source: 'chat',
-        attachments: chatAttachments,
-        engine: 'chat-transport',
-        routeReason: executionRoute.reason,
-      }
-      const ragToolNames = useAppState.getState().ragToolNames
-      const mcpToolNames = useAppState.getState().mcpToolNames
-      const toolCost = useAppState.getState().toolCostReports[threadId]
-      captureChatRequest({
-        ...chatAttachments,
-        engine: 'chat-transport',
-        route_reason: executionRoute.reason,
-        // Only the configured context length is known at send time; how full
-        // the window actually was comes from real `usage` on the response.
-        ...contextTelemetry(
-          null,
-          (selectedModel?.settings?.ctx_len?.controller_props
-            ?.value as number) ?? null
-        ),
-        turn_id: beginChatTurn(threadId),
-        thread_id: threadId,
-        source: 'chat',
-        model_id: selectedModel?.id,
-        provider: selectedProvider,
-        turn_index: chatMessagesRef.current.length,
-        prompt_len_bucket: lengthBucket(text.length),
-        is_agent_mode: false,
-        agent_skill: agentSkillName ?? null,
-        tools_enabled_count: ragToolNames.size + mcpToolNames.size,
-        has_rag: ragToolNames.size > 0,
-        has_mcp: mcpToolNames.size > 0,
-        // Cost of the tool definitions actually sent (muted/disabled ones
-        // excluded), from the transport's last refresh.
-        tools_tokens_estimate: toolCost?.totalTokens ?? null,
-        tools_ctx_share:
-          toolCost?.ctxShare !== undefined
-            ? Math.round(toolCost.ctxShare * 100) / 100
-            : null,
-        tools_heavy_servers: toolCost?.heavyServers.length ?? 0,
-      })
-
       // Clear attachments after sending
       clearAttachmentsForThread(attachmentsKey)
     },
@@ -1470,7 +1368,6 @@ function ThreadDetail() {
       clearAttachmentsForThread,
       serviceHub,
       selectedProvider,
-      selectedModel,
       chatMessages.length,
     ]
   )
@@ -1604,8 +1501,7 @@ function ThreadDetail() {
           agentFiles,
           agentDocuments,
           agentSkillName,
-          false,
-          'regenerate'
+          false
         )
         return
         }
@@ -1651,11 +1547,9 @@ function ThreadDetail() {
       // Call the AI SDK regenerate function - it will handle truncating the UI messages
       // and generating a new response from the selected message
       setIsChatRequestActive(true)
-      captureRetryRequest('regenerate')
       regenerate(messageId ? { messageId } : undefined)
     },
     [
-      captureRetryRequest,
       deleteMessage,
       processAndRunAgent,
       regenerate,
@@ -1731,7 +1625,6 @@ function ThreadDetail() {
 
       // Regenerate from the edited message
       setIsChatRequestActive(true)
-      captureRetryRequest('edit')
       regenerate({ messageId })
     },
     [
@@ -1739,7 +1632,6 @@ function ThreadDetail() {
       updateMessage,
       deleteMessage,
       chatMessages,
-      captureRetryRequest,
       handleRegenerate,
       setChatMessages,
       regenerate,
@@ -2129,6 +2021,7 @@ function ThreadDetail() {
 
             {/* Chat Input - Fixed at bottom */}
             <div className="py-4 mx-auto w-full md:w-4/5 xl:w-4/6">
+              <AgentSpecialistLanes lanes={agentRun?.lanes} />
               <ChatInput
                 model={threadModel}
                 onSubmit={handleSubmit}
@@ -2139,6 +2032,12 @@ function ThreadDetail() {
           </div>
         </div>
       </div>
+      <MediaChatSettingsDialog
+        onConfirm={(task, text, overrides) =>
+          processMediaMessage(text, task, overrides)
+        }
+        onCancel={() => useOptimisticUserMessage.getState().clear(threadId)}
+      />
     </AgentWorkspaceLayout>
   )
 }

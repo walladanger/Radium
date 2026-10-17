@@ -40,6 +40,12 @@ const STATUS: EngineStatus = {
   engine_size_bytes: 39_092_706,
   running_model: null,
   base_url: null,
+  upscalers: [],
+  output_sizes: [
+    { id: 'native', label: 'As rendered', long_edge: 0 },
+    { id: '4k', label: '4K (3840 long side · 3840 × 2160 at 16:9)', long_edge: 3840 },
+  ],
+  esrgan_available: true,
   models: [
     {
       id: 'sd-1.5',
@@ -49,9 +55,32 @@ const STATUS: EngineStatus = {
       license: 'creativeml-openrail-m',
       license_url: 'https://huggingface.co/spaces/CompVis/stable-diffusion-license',
       min_memory_mb: 3072,
-      defaults: { width: 512, height: 512, steps: 20, cfg_scale: 7, sampler: 'euler_a' },
+      defaults: {
+        width: 512,
+        height: 512,
+        steps: 20,
+        cfg_scale: 7,
+        sampler: 'euler_a',
+        resolution: {
+          native: [512, 512],
+          multiple: 64,
+          min_side: 256,
+          max_side: 1024,
+          pixel_budget: 512 * 512,
+          comfortable_min_pixels: 384 * 384,
+          comfortable_max_pixels: 768 * 768,
+          vram_mb_per_megapixel: 2400,
+          extra_sizes: [],
+        },
+      },
       size_bytes: 1_763_578_176,
       installed: true,
+      // As `media_engine_status` computes them from the rules (Rust).
+      size_presets: [
+        { aspect: '1:1', width: 512, height: 512, kind: 'native', label: '1:1 · 512 × 512 (native)', vram_mb: 3701 },
+        { aspect: '4:3', width: 576, height: 448, kind: 'aspect', label: '4:3 · 576 × 448', vram_mb: 3691 },
+        { aspect: '2:3', width: 448, height: 640, kind: 'aspect', label: '2:3 · 448 × 640', vram_mb: 3760 },
+      ],
     },
     {
       id: 'wan2.2-ti2v-5b',
@@ -61,9 +90,46 @@ const STATUS: EngineStatus = {
       license: 'apache-2.0',
       license_url: 'https://www.apache.org/licenses/LICENSE-2.0',
       min_memory_mb: 12000,
-      defaults: { width: 832, height: 480, steps: 30, cfg_scale: 5, sampler: 'euler' },
+      defaults: {
+        width: 832,
+        height: 480,
+        steps: 30,
+        cfg_scale: 5,
+        sampler: 'euler',
+        video: {
+          fps: 16,
+          fps_min: 1,
+          fps_max: 30,
+          length_seconds: [1, 2, 3, 4, 5, 8],
+          default_length_seconds: 2,
+          frame_modulus: 4,
+          frame_offset: 1,
+        },
+      },
       size_bytes: 5_000_000_000,
       installed: false,
+    },
+  ],
+}
+
+const STATUS_WITH_UPSCALERS: EngineStatus = {
+  ...STATUS,
+  upscalers: [
+    {
+      id: 'realesrgan-x4',
+      label: 'Real-ESRGAN 4×',
+      note: 'General-purpose 4× upscaler.',
+      file_name: 'RealESRGAN_x4.pth',
+      size_bytes: 67_000_000,
+      installed: false,
+    },
+    {
+      id: 'ultrasharp-4x',
+      label: '4×-UltraSharp',
+      note: 'Sharper 4× upscaler.',
+      file_name: '4x-UltraSharp.pth',
+      size_bytes: 66_800_000,
+      installed: true,
     },
   ],
 }
@@ -116,6 +182,10 @@ const transport: BuiltinEngineTransport = {
     }
     if (command === 'media_engine_install') {
       fake.listeners.get(`download-${args?.taskId}`)?.({ transferred: 512, total: 1024 })
+      return undefined as T
+    }
+    if (command === 'media_upscaler_install') {
+      fake.listeners.get(`download-${args?.taskId}`)?.({ transferred: 300, total: 600 })
       return undefined as T
     }
     return undefined as T
@@ -205,6 +275,12 @@ describeMediaAdapterConformance({
 
 describe('built-in engine specifics', () => {
   const adapter = () => createBuiltinEngineAdapter(descriptor, transport)
+  const baseRequest = () => ({
+    client_job_id: 'c1',
+    provider_id: 'builtin-engine',
+    model_id: 'builtin-engine:sd-1.5',
+    task: 'text_to_image' as const,
+  })
 
   it('lists every catalog model with its download state and a size to show', async () => {
     const capabilities = await adapter().capabilities()
@@ -216,17 +292,140 @@ describe('built-in engine specifics', () => {
     expect(capabilities.models[0].install).toMatchObject({ installed: true, installable: true })
     expect(capabilities.models[1].install).toMatchObject({ installed: false, installable: true })
     expect(capabilities.features?.install).toBe(true)
+    // Progress is the engine's stdout step bar, parsed by Rust and read on poll.
+    expect(capabilities.features?.progress).toBe(true)
     expect(capabilities.recommended).toEqual([
       { task: 'text_to_image', model_id: 'builtin-engine:sd-1.5' },
     ])
   })
 
-  it('offers the model default size first, then the family sizes', async () => {
+  it('offers the Rust-computed aspect presets, native first, plus a custom size', async () => {
     const sd = (await adapter().capabilities()).models[0]
     const resolution = sd.params.text_to_image.find((p) => p.id === 'resolution')
 
     expect(resolution?.default).toBe('512x512')
-    expect(resolution?.options?.map((o) => o.value)).toEqual(['512x512', '512x768', '768x512'])
+    expect(resolution?.options?.map((o) => o.value)).toEqual([
+      '512x512',
+      '576x448',
+      '448x640',
+      'custom',
+    ])
+    expect(resolution?.options?.[0]).toMatchObject({ width: 512, height: 512, vram_mb: 3701 })
+    expect(resolution?.size_rules).toMatchObject({ multiple: 64, base_memory_mb: 3072 })
+    expect(resolution?.advanced).toBeFalsy()
+  })
+
+  it('puts the custom width and height under Advanced, snapped to the model multiple', async () => {
+    const sd = (await adapter().capabilities()).models[0]
+    const width = sd.params.text_to_image.find((p) => p.id === 'custom_width')
+    expect(width).toMatchObject({
+      advanced: true,
+      min: 256,
+      max: 1024,
+      modulus: { modulus: 64, offset: 0 },
+      depends_on: [{ param: 'resolution', equals: 'custom' }],
+    })
+  })
+
+  it('offers the model size alone when the backend sends no presets', async () => {
+    const noPresets: EngineStatus = {
+      ...STATUS,
+      models: STATUS.models.map((m) => ({
+        ...m,
+        size_presets: undefined,
+        defaults: { ...m.defaults, resolution: undefined },
+      })),
+    }
+    const noLadderTransport: BuiltinEngineTransport = {
+      ...transport,
+      invoke: async (command, args, signal) => {
+        if (command === 'media_engine_status') return noPresets as never
+        return transport.invoke(command, args, signal)
+      },
+    }
+    const caps = await createBuiltinEngineAdapter(descriptor, noLadderTransport).capabilities()
+    const resolution = caps.models[0].params.text_to_image.find((p) => p.id === 'resolution')
+
+    expect(resolution?.options?.map((o) => o.value)).toEqual(['512x512'])
+  })
+
+  it('shows output size up front and the upscaler choice under Advanced', async () => {
+    const [image, video] = (await adapter().capabilities()).models
+    const output = image.params.text_to_image.find((p) => p.id === 'output_size')
+    expect(output?.advanced).toBeFalsy()
+    expect(output?.options?.map((o) => o.value)).toEqual(['native', '4k'])
+    expect(output?.options?.[1].long_edge).toBe(3840)
+    const upscaler = image.params.text_to_image.find((p) => p.id === 'upscaler')
+    expect(upscaler?.advanced).toBe(true)
+    expect(upscaler?.depends_on).toEqual([{ param: 'output_size', in: ['4k'] }])
+    expect(video.params.text_to_video.some((p) => p.id === 'output_size')).toBe(false)
+  })
+
+  it('sends a custom size as the width and height', () => {
+    const body = engineRequestBody({
+      ...baseRequest(),
+      params: { prompt: 'x', resolution: 'custom', custom_width: 640, custom_height: 384 },
+    })
+    expect(body).toMatchObject({ width: 640, height: 384 })
+  })
+
+  it('upscales the finished image to the output size and labels it', async () => {
+    const upscaleCalls: Array<Record<string, unknown> | undefined> = []
+    const upscaling: BuiltinEngineTransport = {
+      ...transport,
+      invoke: async (command, args, signal) => {
+        if (command === 'media_upscale_image') {
+          upscaleCalls.push(args)
+          return {
+            image_base64: 'UPSCALED',
+            mime: 'image/png',
+            info: {
+              method: 'lanczos',
+              upscaler: null,
+              source_width: 512,
+              source_height: 512,
+              width: 3840,
+              height: 3840,
+              note: null,
+            },
+          } as never
+        }
+        return transport.invoke(command, args, signal)
+      },
+    }
+    fake.states = ['succeeded']
+    const engine = createBuiltinEngineAdapter(descriptor, upscaling)
+    const submitted = await engine.submit({
+      ...baseRequest(),
+      params: { prompt: 'x', resolution: '512x512', output_size: '4k', upscaler: 'lanczos' },
+    })
+    const first = await engine.poll(submitted)
+    const again = await engine.poll(submitted)
+
+    expect(first.outputs).toEqual([
+      {
+        kind: 'inline',
+        base64: 'UPSCALED',
+        mime: 'image/png',
+        upscale: expect.objectContaining({ width: 3840, method: 'lanczos' }),
+      },
+    ])
+    expect(again.outputs).toEqual(first.outputs)
+    expect(upscaleCalls).toEqual([
+      { imageBase64: PNG_BASE64, outputSize: '4k', upscaler: 'lanczos' },
+    ])
+  })
+
+  it('leaves the image alone when the output size is as rendered', async () => {
+    fake.states = ['succeeded']
+    const engine = adapter()
+    const submitted = await engine.submit({
+      ...baseRequest(),
+      params: { prompt: 'x', output_size: 'native' },
+    })
+    const done = await engine.poll(submitted)
+    expect(done.outputs).toEqual([{ kind: 'inline', base64: PNG_BASE64, mime: 'image/png' }])
+    expect(fake.invoked.some((call) => call.command === 'media_upscale_image')).toBe(false)
   })
 
   it('gives video models frames and FPS, and image models neither', async () => {
@@ -285,6 +484,27 @@ describe('built-in engine specifics', () => {
 
     expect(done.state).toBe('succeeded')
     expect(done.outputs).toEqual([{ kind: 'inline', base64: PNG_BASE64, mime: 'image/png' }])
+    expect(done.progress).toBe(100)
+  })
+
+  it('turns the engine stdout step bar into poll progress', async () => {
+    const instance = adapter()
+    const submitted = await instance.submit({
+      client_job_id: 'c2',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: { prompt: 'x' },
+    })
+    fake.states = ['running']
+    // Rust emits this from the engine's `|=====> | 3/20` stdout bar.
+    fake.listeners.get('media-engine-progress')?.({ current: 3, total: 20 })
+
+    const snapshot = await instance.poll(submitted)
+
+    expect(snapshot.state).toBe('running')
+    expect(snapshot.progress).toBe(15)
+    expect(snapshot.step).toEqual({ current: 3, total: 20 })
   })
 
   it('reports a job the engine forgot as failed, not retryable', async () => {
@@ -415,6 +635,32 @@ describe('starting images and video length (the user, 2026-09-15)', () => {
     expect(strength?.depends_on).toEqual([{ param: 'init_image', truthy: true }])
   })
 
+  it('offers HD upscale on image models, with its knobs under Advanced', async () => {
+    const image = (await createBuiltinEngineAdapter(descriptor, transport).capabilities())
+      .models[0]
+    const params = image.params.text_to_image
+    const hires = params.find((spec) => spec.id === 'hires')
+    const upscaler = params.find((spec) => spec.id === 'hires_upscaler')
+    const scale = params.find((spec) => spec.id === 'hires_scale')
+    const denoise = params.find((spec) => spec.id === 'hires_denoising_strength')
+
+    expect(hires).toMatchObject({ type: 'bool', group: 'core', default: true })
+    expect(upscaler).toMatchObject({ group: 'advanced', advanced: true, default: 'Latent' })
+    expect(upscaler?.options?.map((option) => option.value)).toEqual(['Latent', 'Lanczos', 'Nearest'])
+    expect(scale).toMatchObject({ default: 2 })
+    expect(denoise).toMatchObject({ default: 0.7 })
+    for (const spec of [upscaler, scale, denoise]) {
+      expect(spec?.depends_on).toEqual([{ param: 'hires', truthy: true }])
+    }
+  })
+
+  it('does not offer HD upscale on video models', async () => {
+    const [video] = (await createBuiltinEngineAdapter(descriptor, transport).capabilities()).models.filter(
+      (model) => model.id === 'builtin-engine:wan2.2-ti2v-5b'
+    )
+    expect(video.params.text_to_video.find((spec) => spec.id === 'hires')).toBeUndefined()
+  })
+
   it('turns a video length in seconds into frames the model takes', () => {
     const body = engineRequestBody({
       client_job_id: 'v2',
@@ -446,6 +692,30 @@ describe('starting images and video length (the user, 2026-09-15)', () => {
       expect(framesFor(seconds, fps) % 4).toBe(1)
     }
   })
+
+  it('takes the frame lattice from the model, not a hard-coded Wan value', () => {
+    // A model whose decoder wants n % 3 == 2 frames.
+    expect(framesFor(2, 16, { modulus: 3, offset: 2 })).toBe(32)
+    for (const [seconds, fps] of [[1, 16], [5, 24], [8, 30]]) {
+      expect(framesFor(seconds, fps, { modulus: 3, offset: 2 }) % 3).toBe(2)
+    }
+  })
+
+  it('reads video length and FPS from the model defaults', async () => {
+    const [video] = (await createBuiltinEngineAdapter(descriptor, transport).capabilities()).models.filter(
+      (model) => model.id === 'builtin-engine:wan2.2-ti2v-5b'
+    )
+    const length = video.params.text_to_video.find((spec) => spec.id === 'length_seconds')
+    const fps = video.params.text_to_video.find((spec) => spec.id === 'fps')
+
+    expect(length?.type).toBe('enum')
+    expect(length?.options.map((option) => option.value)).toEqual([1, 2, 3, 4, 5, 8])
+    expect(length?.default).toBe(2)
+    expect(fps?.type).toBe('int')
+    expect(fps?.min).toBe(1)
+    expect(fps?.max).toBe(30)
+    expect(fps?.default).toBe(16)
+  })
 })
 
 describe('engineRequestBody and outputsOf', () => {
@@ -473,6 +743,64 @@ describe('engineRequestBody and outputsOf', () => {
       { kind: 'inline', base64: 'BBB', mime: 'image/jpeg' },
     ])
     expect(outputsOf({ result: null })).toEqual([])
+  })
+
+  it('sends the hires pass when HD upscale is on, with its knobs', () => {
+    const body = engineRequestBody({
+      client_job_id: 'h',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: {
+        prompt: 'a mountain',
+        hires: true,
+        hires_upscaler: 'Lanczos',
+        hires_scale: 3,
+        hires_denoising_strength: 0.5,
+      },
+    })
+    expect(body.hires).toEqual({
+      enabled: true,
+      upscaler: 'Lanczos',
+      scale: 3,
+      denoising_strength: 0.5,
+    })
+  })
+
+  it('defaults the hires knobs when they are not chosen', () => {
+    const body = engineRequestBody({
+      client_job_id: 'h2',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: { prompt: 'a mountain', hires: true },
+    })
+    expect(body.hires).toEqual({
+      enabled: true,
+      upscaler: 'Latent',
+      scale: 2,
+      denoising_strength: 0.7,
+    })
+  })
+
+  it('omits the hires pass when HD upscale is off, and never for video', () => {
+    const off = engineRequestBody({
+      client_job_id: 'h3',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: { prompt: 'a mountain', hires: false },
+    })
+    expect(off).not.toHaveProperty('hires')
+
+    const video = engineRequestBody({
+      client_job_id: 'h4',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:wan',
+      task: 'text_to_video',
+      params: { prompt: 'waves', hires: true },
+    })
+    expect(video).not.toHaveProperty('hires')
   })
 })
 
@@ -576,5 +904,81 @@ describe('a model offered in several sizes', () => {
       command: 'media_engine_install',
       args: { modelId: 'sd-1.5@q4_0', taskId: 'media-engine-sd-1_5_q4_0' },
     })
+  })
+})
+
+describe('model-backed HD upscalers', () => {
+  const upscalerTransport: BuiltinEngineTransport = {
+    ...transport,
+    invoke: async (command, args, signal) => {
+      if (command === 'media_engine_status') return STATUS_WITH_UPSCALERS
+      return transport.invoke(command, args, signal)
+    },
+  }
+  const adapter = () => createBuiltinEngineAdapter(descriptor, upscalerTransport)
+
+  it('lists the catalog upscalers by their engine stem, HD-quality labelled', async () => {
+    const [image] = (await adapter().capabilities()).models
+    const upscaler = image.params.text_to_image.find((spec) => spec.id === 'hires_upscaler')
+
+    expect(upscaler?.options).toEqual([
+      { value: 'Latent', label: 'Latent (detail)' },
+      { value: 'Lanczos', label: 'Lanczos (sharp)' },
+      { value: 'Nearest', label: 'Nearest (fast)' },
+      { value: 'RealESRGAN_x4', label: 'Real-ESRGAN 4× (HD quality · downloads on first use)' },
+      { value: '4x-UltraSharp', label: '4×-UltraSharp (HD quality)' },
+    ])
+  })
+
+  it('downloads a not-installed upscaler before the engine starts', async () => {
+    const instance = adapter()
+    await instance.submit({
+      client_job_id: 'u1',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: { prompt: 'a dragon', hires: true, hires_upscaler: 'RealESRGAN_x4' },
+    })
+
+    const commands = fake.invoked.map((call) => call.command)
+    expect(commands.indexOf('media_upscaler_install')).toBeGreaterThanOrEqual(0)
+    expect(commands.indexOf('media_upscaler_install')).toBeLessThan(
+      commands.indexOf('media_engine_start')
+    )
+    expect(fake.invoked.find((call) => call.command === 'media_upscaler_install')?.args).toEqual({
+      upscalerId: 'realesrgan-x4',
+      taskId: 'media-upscaler-realesrgan-x4',
+    })
+    // The chosen stem is sent verbatim as the engine's `hires.upscaler`.
+    expect(fake.fetched[0]?.body).toMatchObject({
+      hires: { enabled: true, upscaler: 'RealESRGAN_x4' },
+    })
+  })
+
+  it('does not re-download an upscaler that is already installed', async () => {
+    const instance = adapter()
+    await instance.submit({
+      client_job_id: 'u2',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: { prompt: 'a dragon', hires: true, hires_upscaler: '4x-UltraSharp' },
+    })
+
+    expect(fake.invoked.map((call) => call.command)).not.toContain('media_upscaler_install')
+    expect(fake.invoked.map((call) => call.command)).toContain('media_engine_start')
+  })
+
+  it('leaves the built-in upscalers alone', async () => {
+    const instance = adapter()
+    await instance.submit({
+      client_job_id: 'u3',
+      provider_id: 'builtin-engine',
+      model_id: 'builtin-engine:sd-1.5',
+      task: 'text_to_image',
+      params: { prompt: 'a dragon', hires: true, hires_upscaler: 'Latent' },
+    })
+
+    expect(fake.invoked.map((call) => call.command)).not.toContain('media_upscaler_install')
   })
 })

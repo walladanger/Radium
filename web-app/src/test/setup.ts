@@ -1,5 +1,5 @@
 import { webcrypto } from 'node:crypto'
-import { expect, afterEach, vi } from 'vitest'
+import { expect, afterAll, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import * as matchers from '@testing-library/jest-dom/matchers'
 import { clearMocks } from '@tauri-apps/api/mocks'
@@ -26,6 +26,36 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
+})
+
+// jsdom 26 keeps `localStorage` on the window prototype and no longer copies it
+// onto the test global, so bare `localStorage` reads `undefined`. Provide the
+// in-memory storage the rest of the suite expects; specs that install their own
+// `localStorage` mock replace this wholesale and are unaffected.
+const localStorageBacking = new Map<string, string>()
+const localStorageShim: Storage = {
+  get length() {
+    return localStorageBacking.size
+  },
+  clear() {
+    localStorageBacking.clear()
+  },
+  getItem(key: string) {
+    return localStorageBacking.has(key) ? localStorageBacking.get(key)! : null
+  },
+  key(index: number) {
+    return Array.from(localStorageBacking.keys())[index] ?? null
+  },
+  removeItem(key: string) {
+    localStorageBacking.delete(key)
+  },
+  setItem(key: string, value: string) {
+    localStorageBacking.set(key, String(value))
+  },
+}
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: localStorageShim,
 })
 
 // `isPlatformTauri()` now probes for the real IPC bridge instead of trusting a
@@ -100,4 +130,51 @@ afterEach(() => {
   clearMocks()
   useServiceStore.setState({ serviceHub: null })
   cleanup()
+})
+
+// Several app modules start work on import that no test awaits: the provider,
+// staff-picks and model-catalog registries refresh over the network and log
+// when they land. A log that lands while the worker is shutting down after its
+// last file is reported by vitest 5 as an unhandled EnvironmentTeardownError
+// ("Closing rpc while onUserConsoleLog was pending") and fails the whole run,
+// although every test passed. Once a file's tests are done nothing it prints
+// can be asserted on, so drop it. Same cause as 0a49a14d, for every file.
+//
+// The methods are replaced outright, not with `vi.spyOn`: vitest calls
+// `vi.restoreAllMocks()` as soon as a file's hooks have run, which put a spy's
+// original back before the slow part of shutdown (writing coverage) began, and
+// the late log still went out. A later file in the same worker evaluates this
+// setup again and puts the originals back before its own tests.
+const SILENCED_CONSOLE = Symbol.for('radium.test.silenced-console')
+const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug'] as const
+type ConsoleMethod = (typeof CONSOLE_METHODS)[number]
+type SilencedConsoleStash = Partial<
+  Record<ConsoleMethod, Console[ConsoleMethod]>
+>
+const consoleStashHolder = globalThis as unknown as Record<
+  symbol,
+  SilencedConsoleStash | undefined
+>
+
+const stashedConsole = consoleStashHolder[SILENCED_CONSOLE]
+if (stashedConsole) {
+  for (const method of CONSOLE_METHODS) {
+    const silent = console[method] as Console[ConsoleMethod] & {
+      [SILENCED_CONSOLE]?: true
+    }
+    const original = stashedConsole[method]
+    if (silent[SILENCED_CONSOLE] && original) console[method] = original
+  }
+  delete consoleStashHolder[SILENCED_CONSOLE]
+}
+
+afterAll(() => {
+  const stash: SilencedConsoleStash = {}
+  for (const method of CONSOLE_METHODS) {
+    stash[method] = console[method]
+    console[method] = Object.assign(() => undefined, {
+      [SILENCED_CONSOLE]: true as const,
+    })
+  }
+  consoleStashHolder[SILENCED_CONSOLE] = stash
 })

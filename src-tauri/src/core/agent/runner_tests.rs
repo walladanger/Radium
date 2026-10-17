@@ -142,6 +142,7 @@ async fn run_script_with_options(
             mcp,
             disabled_tools,
             auto_approve_mcp,
+            delegate: None,
             docs,
             documents_note,
             client,
@@ -154,6 +155,7 @@ async fn run_script_with_options(
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -253,6 +255,9 @@ fn event_kind(event: &AgentEvent) -> &'static str {
         AgentEvent::BatchTrimmed { .. } => "batch_trimmed",
         AgentEvent::AssistantReply { .. } => "assistant_reply",
         AgentEvent::StepError { .. } => "step_error",
+        AgentEvent::SpecialistStarted { .. } => "specialist_started",
+        AgentEvent::SpecialistEvent { .. } => "specialist_event",
+        AgentEvent::SpecialistFinished { .. } => "specialist_finished",
         AgentEvent::TurnFinished { .. } => "turn_finished",
     }
 }
@@ -584,9 +589,47 @@ async fn two_docs_retrieves_batch_as_pure_reads() {
 }
 
 #[tokio::test]
-async fn read_only_mcp_tool_executes_without_any_approval() {
+async fn read_only_hint_does_not_skip_the_approval_gate() {
+    // `readOnlyHint` is the server's own claim about itself; the user still
+    // decides. Denied, the call never reaches the server.
     let bridge = ScriptedMcpBridge::new(&[("search", true)]);
     let approval = RecordingApproval::deny();
+    let run = run_mcp_script(
+        vec![
+            ScriptedResponse::completion(
+                r#"[{"tool":"mcp.test.search","args":{"query":"atomic"}}]"#,
+            ),
+            ScriptedResponse::completion(r#"[{"tool":"reply","args":{"text":"denied"}}]"#),
+        ],
+        &bridge,
+        &approval,
+        false,
+    )
+    .await;
+
+    assert!(run.result.is_ok());
+    assert_eq!(
+        executed(&run.events),
+        [
+            ("mcp.test.search", ToolStatus::Denied),
+            ("reply", ToolStatus::Ok)
+        ]
+    );
+    let requests = approval.requests();
+    assert_eq!(requests.len(), 1, "readOnlyHint must not skip the gate");
+    assert_eq!(requests[0].tool, "mcp.test.search");
+    assert!(requests[0].can_remember, "Always allow must be offered");
+    assert!(bridge.calls().is_empty());
+    // The grammar for the step advertises the MCP alternation.
+    let grammar = run.requests[0]["grammar"].as_str().expect("grammar");
+    assert!(grammar.contains("mcp-tool-name"));
+    assert!(grammar.contains("mcp.test.search"));
+}
+
+#[tokio::test]
+async fn approved_mcp_call_runs_once_the_user_allows_it() {
+    let bridge = ScriptedMcpBridge::new(&[("search", true)]);
+    let approval = RecordingApproval::allow();
     let run = run_mcp_script(
         vec![
             ScriptedResponse::completion(
@@ -601,22 +644,47 @@ async fn read_only_mcp_tool_executes_without_any_approval() {
     .await;
 
     assert!(run.result.is_ok());
+    assert_eq!(approval.requests().len(), 1);
+    assert_eq!(bridge.calls(), ["mcp.test.search"]);
+}
+
+#[tokio::test]
+async fn always_allow_remembers_the_exact_mcp_action() {
+    // "Always allow" is the user's deliberate per-tool choice: the same call
+    // runs silently afterwards, a call with different arguments asks again.
+    let bridge = ScriptedMcpBridge::new(&[("create_issue", false)]);
+    let approval = RecordingApproval::always_allow();
+    let call = r#"[{"tool":"mcp.test.create_issue","args":{"title":"bug"}}]"#;
+    run_mcp_script(
+        vec![
+            ScriptedResponse::completion(call),
+            ScriptedResponse::completion(call),
+            ScriptedResponse::completion(
+                r#"[{"tool":"mcp.test.create_issue","args":{"title":"other"}}]"#,
+            ),
+        ],
+        &bridge,
+        &approval,
+        false,
+    )
+    .await;
+
+    let requests = approval.requests();
     assert_eq!(
-        executed(&run.events),
+        requests.len(),
+        2,
+        "remembered action skips the second prompt only"
+    );
+    assert_eq!(requests[0].tool, "mcp.test.create_issue");
+    assert_ne!(requests[0].fingerprint, requests[1].fingerprint);
+    assert_eq!(
+        bridge.calls(),
         [
-            ("mcp.test.search", ToolStatus::Ok),
-            ("reply", ToolStatus::Ok)
+            "mcp.test.create_issue",
+            "mcp.test.create_issue",
+            "mcp.test.create_issue"
         ]
     );
-    assert!(
-        approval.requests().is_empty(),
-        "readOnlyHint skips the gate"
-    );
-    assert_eq!(bridge.calls(), ["mcp.test.search"]);
-    // The grammar for the step advertises the MCP alternation.
-    let grammar = run.requests[0]["grammar"].as_str().expect("grammar");
-    assert!(grammar.contains("mcp-tool-name"));
-    assert!(grammar.contains("mcp.test.search"));
 }
 
 #[tokio::test]
@@ -659,7 +727,7 @@ async fn non_read_only_mcp_tool_is_gated_and_fails_closed_on_deny() {
 }
 
 #[tokio::test]
-async fn auto_approve_mcp_bypasses_the_gate_for_mcp_tools_only() {
+async fn explicit_mcp_opt_in_bypasses_the_gate_for_mcp_tools() {
     let bridge = ScriptedMcpBridge::new(&[("create_issue", false)]);
     let approval = RecordingApproval::deny();
     let run = run_mcp_script(
@@ -690,7 +758,7 @@ async fn auto_approve_mcp_bypasses_the_gate_for_mcp_tools_only() {
 #[tokio::test]
 async fn dead_mcp_server_yields_a_structured_error_outcome() {
     let bridge = ScriptedMcpBridge::failing(&[("search", true)]);
-    let approval = RecordingApproval::deny();
+    let approval = RecordingApproval::allow();
     let run = run_mcp_script(
         vec![
             ScriptedResponse::completion(
@@ -837,6 +905,7 @@ async fn gemma4_turn_uses_native_framing_and_parses_channel_reasoning() {
             mcp: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
             docs: None,
             documents_note: None,
             client: &client,
@@ -849,6 +918,7 @@ async fn gemma4_turn_uses_native_framing_and_parses_channel_reasoning() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -1015,6 +1085,7 @@ async fn sequential_runs_share_the_session_transcript() {
                 mcp: None,
                 disabled_tools: &std::collections::BTreeSet::new(),
                 auto_approve_mcp: true,
+                delegate: None,
                 docs: None,
                 documents_note: None,
                 client: &client,
@@ -1027,6 +1098,7 @@ async fn sequential_runs_share_the_session_transcript() {
                 bundled_script_runtime: None,
                 pty: &PtyRegistry::new(),
                 cache_dir: &std::env::temp_dir(),
+                slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
             },
             |_| Ok(()),
         )
@@ -1500,6 +1572,7 @@ async fn cancellation_interrupts_an_in_flight_completion() {
             mcp: None,
             disabled_tools: &disabled_tools,
             auto_approve_mcp: true,
+            delegate: None,
             docs: None,
             documents_note: None,
             client: &client,
@@ -1512,6 +1585,7 @@ async fn cancellation_interrupts_an_in_flight_completion() {
             bundled_script_runtime: None,
             pty: &pty,
             cache_dir: &cache_dir,
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     );
@@ -1770,6 +1844,7 @@ async fn skill_view_loads_the_body_and_restores_it_on_the_next_turn() {
             mcp: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
             docs: None,
             documents_note: None,
             client: &client,
@@ -1782,6 +1857,7 @@ async fn skill_view_loads_the_body_and_restores_it_on_the_next_turn() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -1838,6 +1914,7 @@ async fn selected_skill_is_loaded_into_the_first_prompt_without_skill_view() {
             mcp: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
             docs: None,
             documents_note: None,
             client: &client,
@@ -1850,6 +1927,7 @@ async fn selected_skill_is_loaded_into_the_first_prompt_without_skill_view() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )
@@ -1907,6 +1985,7 @@ async fn unknown_selected_skill_fails_before_completion() {
             mcp: None,
             disabled_tools: &std::collections::BTreeSet::new(),
             auto_approve_mcp: true,
+            delegate: None,
             docs: None,
             documents_note: None,
             client: &client,
@@ -1919,6 +1998,7 @@ async fn unknown_selected_skill_fails_before_completion() {
             bundled_script_runtime: None,
             pty: &PtyRegistry::new(),
             cache_dir: &std::env::temp_dir(),
+            slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
         },
         |event| collect_event(&mut events, event),
     )

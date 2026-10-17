@@ -2,9 +2,12 @@ import { useLeftPanel } from '@/hooks/useLeftPanel'
 import { cn } from '@/lib/utils'
 import {
   IconLayoutSidebar,
+  IconEdit,
 } from '@tabler/icons-react'
 import { ReactNode, memo } from 'react'
 import { Button } from "@/components/ui/button"
+import { useWorkspacePanel } from '@/hooks/useWorkspacePanel'
+import { useTranslation } from '@/i18n/react-i18next-compat'
 
 type HeaderPageProps = {
   children?: ReactNode
@@ -17,6 +20,8 @@ const HeaderPage = memo(function HeaderPage({
 }: HeaderPageProps) {
   const open = useLeftPanel((state) => state.open)
   const setLeftPanel = useLeftPanel((state) => state.setLeftPanel)
+  const openAnnotations = useWorkspacePanel(state => state.openAnnotations)
+  const { t } = useTranslation('atomic-tasks')
 
   return (
     <div
@@ -61,6 +66,12 @@ const HeaderPage = memo(function HeaderPage({
         >
           {children}
         </div>
+        {!hideControls && IS_TAURI && !IS_IOS && !IS_ANDROID && <Button
+          variant="ghost" size="icon-sm" className="mr-3 shrink-0"
+          title={t('annotationOpen', { defaultValue: 'Open annotation log' })}
+          aria-label={t('annotationOpen', { defaultValue: 'Open annotation log' })}
+          onClick={openAnnotations}
+        ><IconEdit className="size-4.5" aria-hidden="true" /></Button>}
       </div>
     </div>
   )

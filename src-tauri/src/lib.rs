@@ -1,3 +1,10 @@
+// Rust 1.99's clippy reports `double_must_use` against the code `#[async_trait]`
+// generates: it marks the boxed future `#[must_use]`, and a future is already
+// must_use. 18 errors across 9 traits, none of them in code written here, and
+// `-D warnings` turned every one into a build failure. async-trait 0.1.89 is
+// the current release; drop this once a release stops emitting the attribute.
+#![allow(clippy::double_must_use)]
+
 pub mod core;
 
 #[cfg(test)]
@@ -60,6 +67,10 @@ pub fn run() {
 
     let mut app_builder = builder
         .register_uri_scheme_protocol("artifact", core::artifact::handle_artifact_request)
+        // Custom panels: third-party folders rendered in a sandboxed iframe.
+        // Same mechanism as `artifact` above, opposite policy — the response
+        // CSP forbids the network entirely. See core::panels.
+        .register_uri_scheme_protocol("panel", core::panels::handle_panel_request)
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
@@ -101,7 +112,11 @@ pub fn run() {
     // Desktop: the full command surface.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
-        // FS commands - Deperecate soon
+        core::production_log::get_production_log,
+        core::production_log::choose_production_log_folder,
+        core::production_log::save_production_annotation,
+        core::production_log::production_annotation_image,
+        // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
         core::filesystem::commands::exists_sync,
@@ -115,6 +130,9 @@ pub fn run() {
         core::filesystem::commands::mv,
         core::filesystem::commands::file_stat,
         core::filesystem::commands::write_file_sync,
+        core::filesystem::commands::write_binary_file,
+        core::filesystem::commands::copy_file,
+        core::filesystem::commands::remove_file,
         core::filesystem::commands::write_yaml,
         core::filesystem::commands::read_yaml,
         core::filesystem::commands::decompress,
@@ -131,6 +149,8 @@ pub fn run() {
         core::app::commands::change_app_data_folder,
         core::app::models_folder::get_models_folder,
         core::app::models_folder::set_models_folder,
+        core::app::gguf_scan::scan_gguf_models,
+        core::app::gguf_scan::classify_gguf_files,
         core::app::commands::app_token,
         // Extension commands
         core::extensions::commands::get_jan_extensions_path,
@@ -154,7 +174,6 @@ pub fn run() {
         core::system::commands::clear_claude_code_env,
         core::system::commands::configure_hermes_agent,
         core::system::commands::clear_hermes_agent_config,
-        core::system::commands::configure_atomic_agent,
         core::system::commands::detect_agent_installed,
         core::system::commands::install_agent,
         core::system::commands::configure_codex,
@@ -221,6 +240,7 @@ pub fn run() {
         core::agent::skills::commands::agent_update_skill,
         core::agent::skills::commands::agent_export_skill,
         core::agent::skills::commands::agent_delete_skill,
+        core::agent::skills::commands::agent_move_skill,
         core::agent::skills::commands::agent_refresh_skills,
         core::mcp::commands::restart_mcp_servers,
         core::mcp::commands::get_connected_servers,
@@ -257,17 +277,21 @@ pub fn run() {
         // HTML artifact preview (served via the artifact:// protocol)
         core::artifact::set_artifact_html,
         core::artifact::clear_artifact_html,
+        // Custom panels (desktop only: the board is a desktop surface)
+        core::panels::commands::panels_list,
+        core::panels::commands::panels_install,
+        core::panels::commands::panels_remove,
+        core::panels::commands::panels_open_folder,
+        core::panels::commands::panels_request,
         // Tray status (desktop only runtime behaviour; the symbol exists on mobile as a no-op)
         core::tray_status::update_tray_status,
-        // Telemetry (ATO-113): consent sync + zero-PII context tags for Sentry
-        core::telemetry::commands::set_telemetry_consent,
-        core::telemetry::commands::set_telemetry_context,
-        core::telemetry::commands::set_telemetry_user,
         // Radium Media provider credentials, in the OS credential store. See
         // docs/decisions/2026-09-10-store-media-provider-credentials-in-the-os-
         // credential-store.md. Desktop only, and deliberately no enumeration
         // command: the caller always knows the key it is asking about.
         core::media::commands::media_secret_set,
+        core::media::stitch::media_ffmpeg_available,
+        core::media::stitch::media_stitch_videos,
         core::media::commands::media_secret_get,
         core::media::commands::media_secret_delete,
         core::media::commands::media_secret_available,
@@ -275,6 +299,8 @@ pub fn run() {
         core::media::runtime::media_engine_install,
         core::media::runtime::media_engine_start,
         core::media::runtime::media_engine_stop,
+        core::media::runtime::media_upscaler_install,
+        core::media::upscale::media_upscale_image,
         core::runtimes::commands::runtimes_catalog,
         core::runtimes::commands::runtimes_detect,
         core::runtimes::ollama::commands::ollama_status,
@@ -296,7 +322,7 @@ pub fn run() {
     // Mobile: the same surface minus the desktop-only commands.
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
-        // FS commands - Deperecate soon
+        // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
         core::filesystem::commands::exists_sync,
@@ -310,6 +336,9 @@ pub fn run() {
         core::filesystem::commands::mv,
         core::filesystem::commands::file_stat,
         core::filesystem::commands::write_file_sync,
+        core::filesystem::commands::write_binary_file,
+        core::filesystem::commands::copy_file,
+        core::filesystem::commands::remove_file,
         core::filesystem::commands::write_yaml,
         core::filesystem::commands::read_yaml,
         core::filesystem::commands::decompress,
@@ -326,6 +355,8 @@ pub fn run() {
         core::app::commands::change_app_data_folder,
         core::app::models_folder::get_models_folder,
         core::app::models_folder::set_models_folder,
+        core::app::gguf_scan::scan_gguf_models,
+        core::app::gguf_scan::classify_gguf_files,
         core::app::commands::app_token,
         // Extension commands
         core::extensions::commands::get_jan_extensions_path,
@@ -349,7 +380,6 @@ pub fn run() {
         core::system::commands::clear_claude_code_env,
         core::system::commands::configure_hermes_agent,
         core::system::commands::clear_hermes_agent_config,
-        core::system::commands::configure_atomic_agent,
         core::system::commands::detect_agent_installed,
         core::system::commands::install_agent,
         core::system::commands::configure_codex,
@@ -411,6 +441,7 @@ pub fn run() {
         core::agent::skills::commands::agent_update_skill,
         core::agent::skills::commands::agent_export_skill,
         core::agent::skills::commands::agent_delete_skill,
+        core::agent::skills::commands::agent_move_skill,
         core::agent::skills::commands::agent_refresh_skills,
         core::mcp::commands::restart_mcp_servers,
         core::mcp::commands::get_connected_servers,
@@ -452,6 +483,8 @@ pub fn run() {
 
     let app = app_builder
         .manage(core::media::runtime::MediaEngineState::default())
+        .manage(core::filesystem::commands::DialogGrants::default())
+        .manage(core::runtimes::ollama::OllamaState::default())
         .manage(AppState {
             app_token: Some(generate_app_token()),
             mcp_servers: Arc::new(Mutex::new(HashMap::new())),
@@ -518,20 +551,6 @@ pub fn run() {
                     }),
                 ]);
 
-            // ATO-113: on desktop, chain the plugin's logger through Sentry's
-            // SentryLogger so `log::error!` becomes a Sentry event (info/warn ->
-            // breadcrumbs) while stdout / webview / `app.log` still work. We use
-            // `split` (instead of `build`) so we, not the plugin, install the
-            // global logger. Mobile keeps the plain plugin logger (no Sentry).
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            {
-                let (plugin, max_level, logger) = log_builder.split(app.handle())?;
-                let _ = log::set_boxed_logger(crate::core::telemetry::wrap_logger(logger));
-                log::set_max_level(max_level);
-                app.handle().plugin(plugin)?;
-                crate::core::telemetry::set_log_path(log_dir.join("app.log"));
-            }
-            #[cfg(any(target_os = "ios", target_os = "android"))]
             app.handle().plugin(log_builder.build())?;
 
             // Reported only now that the logger exists; the move itself had to
@@ -650,18 +669,29 @@ pub fn run() {
             if let Err(e) = core::agent::workspace::ensure_default_agent_workspace(&data_folder) {
                 log::error!("{e}");
             }
-            match app.path().resolve(
-                core::agent::skills::BUNDLED_AGENT_SKILLS_RESOURCE_DIR,
-                BaseDirectory::Resource,
-            ) {
-                Ok(bundled_skills) => {
-                    if let Err(error) =
-                        core::agent::skills::initialize_skills(&data_folder, &bundled_skills)
-                    {
-                        log::error!("{error}");
+            // Copying every bundled skill takes seconds and runs before the
+            // window can appear, so it only happens when this version has not
+            // seeded this data folder yet (IS_CLEAN forces it, as it does the
+            // extension reinstall above).
+            let reseed_skills = stored_version != app_version
+                || std::env::var("IS_CLEAN").is_ok()
+                || !core::agent::skills::bundled_skills_seeded(&data_folder);
+            if reseed_skills {
+                match app.path().resolve(
+                    core::agent::skills::BUNDLED_AGENT_SKILLS_RESOURCE_DIR,
+                    BaseDirectory::Resource,
+                ) {
+                    Ok(bundled_skills) => {
+                        if let Err(error) =
+                            core::agent::skills::initialize_skills(&data_folder, &bundled_skills)
+                        {
+                            log::error!("{error}");
+                        }
                     }
+                    Err(error) => log::error!("Failed to resolve bundled Agent skills: {error}"),
                 }
-                Err(error) => log::error!("Failed to resolve bundled Agent skills: {error}"),
+            } else {
+                log::info!("Bundled Agent skills already seeded for {app_version}; skipping");
             }
 
             // Store the new app version
@@ -779,14 +809,14 @@ pub fn run() {
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 {
                     let engine = app_handle.state::<core::media::runtime::MediaEngineState>();
-                    tauri::async_runtime::block_on(
-                        core::media::runtime::stop_engine_on_exit(&engine),
-                    );
+                    tauri::async_runtime::block_on(core::media::runtime::stop_engine_on_exit(
+                        &engine,
+                    ));
                     // Radium's Ollama and the models it holds in GPU memory.
                     let ollama = app_handle.state::<core::runtimes::ollama::OllamaState>();
-                    tauri::async_runtime::block_on(
-                        core::runtimes::ollama::commands::stop_on_exit(&ollama),
-                    );
+                    tauri::async_runtime::block_on(core::runtimes::ollama::commands::stop_on_exit(
+                        &ollama,
+                    ));
                 }
 
                 // Check if cleanup already ran.

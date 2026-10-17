@@ -1,0 +1,12 @@
+{
+  "contract": 1,
+  "id": "contract-conformance",
+  "name": "Contract conformance",
+  "description": "Exercises every SDK call and every error path in panel contract v1.",
+  "version": "1.0.0",
+  "author": "radium",
+  "entry": "index.html",
+  "permissions": ["storage", "mcp.read"],
+  "mcpServers": ["fixture-server"],
+  "defaultSize": { "w": 4, "h": 6 }
+}

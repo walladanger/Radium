@@ -14,6 +14,7 @@ import { Route as SystemMonitorRouteImport } from './routes/system-monitor'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkspaceIndexRouteImport } from './routes/workspace/index'
 import { Route as SkillsIndexRouteImport } from './routes/skills/index'
 import { Route as LaunchIndexRouteImport } from './routes/launch/index'
 import { Route as HubIndexRouteImport } from './routes/hub/index'
@@ -24,6 +25,7 @@ import { Route as ThreadsThreadIdRouteImport } from './routes/threads/$threadId'
 import { Route as SettingsVoiceRouteImport } from './routes/settings/voice'
 import { Route as SettingsShortcutsRouteImport } from './routes/settings/shortcuts'
 import { Route as SettingsRuntimesRouteImport } from './routes/settings/runtimes'
+import { Route as SettingsPromptsRouteImport } from './routes/settings/prompts'
 import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
 import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
 import { Route as SettingsLocalApiServerRouteImport } from './routes/settings/local-api-server'
@@ -70,6 +72,11 @@ const LogsRoute = LogsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceIndexRoute = WorkspaceIndexRouteImport.update({
+  id: '/workspace/',
+  path: '/workspace/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SkillsIndexRoute = SkillsIndexRouteImport.update({
@@ -120,6 +127,11 @@ const SettingsShortcutsRoute = SettingsShortcutsRouteImport.update({
 const SettingsRuntimesRoute = SettingsRuntimesRouteImport.update({
   id: '/settings/runtimes',
   path: '/settings/runtimes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsPromptsRoute = SettingsPromptsRouteImport.update({
+  id: '/settings/prompts',
+  path: '/settings/prompts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
@@ -259,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/settings/local-api-server': typeof SettingsLocalApiServerRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/prompts': typeof SettingsPromptsRoute
   '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
@@ -269,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/hub/': typeof HubIndexRoute
   '/launch/': typeof LaunchIndexRoute
   '/skills/': typeof SkillsIndexRoute
+  '/workspace/': typeof WorkspaceIndexRoute
   '/settings/providers/$providerName': typeof SettingsProvidersProviderNameRoute
   '/settings/media/': typeof SettingsMediaIndexRoute
   '/settings/providers/': typeof SettingsProvidersIndexRoute
@@ -298,6 +312,7 @@ export interface FileRoutesByTo {
   '/settings/local-api-server': typeof SettingsLocalApiServerRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/prompts': typeof SettingsPromptsRoute
   '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
@@ -308,6 +323,7 @@ export interface FileRoutesByTo {
   '/hub': typeof HubIndexRoute
   '/launch': typeof LaunchIndexRoute
   '/skills': typeof SkillsIndexRoute
+  '/workspace': typeof WorkspaceIndexRoute
   '/settings/providers/$providerName': typeof SettingsProvidersProviderNameRoute
   '/settings/media': typeof SettingsMediaIndexRoute
   '/settings/providers': typeof SettingsProvidersIndexRoute
@@ -338,6 +354,7 @@ export interface FileRoutesById {
   '/settings/local-api-server': typeof SettingsLocalApiServerRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/prompts': typeof SettingsPromptsRoute
   '/settings/runtimes': typeof SettingsRuntimesRoute
   '/settings/shortcuts': typeof SettingsShortcutsRoute
   '/settings/voice': typeof SettingsVoiceRoute
@@ -348,6 +365,7 @@ export interface FileRoutesById {
   '/hub/': typeof HubIndexRoute
   '/launch/': typeof LaunchIndexRoute
   '/skills/': typeof SkillsIndexRoute
+  '/workspace/': typeof WorkspaceIndexRoute
   '/settings/providers/$providerName': typeof SettingsProvidersProviderNameRoute
   '/settings/media/': typeof SettingsMediaIndexRoute
   '/settings/providers/': typeof SettingsProvidersIndexRoute
@@ -379,6 +397,7 @@ export interface FileRouteTypes {
     | '/settings/local-api-server'
     | '/settings/mcp-servers'
     | '/settings/privacy'
+    | '/settings/prompts'
     | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
@@ -389,6 +408,7 @@ export interface FileRouteTypes {
     | '/hub/'
     | '/launch/'
     | '/skills/'
+    | '/workspace/'
     | '/settings/providers/$providerName'
     | '/settings/media/'
     | '/settings/providers/'
@@ -418,6 +438,7 @@ export interface FileRouteTypes {
     | '/settings/local-api-server'
     | '/settings/mcp-servers'
     | '/settings/privacy'
+    | '/settings/prompts'
     | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
@@ -428,6 +449,7 @@ export interface FileRouteTypes {
     | '/hub'
     | '/launch'
     | '/skills'
+    | '/workspace'
     | '/settings/providers/$providerName'
     | '/settings/media'
     | '/settings/providers'
@@ -457,6 +479,7 @@ export interface FileRouteTypes {
     | '/settings/local-api-server'
     | '/settings/mcp-servers'
     | '/settings/privacy'
+    | '/settings/prompts'
     | '/settings/runtimes'
     | '/settings/shortcuts'
     | '/settings/voice'
@@ -467,6 +490,7 @@ export interface FileRouteTypes {
     | '/hub/'
     | '/launch/'
     | '/skills/'
+    | '/workspace/'
     | '/settings/providers/$providerName'
     | '/settings/media/'
     | '/settings/providers/'
@@ -497,6 +521,7 @@ export interface RootRouteChildren {
   SettingsLocalApiServerRoute: typeof SettingsLocalApiServerRoute
   SettingsMcpServersRoute: typeof SettingsMcpServersRoute
   SettingsPrivacyRoute: typeof SettingsPrivacyRoute
+  SettingsPromptsRoute: typeof SettingsPromptsRoute
   SettingsRuntimesRoute: typeof SettingsRuntimesRoute
   SettingsShortcutsRoute: typeof SettingsShortcutsRoute
   SettingsVoiceRoute: typeof SettingsVoiceRoute
@@ -507,6 +532,7 @@ export interface RootRouteChildren {
   HubIndexRoute: typeof HubIndexRoute
   LaunchIndexRoute: typeof LaunchIndexRoute
   SkillsIndexRoute: typeof SkillsIndexRoute
+  WorkspaceIndexRoute: typeof WorkspaceIndexRoute
   SettingsProvidersProviderNameRoute: typeof SettingsProvidersProviderNameRoute
   SettingsMediaIndexRoute: typeof SettingsMediaIndexRoute
   SettingsProvidersIndexRoute: typeof SettingsProvidersIndexRoute
@@ -547,6 +573,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace/': {
+      id: '/workspace/'
+      path: '/workspace'
+      fullPath: '/workspace/'
+      preLoaderRoute: typeof WorkspaceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/skills/': {
@@ -617,6 +650,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/runtimes'
       fullPath: '/settings/runtimes'
       preLoaderRoute: typeof SettingsRuntimesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/prompts': {
+      id: '/settings/prompts'
+      path: '/settings/prompts'
+      fullPath: '/settings/prompts'
+      preLoaderRoute: typeof SettingsPromptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/privacy': {
@@ -801,6 +841,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsLocalApiServerRoute: SettingsLocalApiServerRoute,
   SettingsMcpServersRoute: SettingsMcpServersRoute,
   SettingsPrivacyRoute: SettingsPrivacyRoute,
+  SettingsPromptsRoute: SettingsPromptsRoute,
   SettingsRuntimesRoute: SettingsRuntimesRoute,
   SettingsShortcutsRoute: SettingsShortcutsRoute,
   SettingsVoiceRoute: SettingsVoiceRoute,
@@ -811,6 +852,7 @@ const rootRouteChildren: RootRouteChildren = {
   HubIndexRoute: HubIndexRoute,
   LaunchIndexRoute: LaunchIndexRoute,
   SkillsIndexRoute: SkillsIndexRoute,
+  WorkspaceIndexRoute: WorkspaceIndexRoute,
   SettingsProvidersProviderNameRoute: SettingsProvidersProviderNameRoute,
   SettingsMediaIndexRoute: SettingsMediaIndexRoute,
   SettingsProvidersIndexRoute: SettingsProvidersIndexRoute,

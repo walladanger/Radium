@@ -39,7 +39,8 @@ import {
   type RuntimeFilter,
 } from '@/services/runtimes'
 
-export const Route = createFileRoute(route.settings.runtimes)({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Route = createFileRoute(route.settings.runtimes as any)({
   component: RuntimesSettings,
 })
 

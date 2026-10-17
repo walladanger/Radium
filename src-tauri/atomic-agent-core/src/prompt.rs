@@ -156,8 +156,8 @@ pub const ITERATION_ONE_TOOLS: &[ToolDescriptor] = &[
     },
     ToolDescriptor {
         name: "skill.view",
-        summary: "Load a bounded page of an enabled skill's SKILL.md. Follow next offset until all needed instructions are read.",
-        args_schema: r#"{ name: string, offset?: number }"#,
+        summary: "Load one enabled skill's full SKILL.md body into the variable prompt tail.",
+        args_schema: r#"{ name: string }"#,
         tier: ToolTier::Frequent,
         examples: &[],
     },
@@ -474,6 +474,119 @@ pub const ITERATION_ONE_TOOLS: &[ToolDescriptor] = &[
         tier: ToolTier::Rare,
         examples: &[],
     },
+    // ---- network pack (present only when the assistant enables "network") ----
+    ToolDescriptor {
+        name: "net.system_map",
+        summary: "Markdown map of this computer's network setup: OS, connected adapters with IP/gateway/DNS, Wi-Fi, and which fixes exist here. Start here; base every fix on it.",
+        args_schema: r#"{}"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.connectivity",
+        summary: "Layer-by-layer check (adapter -> router -> DNS -> internet) with a verdict naming the failing layer.",
+        args_schema: r#"{}"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.interfaces",
+        summary: "Every network adapter: status, IPv4, gateway, DNS servers, DHCP. Adapter names for fixes come from here.",
+        args_schema: r#"{}"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.wifi_status",
+        summary: "Wi-Fi network, signal strength, band/channel, standard and link rate.",
+        args_schema: r#"{}"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.dns_lookup",
+        summary: "Resolve a name and time it, with the system resolver or one DNS server (IP).",
+        args_schema: r#"{ name: string, server?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.ping",
+        summary: "Ping a host: replies, loss and latency. count 1-10 (default 4).",
+        args_schema: r#"{ host: string, count?: number }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.traceroute",
+        summary: "Hops and per-hop latency to a host. maxHops 1-30 (default 20).",
+        args_schema: r#"{ host: string, maxHops?: number }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.neighbors",
+        summary: "Devices this computer has recently seen on the local network (IP, MAC).",
+        args_schema: r#"{}"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.port_check",
+        summary: "Which TCP ports answer on a device on the local network (private addresses only), up to 20 ports.",
+        args_schema: r#"{ host: string, ports: number[] }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.dns_flush",
+        summary: "FIX: clear the DNS cache. Low risk. Needs approval. Every fix takes an optional `reason`: the diagnosis it acts on, shown to the user and to an independent reviewer.",
+        args_schema: r#"{ reason?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.dhcp_renew",
+        summary: "FIX: get a fresh IP address from the router (adapter drops for seconds). Needs approval.",
+        args_schema: r#"{ adapter?: string, reason?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.adapter_restart",
+        summary: "FIX: turn an adapter off and on (offline 5-20 s). Needs approval.",
+        args_schema: r#"{ adapter: string, reason?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.set_dns",
+        summary: "FIX: set an adapter's DNS servers (IP addresses), or [] for automatic. Reports the previous servers for undo. Needs approval.",
+        args_schema: r#"{ adapter: string, servers: string[], reason?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.wifi_reconnect",
+        summary: "FIX: disconnect and rejoin the current Wi-Fi network (down 5-15 s). Needs approval.",
+        args_schema: r#"{ adapter?: string, reason?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "net.stack_reset",
+        summary: "FIX, LAST RESORT (Windows): reset Winsock and TCP/IP to defaults; high risk, needs a reboot. Needs approval.",
+        args_schema: r#"{ reason?: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
+    ToolDescriptor {
+        name: "agent.delegate",
+        summary: "Hand one self-contained task to a specialist listed under ### specialists and get its final answer back. The specialist cannot see this conversation, so put every fact it needs into `task`. Never mixed with other tools in a step; up to 4 `agent.delegate` calls in one step run their specialists at the same time.",
+        args_schema: r#"{ specialist: string, task: string }"#,
+        tier: ToolTier::Frequent,
+        examples: &[],
+    },
     ToolDescriptor {
         name: "reply",
         summary: "Final natural-language answer; ends the macro-turn. Never use to announce a pending action; keep text short (no huge dumps). If the task requires an exact answer format or marker, `text` must be ONLY that bare value or marker line — no preamble or commentary.",
@@ -625,6 +738,37 @@ pub struct StablePrefixArgs<'a> {
     pub mcp_omitted: usize,
     pub profile: crate::core::agent::model_profile::AgentModelProfile,
     pub thinking: bool,
+    /// Specialists this turn may hand work to with `agent.delegate`. Empty
+    /// omits the `### specialists` section, keeping the prefix byte-identical
+    /// to turns without delegation.
+    pub specialists: &'a [SpecialistSummary],
+}
+
+/// A specialist as the coordinating model sees it in `### specialists`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpecialistSummary {
+    pub name: String,
+    pub description: String,
+}
+
+/// Upper bound on one specialist's description in the roster.
+const MAX_SPECIALIST_DESCRIPTION_CHARS: usize = 300;
+
+fn render_specialists(specialists: &[SpecialistSummary]) -> String {
+    let mut section = String::from(
+        "### specialists\nYou coordinate these specialists. When a task clearly fits one, hand it \
+         over with `agent.delegate` instead of doing it yourself, then use its answer. Do the \
+         work yourself when none fits. Independent tasks for different specialists go in \
+         one step as several `agent.delegate` calls (at most 4) so they run in parallel.",
+    );
+    for specialist in specialists {
+        let description = bounded_chars(
+            specialist.description.trim(),
+            MAX_SPECIALIST_DESCRIPTION_CHARS,
+        );
+        section.push_str(&format!("\n- {}: {}", specialist.name, description));
+    }
+    section
 }
 
 pub fn build_stable_prefix_for_profile(
@@ -647,6 +791,7 @@ pub fn build_stable_prefix_for_profile(
         mcp_omitted: 0,
         profile,
         thinking,
+        specialists: &[],
     })
 }
 
@@ -662,6 +807,7 @@ pub fn build_stable_prefix_with(args: &StablePrefixArgs<'_>) -> String {
         mcp_omitted,
         profile,
         thinking,
+        specialists,
     } = *args;
     let persona = system_persona
         .map(str::to_string)
@@ -767,6 +913,10 @@ pub fn build_stable_prefix_with(args: &StablePrefixArgs<'_>) -> String {
         ]
         .join("\n"),
     );
+
+    if !specialists.is_empty() {
+        sections.push(render_specialists(specialists));
+    }
 
     // Rendered last on purpose: the sections above are byte-identical across
     // threads, so a shared llama.cpp slot re-ingests only from here down when

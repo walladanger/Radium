@@ -12,12 +12,9 @@ import { DataProvider } from '@/providers/DataProvider'
 import { route } from '@/constants/routes'
 import { ExtensionProvider } from '@/providers/ExtensionProvider'
 import { ToasterProvider } from '@/providers/ToasterProvider'
-// import { useAnalytic } from '@/hooks/useAnalytic'
-// import { PromptAnalytic } from '@/containers/analytics/PromptAnalytic'
 import { useOnboardingModelReminder } from '@/hooks/useOnboardingModelReminder'
 import { PromptOnboardingModel } from '@/containers/PromptOnboardingModel'
 import { DownloadManagement } from '@/containers/DownloadManegement'
-import { AnalyticProvider } from '@/providers/AnalyticProvider'
 import { useLeftPanel } from '@/hooks/useLeftPanel'
 import { useTrayStatusSync } from '@/hooks/useTrayStatusSync'
 import ToolApproval from '@/containers/dialogs/ToolApproval'
@@ -28,10 +25,9 @@ import VoiceSetupDialog from '@/containers/dialogs/VoiceSetupDialog'
 import { TranslationProvider } from '@/i18n/TranslationContext'
 import AttachmentIngestionDialog from '@/containers/dialogs/AttachmentIngestionDialog'
 import WhatsNewDialog from '@/containers/dialogs/WhatsNewDialog'
-import { useEffect } from 'react'
 import { useSetupCompleted } from '@/hooks/useSetupCompleted'
+import { BootReady } from '@/components/BootReady'
 import GlobalError from '@/containers/GlobalError'
-import * as Sentry from '@sentry/react'
 import { GlobalEventHandler } from '@/providers/GlobalEventHandler'
 import { StartupBackendCoordinator } from '@/providers/StartupBackendCoordinator'
 import { ServiceHubProvider } from '@/providers/ServiceHubProvider'
@@ -39,19 +35,15 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { LeftSidebar } from '@/components/left-sidebar'
 import { WorkspacePanel } from '@/containers/WorkspacePanel'
 import { WindowFrame } from '@/components/WindowFrame'
+import { usePanelStatusPublisher } from '@/panels/panelStatus'
 
 export const Route = createRootRoute({
   component: RootLayout,
-  errorComponent: ({ error }) => {
-    // ATO-113: router-level errors also reach Sentry (the ErrorBoundary in
-    // main.tsx wraps RouterProvider, but TanStack renders this component
-    // itself, so capture explicitly here too).
-    Sentry.captureException(error)
-    return <GlobalError error={error} />
-  },
+  errorComponent: ({ error }) => <GlobalError error={error} />,
 })
 
 const AppLayout = () => {
+  usePanelStatusPublisher()
   const { showOnboardingModelReminder } = useOnboardingModelReminder()
   const isLeftPanelOpen = useLeftPanel((state) => state.open)
   const setLeftPanel = useLeftPanel((state) => state.setLeftPanel)
@@ -73,7 +65,6 @@ const AppLayout = () => {
           defaultWidth={sidebarWidth}
           onWidthChange={setLeftPanelWidth}
         >
-          <AnalyticProvider />
           <KeyboardShortcutsProvider />
           <DialogAppUpdater />
           {isSetupCompleted && <BackendUpdater />}
@@ -90,8 +81,6 @@ const AppLayout = () => {
             </div>
           </SidebarInset>
 
-          {/* Попап согласия на аналитику отключён; настройки → Privacy по-прежнему доступны */}
-          {/* {productAnalyticPrompt && <PromptAnalytic />} */}
           {showOnboardingModelReminder && <PromptOnboardingModel />}
           {/* ATO-462: mounted once at the root, not inside the sidebar or the
             header. It used to render in one of two places depending on whether
@@ -133,28 +122,11 @@ function RootLayout() {
     )
   }
 
-  useEffect(() => {
-    // Wait for the UI to be fully rendered before hiding the loader
-    const hideLoader = () => {
-      requestAnimationFrame(() => {
-        // Hide the HTML loader
-        document.body.classList.add('loaded')
-
-        // Remove the HTML loader element after transition
-        const loader = document.getElementById('initial-loader')
-        if (loader) {
-          setTimeout(() => {
-            loader.remove()
-          }, 300)
-        }
-      })
-    }
-
-    // Give providers time to initialize and paint
-    const timer = setTimeout(hideLoader, 200)
-
-    return () => clearTimeout(timer)
-  }, [])
+  // The boot screen in index.html is no longer removed on a timer here. It
+  // used to go 200 ms after this component mounted - before ServiceHubProvider
+  // and ExtensionProvider had rendered anything - which left a blank window
+  // for as long as extensions took to load, and for good if one never did.
+  // <BootReady /> below dismisses it once the layout has actually painted.
 
   const IS_LOGS_ROUTE = getInitialLayoutType()
 
@@ -170,6 +142,7 @@ function RootLayout() {
             <GlobalEventHandler />
             <StartupBackendCoordinator />
             {IS_LOGS_ROUTE ? <LogsLayout /> : <AppLayout />}
+            <BootReady />
           </ExtensionProvider>
           {/* <TanStackRouterDevtools position="bottom-right" /> */}
           <ToolApproval />

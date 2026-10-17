@@ -3,7 +3,66 @@ import type {
   AgentEvent,
   AgentRunState,
   AgentRunToolTrace,
+  AgentSpecialistLane,
 } from '@/types/agent'
+
+/** Longest text kept per lane; older output scrolls away. */
+const MAX_LANE_TEXT = 20_000
+
+function capLaneText(text: string): string {
+  return text.length > MAX_LANE_TEXT ? text.slice(-MAX_LANE_TEXT) : text
+}
+
+function updateLane(
+  state: AgentRunState,
+  laneId: string,
+  update: (lane: AgentSpecialistLane) => AgentSpecialistLane
+): AgentRunState {
+  const lanes = state.lanes ?? []
+  if (!lanes.some((lane) => lane.laneId === laneId)) return state
+  return {
+    ...state,
+    lanes: lanes.map((lane) => (lane.laneId === laneId ? update(lane) : lane)),
+  }
+}
+
+/**
+ * Folds one event of a specialist's nested turn into its lane. Only what a
+ * lane shows is kept: streamed reasoning and answer text, and tool calls.
+ * Lifecycle and approval events stay with the coordinator's run.
+ */
+export function reduceSpecialistLane(
+  lane: AgentSpecialistLane,
+  event: AgentEvent
+): AgentSpecialistLane {
+  switch (event.type) {
+    case 'step_started':
+      // Each step restarts the streamed answer; keep the trail of reasoning.
+      return { ...lane, text: '' }
+    case 'reasoning_delta':
+      return { ...lane, reasoning: capLaneText(lane.reasoning + event.text) }
+    case 'assistant_delta':
+      return { ...lane, text: capLaneText(lane.text + event.text) }
+    case 'assistant_reply':
+      return { ...lane, text: capLaneText(event.text) }
+    case 'tool_call_parsed':
+      return {
+        ...lane,
+        tools: [
+          ...lane.tools,
+          {
+            call: event.call,
+            batchIndex: event.batch_index,
+            batchSize: event.batch_size,
+          },
+        ],
+      }
+    case 'tool_call_executed':
+      return { ...lane, tools: replaceParsedTool(lane.tools, event) }
+    default:
+      return lane
+  }
+}
 
 export function createAgentRunState(): AgentRunState {
   return {
@@ -171,6 +230,35 @@ export function reduceAgentRunState(
           },
         },
       }
+    case 'specialist_started':
+      return {
+        ...state,
+        lanes: [
+          ...(state.lanes ?? []),
+          {
+            laneId: event.lane_id,
+            specialist: event.specialist,
+            modelId: event.model_id,
+            task: event.task,
+            status: 'running',
+            reasoning: '',
+            text: '',
+            tools: [],
+            startedAtMs: nowMs,
+          },
+        ],
+      }
+    case 'specialist_event':
+      return updateLane(state, event.lane_id, (lane) =>
+        reduceSpecialistLane(lane, event.event)
+      )
+    case 'specialist_finished':
+      return updateLane(state, event.lane_id, (lane) => ({
+        ...lane,
+        status: event.ok ? 'done' : 'failed',
+        summary: event.summary,
+        finishedAtMs: nowMs,
+      }))
     case 'turn_finished': {
       const status =
         event.reason === 'cancelled'

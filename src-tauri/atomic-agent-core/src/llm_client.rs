@@ -248,6 +248,11 @@ impl CompletionRequest {
         }
     }
 
+    /// An unconstrained completion, used by native specialist reviewers.
+    pub fn oneshot(prompt: AgentPrompt, max_tokens: u32) -> Self {
+        Self { max_tokens, ..Self::base(prompt) }
+    }
+
     fn base(prompt: AgentPrompt) -> Self {
         Self {
             prompt,

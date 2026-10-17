@@ -12,6 +12,9 @@ pub mod mcp;
 pub mod media;
 #[cfg(target_os = "windows")]
 pub mod notifications;
+pub mod panels;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod production_log;
 pub(crate) mod process_env;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod process_reaper;
@@ -22,7 +25,5 @@ pub mod setup;
 pub mod state;
 pub mod system;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub mod telemetry;
 pub mod threads;
 pub mod tray_status;
-

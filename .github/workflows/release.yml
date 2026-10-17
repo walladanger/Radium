@@ -46,7 +46,7 @@ jobs:
 
       - name: Create Draft Release
         id: create_release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 #@v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 #@v3.0.3
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
           name: "Radium v${{ steps.get_version.outputs.version }}"
@@ -67,13 +67,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (full history + tags)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #@v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 #@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 #@v7.0.0
         with:
           python-version: "3.12"
 
@@ -156,12 +156,12 @@ jobs:
       zip_name: ${{ steps.metadata.outputs.zip_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 #@v7.1.0
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 #@stable
@@ -169,7 +169,7 @@ jobs:
           targets: x86_64-apple-darwin,aarch64-apple-darwin
 
       - name: Cache Yarn
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 #@v6.1.0
         with:
           path: .yarn/cache
           key: yarn-macos-${{ hashFiles('yarn.lock') }}
@@ -208,7 +208,7 @@ jobs:
           ctoml src-tauri/Cargo.toml package.version "$NEW_VERSION"
 
       - name: Import code signing certificate
-        uses: apple-actions/import-codesign-certs@8f3fb608891dd2244cdab3d69cd68c0d37a7fe93 #@v2
+        uses: apple-actions/import-codesign-certs@77ba2a2a8f5cfc8c405ebf3159f767c323e238f9 #@v7.1.0
         continue-on-error: true
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
@@ -242,20 +242,11 @@ jobs:
 
       - name: Build web app and generate icons
         env:
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          # ATO-113: Sentry frontend DSN baked into the bundle; SENTRY_RELEASE =
-          # git SHA shared with the desktop project. The auth-token/org/project
-          # trio additionally arms the @sentry/vite-plugin source-map upload.
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_ENVIRONMENT: production
-          SENTRY_RELEASE: ${{ github.sha }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_FRONTEND: ${{ secrets.SENTRY_PROJECT_FRONTEND }}
-          # ATO-113: source-map generation + @sentry/vite-plugin push peak heap
-          # past Node's ~2GB default, so raise it for the web build too.
+          # The web build's peak heap goes past Node's ~2GB default.
           NODE_OPTIONS: "--max-old-space-size=8192"
+          # Optional: Radium's own opt-in crash reporting. Unset = inert build.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ github.sha }}
         run: |
           yarn build:web
           yarn build:icon
@@ -272,6 +263,9 @@ jobs:
         env:
           TAURI_BUNDLER_DMG_IGNORE_CI: "true"
           NODE_OPTIONS: "--max-old-space-size=4196"
+          # Optional: Radium's own opt-in crash reporting. Unset = inert build.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -280,18 +274,6 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          # ATO-113: bake the Rust desktop DSN (option_env!) + matching release.
-          SENTRY_DSN_DESKTOP: ${{ secrets.SENTRY_DSN_DESKTOP }}
-          # `tauri build` re-runs `beforeBuildCommand` (`yarn build:web`), which
-          # rebuilds the bundle produced by the earlier web step. Without the
-          # frontend DSN here that rebuild silently overwrites it with a build
-          # where `initSentryFrontend()` bails on an empty DSN — which is why
-          # the frontend project saw no production events at all.
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_ENVIRONMENT: production
-          SENTRY_RELEASE: ${{ github.sha }}
         run: |
           yarn copy:assets:tauri
 
@@ -306,24 +288,6 @@ jobs:
           # Универсальная macOS-сборка + переименование VOLNAME с версией + ресигн/нотаризация DMG
           make build-mac
 
-      - name: Upload Rust debug files to Sentry (macOS)
-        continue-on-error: true
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_DESKTOP: ${{ secrets.SENTRY_PROJECT_DESKTOP }}
-        run: |
-          if [ -z "$SENTRY_AUTH_TOKEN" ] || [ -z "$SENTRY_ORG" ] || [ -z "$SENTRY_PROJECT_DESKTOP" ]; then
-            echo "Sentry secrets absent — skipping debug-file upload."
-            exit 0
-          fi
-          # split-debuginfo=packed emits .dSYM bundles next to each per-arch
-          # binary; sentry-cli scans recursively and dedupes by debug-id.
-          npx @sentry/cli@^2 debug-files upload \
-            --org "$SENTRY_ORG" --project "$SENTRY_PROJECT_DESKTOP" \
-            src-tauri/target/aarch64-apple-darwin/release \
-            src-tauri/target/x86_64-apple-darwin/release
-
       - name: Collect artifact metadata
         id: metadata
         env:
@@ -337,39 +301,41 @@ jobs:
           TAR_NAME="Radium.app.tar.gz"
           ZIP_NAME="radium-mac-universal-${VERSION}.zip"
 
-          echo "mac_sig=${MAC_SIG}" >> "$GITHUB_OUTPUT"
-          echo "tar_name=${TAR_NAME}" >> "$GITHUB_OUTPUT"
-          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          {
+            echo "mac_sig=${MAC_SIG}"
+            echo "tar_name=${TAR_NAME}"
+            echo "zip_name=${ZIP_NAME}"
+          } >> "$GITHUB_OUTPUT"
 
           cd ../../bundle/dmg
-          DMG_NAME=$(ls *.dmg | head -1)
+          # First *.dmg in name order (empty if none), like `ls *.dmg | head -1`.
+          shopt -s nullglob
+          DMG_FILES=(*.dmg)
+          DMG_NAME="${DMG_FILES[0]:-}"
           echo "dmg_name=${DMG_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload .zip to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.metadata.outputs.zip_name }}
           asset_name: ${{ steps.metadata.outputs.zip_name }}
           asset_content_type: application/zip
 
       - name: Upload .dmg to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/universal-apple-darwin/release/bundle/dmg/${{ steps.metadata.outputs.dmg_name }}
           asset_name: ${{ steps.metadata.outputs.dmg_name }}
           asset_content_type: application/octet-stream
 
       - name: Upload .tar.gz (for updater) to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.metadata.outputs.tar_name }}
           asset_name: ${{ steps.metadata.outputs.tar_name }}
@@ -394,15 +360,15 @@ jobs:
       msi_name: ${{ steps.metadata.outputs.msi_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 #@v7.1.0
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Setup Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 #@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 #@v7.0.0
         with:
           python-version: "3.12"
 
@@ -424,7 +390,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Cache Yarn
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 #@v6.1.0
         with:
           path: .yarn/cache
           key: yarn-windows-${{ hashFiles('yarn.lock') }}
@@ -545,7 +511,7 @@ jobs:
         run: yarn download:bin
 
       - name: Restore verified Windows backend archive cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 #@v6.1.0
         with:
           path: ${{ runner.temp }}\atomic-backend-cache
           key: windows-backend-bundle-${{ hashFiles('scripts/windows-backend-bundle.json') }}
@@ -557,17 +523,11 @@ jobs:
 
       - name: Build web app and generate icons
         env:
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          # ATO-113: Sentry frontend DSN + source-map upload (see macOS job).
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_ENVIRONMENT: production
-          SENTRY_RELEASE: ${{ github.sha }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_FRONTEND: ${{ secrets.SENTRY_PROJECT_FRONTEND }}
-          # ATO-113: source-map build needs more heap than Node's ~2GB default.
+          # The web build needs more heap than Node's ~2GB default.
           NODE_OPTIONS: "--max-old-space-size=8192"
+          # Optional: Radium's own opt-in crash reporting. Unset = inert build.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ github.sha }}
         run: |
           yarn build:web
           yarn build:icon
@@ -596,39 +556,13 @@ jobs:
       - name: Build app (unsigned)
         env:
           NODE_OPTIONS: "--max-old-space-size=4196"
+          # Optional: Radium's own opt-in crash reporting. Unset = inert build.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          # ATO-113: bake the Rust desktop DSN (option_env!) + matching release.
-          SENTRY_DSN_DESKTOP: ${{ secrets.SENTRY_DSN_DESKTOP }}
-          # `tauri build` re-runs `beforeBuildCommand` (`yarn build:web`), which
-          # rebuilds the bundle produced by the earlier web step. Without the
-          # frontend DSN here that rebuild silently overwrites it with a build
-          # where `initSentryFrontend()` bails on an empty DSN — which is why
-          # the frontend project saw no production events at all.
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_ENVIRONMENT: production
-          SENTRY_RELEASE: ${{ github.sha }}
         run: yarn tauri build
-
-      - name: Upload Rust debug files to Sentry (Windows)
-        continue-on-error: true
-        shell: bash
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_DESKTOP: ${{ secrets.SENTRY_PROJECT_DESKTOP }}
-        run: |
-          if [ -z "$SENTRY_AUTH_TOKEN" ] || [ -z "$SENTRY_ORG" ] || [ -z "$SENTRY_PROJECT_DESKTOP" ]; then
-            echo "Sentry secrets absent — skipping debug-file upload."
-            exit 0
-          fi
-          # MSVC emits a .pdb next to the binary; debug=1 keeps it populated.
-          npx @sentry/cli@^2 debug-files upload \
-            --org "$SENTRY_ORG" --project "$SENTRY_PROJECT_DESKTOP" \
-            src-tauri/target/release
 
       # ── Post-build code signing (DigiCert KeyLocker via signtool KSP) ──
       # certsync installs the DigiCert KeyLocker KSP and the code-signing cert
@@ -700,31 +634,36 @@ jobs:
         run: |
           cd src-tauri/target/release/bundle
 
+          # First match in name order (empty if none), like `ls *.ext | head -1`.
+          shopt -s nullglob
+
           cd nsis
-          EXE_NAME=$(ls *.exe | head -1)
+          EXE_FILES=(*.exe)
+          EXE_NAME="${EXE_FILES[0]:-}"
           WIN_SIG=$(cat "${EXE_NAME}.sig" 2>/dev/null || echo "")
-          echo "exe_name=${EXE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "win_sig=${WIN_SIG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "exe_name=${EXE_NAME}"
+            echo "win_sig=${WIN_SIG}"
+          } >> "$GITHUB_OUTPUT"
 
           cd ../msi
-          MSI_NAME=$(ls *.msi | head -1)
+          MSI_FILES=(*.msi)
+          MSI_NAME="${MSI_FILES[0]:-}"
           echo "msi_name=${MSI_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload NSIS installer to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/nsis/${{ steps.metadata.outputs.exe_name }}
           asset_name: ${{ steps.metadata.outputs.exe_name }}
           asset_content_type: application/octet-stream
 
       - name: Upload MSI installer to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/msi/${{ steps.metadata.outputs.msi_name }}
           asset_name: ${{ steps.metadata.outputs.msi_name }}
@@ -732,10 +671,9 @@ jobs:
 
       - name: Upload NSIS updater signature to release
         if: steps.metadata.outputs.win_sig != ''
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/nsis/${{ steps.metadata.outputs.exe_name }}.sig
           asset_name: ${{ steps.metadata.outputs.exe_name }}.sig
@@ -760,12 +698,12 @@ jobs:
       appimage_name: ${{ steps.metadata.outputs.appimage_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 #@v7.1.0
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 #@stable
@@ -782,7 +720,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Cache Yarn
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 #@v6.1.0
         with:
           path: .yarn/cache
           key: yarn-linux-${{ hashFiles('yarn.lock') }}
@@ -894,17 +832,11 @@ jobs:
 
       - name: Build web app and generate icons
         env:
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          # ATO-113: Sentry frontend DSN + source-map upload (see macOS job).
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_ENVIRONMENT: production
-          SENTRY_RELEASE: ${{ github.sha }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_FRONTEND: ${{ secrets.SENTRY_PROJECT_FRONTEND }}
-          # ATO-113: source-map build needs more heap than Node's ~2GB default.
+          # The web build needs more heap than Node's ~2GB default.
           NODE_OPTIONS: "--max-old-space-size=8192"
+          # Optional: Radium's own opt-in crash reporting. Unset = inert build.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ github.sha }}
         run: |
           yarn build:web
           yarn build:icon
@@ -932,44 +864,17 @@ jobs:
       - name: Build app (AppImage)
         env:
           NODE_OPTIONS: "--max-old-space-size=4196"
+          # Optional: Radium's own opt-in crash reporting. Unset = inert build.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_RELEASE: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          # ATO-113: bake the Rust desktop DSN (option_env!) + matching release.
-          SENTRY_DSN_DESKTOP: ${{ secrets.SENTRY_DSN_DESKTOP }}
-          # `tauri build` re-runs `beforeBuildCommand` (`yarn build:web`), which
-          # rebuilds the bundle produced by the earlier web step. Without the
-          # frontend DSN here that rebuild silently overwrites it with a build
-          # where `initSentryFrontend()` bails on an empty DSN — which is why
-          # the frontend project saw no production events at all.
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_ENVIRONMENT: production
-          SENTRY_RELEASE: ${{ github.sha }}
           # NO_STRIP=1 keeps `linuxdeploy` from stripping symbols that
           # the bundled `bun` runtime needs; see the existing
           # `build:tauri:linux` script in package.json.
           NO_STRIP: "1"
         run: yarn build:tauri:linux
-
-      - name: Upload Rust debug files to Sentry (Linux)
-        continue-on-error: true
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT_DESKTOP: ${{ secrets.SENTRY_PROJECT_DESKTOP }}
-        run: |
-          if [ -z "$SENTRY_AUTH_TOKEN" ] || [ -z "$SENTRY_ORG" ] || [ -z "$SENTRY_PROJECT_DESKTOP" ]; then
-            echo "Sentry secrets absent — skipping debug-file upload."
-            exit 0
-          fi
-          # split-debuginfo=packed emits a .dwp; ELF binaries also carry a
-          # build-id sentry-cli matches on. Upload before the AppImage repack
-          # strips nothing extra (NO_STRIP=1), so symbols remain resolvable.
-          npx @sentry/cli@^2 debug-files upload \
-            --org "$SENTRY_ORG" --project "$SENTRY_PROJECT_DESKTOP" \
-            src-tauri/target/release
 
       - name: Recreate updater signature after AppImage repackage
         # `buildAppImage.sh` deletes the AppImage that `tauri build`
@@ -1004,7 +909,10 @@ jobs:
           cd src-tauri/target/release/bundle/appimage
           echo "=== bundle/appimage/ contents ==="
           ls -la
-          APPIMAGE_NAME=$(ls *.AppImage | head -1)
+          # First *.AppImage in name order (empty if none), like `ls *.AppImage | head -1`.
+          shopt -s nullglob
+          APPIMAGE_FILES=(*.AppImage)
+          APPIMAGE_NAME="${APPIMAGE_FILES[0]:-}"
           if [ -z "$APPIMAGE_NAME" ]; then
             echo "ERROR: no .AppImage produced"
             exit 1
@@ -1015,14 +923,15 @@ jobs:
           else
             echo "Warning: no ${APPIMAGE_NAME}.sig (Tauri updater signature missing)"
           fi
-          echo "appimage_name=${APPIMAGE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "linux_sig=${LINUX_SIG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "appimage_name=${APPIMAGE_NAME}"
+            echo "linux_sig=${LINUX_SIG}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload .AppImage to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/appimage/${{ steps.metadata.outputs.appimage_name }}
           asset_name: ${{ steps.metadata.outputs.appimage_name }}
@@ -1030,95 +939,10 @@ jobs:
 
       - name: Upload .AppImage updater signature to release
         if: steps.metadata.outputs.linux_sig != ''
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload-release-asset
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
           asset_path: ./src-tauri/target/release/bundle/appimage/${{ steps.metadata.outputs.appimage_name }}.sig
           asset_name: ${{ steps.metadata.outputs.appimage_name }}.sig
           asset_content_type: text/plain
-
-  # ──────────────────────────────────────────────────────────────
-  # Tauri updater manifest  (macOS + Windows + Linux; tolerant of any being skipped)
-  # ──────────────────────────────────────────────────────────────
-  publish-latest-json:
-    permissions:
-      contents: write
-    if: |
-      always() && needs.create-draft-release.result == 'success' &&
-      (needs.build-macos.result == 'success' || needs.build-windows.result == 'success' || needs.build-linux-x64.result == 'success')
-    runs-on: ubuntu-latest
-    needs: [create-draft-release, build-macos, build-windows, build-linux-x64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 #@v4
-
-      - name: Generate latest.json for Tauri updater
-        env:
-          VERSION: ${{ needs.create-draft-release.outputs.version }}
-          MAC_SIG: ${{ needs.build-macos.outputs.mac_sig }}
-          TAR_NAME: ${{ needs.build-macos.outputs.tar_name }}
-          MAC_RESULT: ${{ needs.build-macos.result }}
-          WIN_SIG: ${{ needs.build-windows.outputs.win_sig }}
-          EXE_NAME: ${{ needs.build-windows.outputs.exe_name }}
-          WIN_RESULT: ${{ needs.build-windows.result }}
-          LINUX_SIG: ${{ needs.build-linux-x64.outputs.linux_sig }}
-          APPIMAGE_NAME: ${{ needs.build-linux-x64.outputs.appimage_name }}
-          LINUX_RESULT: ${{ needs.build-linux-x64.result }}
-        run: |
-          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
-          DARWIN_URL="https://github.com/AtomicBot-ai/Atomic-Chat/releases/download/v${VERSION}/${TAR_NAME// /.}"
-          WIN_URL="https://github.com/AtomicBot-ai/Atomic-Chat/releases/download/v${VERSION}/${EXE_NAME// /.}"
-          LINUX_URL="https://github.com/AtomicBot-ai/Atomic-Chat/releases/download/v${VERSION}/${APPIMAGE_NAME// /.}"
-
-          # Fill in the platform blocks only for jobs that actually
-          # succeeded; delete the others so Tauri's updater doesn't see a
-          # half-populated entry and try to fetch an empty URL.
-          jq --arg version "$VERSION" \
-             --arg pub_date "$PUB_DATE" \
-             --arg darwin_sig "$MAC_SIG" \
-             --arg darwin_url "$DARWIN_URL" \
-             --arg win_sig "$WIN_SIG" \
-             --arg win_url "$WIN_URL" \
-             --arg linux_sig "$LINUX_SIG" \
-             --arg linux_url "$LINUX_URL" \
-             --arg mac_result "$MAC_RESULT" \
-             --arg win_result "$WIN_RESULT" \
-             --arg linux_result "$LINUX_RESULT" \
-             '.version = $version
-              | .pub_date = $pub_date
-              | (if $mac_result == "success" then
-                  .platforms["darwin-aarch64"].signature = $darwin_sig
-                  | .platforms["darwin-aarch64"].url = $darwin_url
-                  | .platforms["darwin-x86_64"].signature = $darwin_sig
-                  | .platforms["darwin-x86_64"].url = $darwin_url
-                else
-                  del(.platforms["darwin-aarch64"])
-                  | del(.platforms["darwin-x86_64"])
-                end)
-              | (if $win_result == "success" then
-                  .platforms["windows-x86_64"].signature = $win_sig
-                  | .platforms["windows-x86_64"].url = $win_url
-                else
-                  del(.platforms["windows-x86_64"])
-                end)
-              | (if $linux_result == "success" then
-                  .platforms["linux-x86_64"].signature = $linux_sig
-                  | .platforms["linux-x86_64"].url = $linux_url
-                else
-                  del(.platforms["linux-x86_64"])
-                end)' \
-             src-tauri/latest.json.template > latest.json
-
-          cat latest.json
-
-      - name: Upload latest.json to release
-        uses: actions/upload-release-asset@64e5e85fc528f162d7ba7ce2d15a3bb67efb3d80 #@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
-          asset_path: ./latest.json
-          asset_name: latest.json
-          asset_content_type: application/json

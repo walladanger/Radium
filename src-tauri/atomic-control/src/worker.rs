@@ -499,6 +499,7 @@ impl WorkerCoordinator {
         let mut terminal = String::new();
         run_turn(
             RunTurnInput {
+                slot_id: atomic_agent_core::runner::AGENT_SLOT_ID,
                 run_id: attempt,
                 session_id: attempt,
                 user_message: &instructions,

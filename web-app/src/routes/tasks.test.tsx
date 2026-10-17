@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import translations from '@/locales/en/atomic-tasks.json'
 import { TasksPage } from './tasks'
 
@@ -58,6 +58,7 @@ describe('Tasks workspace', () => {
     expect(screen.getByText('Artifact validation records task evidence. Applying changes to your branch is a separate review step.')).toBeInTheDocument()
   })
   it('creates typed bounded tasks through a readable form', async () => {
+    command.mockResolvedValueOnce(true)
     render(<TasksPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Create plan' }))
     fireEvent.change(screen.getByLabelText('Project identifier'), { target: { value: 'repo' } })
@@ -67,5 +68,9 @@ describe('Tasks workspace', () => {
     fireEvent.change(screen.getByLabelText('Writable scope'), { target: { value: 'src/feature\nsrc/tests' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save plan' }))
     expect(command).toHaveBeenCalledWith({ type: 'create_plan', project_id: 'repo', title: 'New feature', tasks: [{ id: expect.any(String), title: 'Implement feature', description: 'Existing tests pass', role: 'edit', dependencies: [], write_scopes: ['src/feature', 'src/tests'] }] })
+    await waitFor(() => expect(screen.queryByLabelText('Plan title')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Create plan' }))
+    expect(screen.getByLabelText('Plan title')).toHaveValue('')
+    expect(screen.getByLabelText('Task title')).toHaveValue('')
   })
 })

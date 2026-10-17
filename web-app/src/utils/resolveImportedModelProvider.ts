@@ -38,8 +38,15 @@ export function resolveImportedModelProvider<T extends ProviderLike>(
   const lists = (p: T) =>
     p.active !== false &&
     Boolean(p.models?.some((m) => m.id === modelId || m.id === altId))
+
+  const providerMap = new Map<string, T>()
+  for (let i = 0, len = providers.length; i < len; i++) {
+    const p = providers[i]
+    providerMap.set(p.provider, p)
+  }
+
   const byName = (name: string | undefined) =>
-    name ? providers.find((p) => p.provider === name) : undefined
+    name ? providerMap.get(name) : undefined
 
   const preferred = [
     LOCAL_ENGINE_PROVIDERS.has(options.selectedProvider ?? '')
@@ -48,13 +55,13 @@ export function resolveImportedModelProvider<T extends ProviderLike>(
     options.eventProvider,
     LOCAL_LLAMACPP_PROVIDER,
   ]
-  for (const name of preferred) {
-    const candidate = byName(name)
+  for (let i = 0; i < preferred.length; i++) {
+    const candidate = byName(preferred[i])
     if (candidate && lists(candidate)) return candidate
   }
 
   return (
     providers.find(lists) ??
-    providers.find((p) => p.provider === LOCAL_LLAMACPP_PROVIDER)
+    providerMap.get(LOCAL_LLAMACPP_PROVIDER)
   )
 }

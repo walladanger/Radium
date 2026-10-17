@@ -77,6 +77,32 @@ export type AgentTurnRequest = {
    * (see `@/lib/rag-collections`) and reach the backend verbatim.
    */
   rag?: AgentRagRequest
+  /**
+   * Assistants the agent may hand tasks to with `agent.delegate`. Omitting it
+   * (or sending none) keeps delegation off for the turn.
+   */
+  specialists?: AgentSpecialist[]
+  /** Tool families enabled for the thread's assistant (e.g. `network`). */
+  tool_packs?: AgentToolPack[]
+}
+
+/** Optional tool families an assistant can switch on. */
+export type AgentToolPack = 'network'
+
+/** An assistant offered to the agent as a specialist it can delegate to. */
+export type AgentSpecialist = {
+  name: string
+  /** When the coordinator should use it. */
+  description: string
+  /** Its own rendered system instructions. */
+  instructions?: string
+  /** Tool families this specialist gets on top of the shared tools. */
+  tool_packs?: AgentToolPack[]
+  /** Its own model; absent shares the coordinator's. */
+  model_id?: string
+  provider?: string
+  capabilities?: string[]
+  context_window?: number
 }
 
 export type AgentRagRequest = {
@@ -232,6 +258,20 @@ export type AgentEvent =
   | { type: 'assistant_reply'; text: string }
   | { type: 'step_error'; message: string; category: string }
   | {
+      type: 'specialist_started'
+      lane_id: string
+      specialist: string
+      model_id: string
+      task: string
+    }
+  | { type: 'specialist_event'; lane_id: string; event: AgentEvent }
+  | {
+      type: 'specialist_finished'
+      lane_id: string
+      ok: boolean
+      summary: string
+    }
+  | {
       type: 'turn_finished'
       reason: AgentTurnFinishReason
       step_count: number
@@ -296,6 +336,25 @@ export type AgentRunState = {
   approvalResolving: boolean
   folderAccessResolving: boolean
   trace: AgentRunTrace
+  /** Specialist lanes opened by `agent.delegate`, in the order they started. */
+  lanes?: AgentSpecialistLane[]
+}
+
+export type AgentSpecialistLaneStatus = 'running' | 'done' | 'failed'
+
+/** One specialist's live view: its task, streamed text and tool calls. */
+export type AgentSpecialistLane = {
+  laneId: string
+  specialist: string
+  modelId: string
+  task: string
+  status: AgentSpecialistLaneStatus
+  reasoning: string
+  text: string
+  tools: AgentRunToolTrace[]
+  summary?: string
+  startedAtMs: number
+  finishedAtMs?: number
 }
 
 export type AgentRunSummary = {

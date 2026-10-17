@@ -14,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::approval::ApprovalGate;
 use super::attachments::stage_attachments;
+use super::delegation::{PreparedSpecialist, SpecialistDelegator, SpecialistModel, DELEGATE_TOOL};
 use super::folder_access::FolderAccessGate;
 use super::llm_client::{
     find_session_by_model_and_backend, AgentLlmClient, ContextExpansionHook, LlamaServerClient,
@@ -25,18 +26,19 @@ use super::openai_client::{
 };
 use super::path_policy::{canonical_directory, expand_home, lexical_normalize, EditableRoots};
 use super::prompt::{
-    build_stable_prefix_with, CapabilitiesSummary, SkillDescriptor, StablePrefixArgs,
-    DEFAULT_MAX_PARALLEL_TOOL_CALLS, ITERATION_ONE_TOOLS,
+    build_stable_prefix_with, CapabilitiesSummary, SkillDescriptor, SpecialistSummary,
+    StablePrefixArgs, DEFAULT_MAX_PARALLEL_TOOL_CALLS, ITERATION_ONE_TOOLS,
 };
 use super::rag_bridge::{DocsBridge, LiveDocsBridge};
 use super::runner::{run_turn, RunTurnInput, MAX_STEPS};
 use super::session::{load_session, save_session, validate_session_id, AgentReseedMessage};
 use super::skills::load_registry;
 use super::target::{resolve_agent_target, resolve_mlx_target, AgentTarget};
-use super::tools::DesktopServices;
+use super::tools::net::{net_tool_names, NETWORK_PACK};
+use super::tools::{DelegateHook, DesktopServices};
 use super::types::{
-    AgentApprovalDecision, AgentEvent, AgentFolderAccessDecision, AgentReasoning, AgentTurnRequest,
-    ApprovalDecision,
+    AgentApprovalDecision, AgentEvent, AgentFolderAccessDecision, AgentReasoning, AgentSpecialist,
+    AgentTurnRequest, ApprovalDecision,
 };
 use super::workspace::default_agent_workspace;
 use crate::core::app::commands::get_jan_data_folder_path;
@@ -243,7 +245,7 @@ fn build_agent_client<R: Runtime>(
 #[async_trait]
 impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
     async fn write_clipboard(&self, text: String) -> Result<(), String> {
-        #[cfg(desktop)]
+        #[cfg(feature = "desktop")]
         {
             tauri::async_runtime::spawn_blocking(move || {
                 crate::core::tray_status::write_clipboard(&text)
@@ -251,7 +253,7 @@ impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
             .await
             .map_err(|error| format!("Clipboard task failed: {error}"))?
         }
-        #[cfg(not(desktop))]
+        #[cfg(not(feature = "desktop"))]
         {
             let _ = text;
             Err("Clipboard write is unavailable on this platform".into())
@@ -259,7 +261,7 @@ impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
     }
 
     async fn notify(&self, title: String, body: String) -> Result<(), String> {
-        #[cfg(desktop)]
+        #[cfg(feature = "desktop")]
         {
             crate::core::system::commands::show_desktop_notification(
                 self.app_handle.clone(),
@@ -268,7 +270,7 @@ impl<R: Runtime> DesktopServices for AgentDesktopServices<R> {
             )
             .await
         }
-        #[cfg(not(desktop))]
+        #[cfg(not(feature = "desktop"))]
         {
             let _ = (&self.app_handle, title, body);
             Err("Desktop notifications are unavailable on this platform".into())
@@ -444,6 +446,45 @@ async fn read_workspace_text(path: &Path, limit: usize) -> Result<(String, bool)
 /// folder. Pure derivative of the working tree: safe to delete at any time.
 const CODE_INDEX_CACHE_DIR: &str = "agent-code-index";
 
+/// Resolves the transport for a specialist that names its own model. The
+/// specialist's model, provider, capabilities and context window replace the
+/// coordinator's in an otherwise identical request, so it goes through the
+/// same target rules (llama.cpp session, MLX, or cloud via the Local API
+/// Server) as a regular turn. `None` when it shares the coordinator's model.
+async fn resolve_specialist_model<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    state: &AppState,
+    request: &AgentTurnRequest,
+    specialist: &AgentSpecialist,
+    cancellation: &CancellationToken,
+) -> Result<Option<SpecialistModel>, String> {
+    let Some(model_id) = specialist
+        .model_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+    else {
+        return Ok(None);
+    };
+    if model_id == request.model_id && specialist.provider == request.provider {
+        return Ok(None);
+    }
+    let mut specialist_request = request.clone();
+    specialist_request.model_id = model_id.to_owned();
+    specialist_request.provider = specialist.provider.clone();
+    specialist_request.capabilities = specialist.capabilities.clone();
+    specialist_request.context_window = specialist.context_window;
+    let target = resolve_agent_target(app_handle, state, &specialist_request)
+        .await
+        .map_err(|error| format!("Specialist '{}': {error}", specialist.name.trim()))?;
+    let client = build_agent_client(target, app_handle, state, &specialist_request)?;
+    let model_profile = client.probe_model_profile(cancellation).await;
+    Ok(Some(SpecialistModel {
+        client,
+        model_profile,
+    }))
+}
+
 #[tauri::command]
 pub async fn agent_run_turn<R: Runtime>(
     app_handle: AppHandle<R>,
@@ -485,6 +526,15 @@ pub async fn agent_run_turn<R: Runtime>(
     }
     let cancellation = CancellationToken::new();
     let client = build_agent_client(target, &app_handle, &state, &request)?;
+    // Resolved before the run registers, so a bad specialist model fails the
+    // turn cleanly instead of leaving a cancellation entry behind.
+    let mut specialist_models = Vec::with_capacity(request.specialists.len());
+    for specialist in &request.specialists {
+        specialist_models.push(
+            resolve_specialist_model(&app_handle, &state, &request, specialist, &cancellation)
+                .await?,
+        );
+    }
     let (cancel_tx, cancel_rx) = oneshot::channel();
     {
         let mut cancellations = state.tool_call_cancellations.lock().await;
@@ -505,9 +555,9 @@ pub async fn agent_run_turn<R: Runtime>(
         arch: std::env::consts::ARCH.into(),
         browser_channel: "none".into(),
         working_dir: working_dir.display().to_string(),
-        has_clipboard: cfg!(desktop),
+        has_clipboard: cfg!(feature = "desktop"),
         has_wmctrl: false,
-        has_notifications: cfg!(desktop),
+        has_notifications: cfg!(feature = "desktop"),
     };
     let skill_registry = load_registry(&data_folder)?;
     let bundled_script_runtime = resolve_bundled_script_runtime(&app_handle);
@@ -550,6 +600,15 @@ pub async fn agent_run_turn<R: Runtime>(
                 .into_iter()
                 .map(str::to_owned),
         );
+    }
+    // What the coordinator and its specialists share; each then adds its own
+    // tool-pack and delegation choices.
+    let base_disabled_tools = disabled_tools.clone();
+    disabled_tools.extend(disabled_by_tool_packs(&request.tool_packs));
+    // Without specialists `agent.delegate` leaves the prompt, grammar, schema
+    // and dispatch, so turns that never delegate keep a byte-identical prefix.
+    if request.specialists.is_empty() {
+        disabled_tools.insert(DELEGATE_TOOL.to_owned());
     }
     let enabled_descriptors: Vec<super::prompt::ToolDescriptor> = ITERATION_ONE_TOOLS
         .iter()
@@ -597,6 +656,14 @@ pub async fn agent_run_turn<R: Runtime>(
     let docs: Option<&dyn DocsBridge> =
         docs_bridge.as_ref().map(|bridge| bridge as &dyn DocsBridge);
     let documents_note = request.rag.as_ref().map(format_documents_note);
+    let specialist_summaries = request
+        .specialists
+        .iter()
+        .map(|specialist| SpecialistSummary {
+            name: specialist.name.trim().to_owned(),
+            description: specialist.description.trim().to_owned(),
+        })
+        .collect::<Vec<_>>();
     let stable_prefix = build_stable_prefix_with(&StablePrefixArgs {
         tool_descriptors: &enabled_descriptors,
         skill_descriptors: &skill_descriptors,
@@ -611,7 +678,49 @@ pub async fn agent_run_turn<R: Runtime>(
             .unwrap_or(0),
         profile: model_profile,
         thinking: reasoning.is_on(),
+        specialists: &specialist_summaries,
     });
+    // A specialist works with the coordinator's shared tools, its own tool
+    // packs, no `agent.delegate`, and its own instructions.
+    let prepared_specialists = request
+        .specialists
+        .iter()
+        .zip(specialist_models)
+        .map(|(specialist, own_model)| {
+            let specialist_profile = own_model
+                .as_ref()
+                .map_or(model_profile, |own| own.model_profile);
+            let mut specialist_disabled = base_disabled_tools.clone();
+            specialist_disabled.extend(disabled_by_tool_packs(&specialist.tool_packs));
+            specialist_disabled.insert(DELEGATE_TOOL.to_owned());
+            let specialist_descriptors: Vec<super::prompt::ToolDescriptor> = ITERATION_ONE_TOOLS
+                .iter()
+                .filter(|descriptor| !specialist_disabled.contains(descriptor.name))
+                .cloned()
+                .collect();
+            PreparedSpecialist {
+                name: specialist.name.trim().to_owned(),
+                stable_prefix: build_stable_prefix_with(&StablePrefixArgs {
+                    tool_descriptors: &specialist_descriptors,
+                    skill_descriptors: &skill_descriptors,
+                    capabilities: &capabilities,
+                    max_parallel_tool_calls: DEFAULT_MAX_PARALLEL_TOOL_CALLS,
+                    system_persona: None,
+                    assistant_instructions: specialist.instructions.as_deref(),
+                    mcp_tools: mcp.map(|bridge| bridge.descriptors()).unwrap_or(&[]),
+                    mcp_omitted: mcp_bridge
+                        .as_ref()
+                        .map(|bridge| bridge.omitted())
+                        .unwrap_or(0),
+                    profile: specialist_profile,
+                    thinking: reasoning.is_on(),
+                    specialists: &[],
+                }),
+                disabled_tools: specialist_disabled,
+                own_model,
+            }
+        })
+        .collect::<Vec<_>>();
     let approval_events = on_event.clone();
     let approval = ApprovalGate::new(
         request.run_id.clone(),
@@ -640,6 +749,41 @@ pub async fn agent_run_turn<R: Runtime>(
         app_handle: app_handle.clone(),
     };
     let code_index_cache = data_folder.join(CODE_INDEX_CACHE_DIR);
+    let max_steps = request.max_steps.unwrap_or(MAX_STEPS);
+    let delegator = (!prepared_specialists.is_empty()).then(|| SpecialistDelegator {
+        specialists: prepared_specialists,
+        run_id: &request.run_id,
+        session_id: &request.session_id,
+        model_profile,
+        working_dir: &working_dir,
+        editable_roots: &editable_roots,
+        external_read_only_roots: &trusted_read_roots[..external_read_only_count],
+        trusted_read_roots: &trusted_read_roots,
+        max_steps,
+        reasoning: reasoning.clone(),
+        sampling: &sampling,
+        mcp,
+        docs,
+        documents_note: documents_note.as_deref(),
+        auto_approve_mcp: request.auto_approve_mcp,
+        client: client.as_ref(),
+        approval: &approval,
+        folder_access: &folder_access,
+        desktop: &desktop,
+        cancellation: &cancellation,
+        skill_registry: &skill_registry,
+        bundled_script_runtime: bundled_script_runtime.as_deref(),
+        pty: &state.agent_pty_sessions,
+        cache_dir: &code_index_cache,
+        emit: Some({
+            let lane_events = on_event.clone();
+            Arc::new(move |event| lane_events.send(event).map_err(|error| error.to_string()))
+        }),
+        lanes: Default::default(),
+    });
+    let delegate_hook: Option<&dyn DelegateHook> = delegator
+        .as_ref()
+        .map(|delegator| delegator as &dyn DelegateHook);
     let session_lock = get_session_lock(&state.agent_session_locks, &request.session_id).await;
     let result = {
         let _session_guard = session_lock.lock().await;
@@ -657,12 +801,13 @@ pub async fn agent_run_turn<R: Runtime>(
                         editable_roots: &editable_roots,
                         external_read_only_roots: &trusted_read_roots[..external_read_only_count],
                         trusted_read_roots: &trusted_read_roots,
-                        max_steps: request.max_steps.unwrap_or(MAX_STEPS),
+                        max_steps,
                         reasoning: reasoning.clone(),
                         sampling: &sampling,
                         mcp,
                         disabled_tools: &disabled_tools,
                         auto_approve_mcp: request.auto_approve_mcp,
+                        delegate: delegate_hook,
                         docs,
                         documents_note: documents_note.as_deref(),
                         client: client.as_ref(),
@@ -675,6 +820,7 @@ pub async fn agent_run_turn<R: Runtime>(
                         bundled_script_runtime: bundled_script_runtime.as_deref(),
                         pty: &state.agent_pty_sessions,
                         cache_dir: &code_index_cache,
+                        slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
                     },
                     |event| on_event.send(event).map_err(|error| error.to_string()),
                 )
@@ -868,6 +1014,16 @@ async fn clear_pending_folder_access_for_run(state: &AppState, run_id: &str) {
     }
 }
 
+/// Tools that stay off because their tool pack is not enabled for this agent.
+fn disabled_by_tool_packs(packs: &[String]) -> Vec<String> {
+    let network = packs.iter().any(|pack| pack == NETWORK_PACK);
+    if network {
+        Vec::new()
+    } else {
+        net_tool_names().map(str::to_owned).collect()
+    }
+}
+
 fn validate_request(request: &AgentTurnRequest) -> Result<(), String> {
     if request.run_id.trim().is_empty() {
         return Err("run_id must not be empty".into());
@@ -885,7 +1041,19 @@ fn validate_request(request: &AgentTurnRequest) -> Result<(), String> {
             validate_collection_name(project)?;
         }
     }
+    super::delegation::validate_specialists(&request.specialists)?;
+    validate_tool_packs(&request.tool_packs)?;
+    for specialist in &request.specialists {
+        validate_tool_packs(&specialist.tool_packs)?;
+    }
     Ok(())
+}
+
+fn validate_tool_packs(packs: &[String]) -> Result<(), String> {
+    match packs.iter().find(|pack| pack.as_str() != NETWORK_PACK) {
+        Some(unknown) => Err(format!("Unknown tool pack: '{unknown}'")),
+        None => Ok(()),
+    }
 }
 
 /// Collection names become SQLite file names under the vector-db base dir;

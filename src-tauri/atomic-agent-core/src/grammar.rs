@@ -252,6 +252,86 @@ const STATIC_TOOL_GRAMMARS: &[ToolGrammar] = &[
         args: r#""{" ws "\"title\"" ws ":" ws non-empty-string ( ws "," ws "\"body\"" ws ":" ws string )? ws "}""#,
     },
     ToolGrammar {
+        name: "net.system_map",
+        rule: "net-system-map",
+        args: r#""{" ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.connectivity",
+        rule: "net-connectivity",
+        args: r#""{" ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.interfaces",
+        rule: "net-interfaces",
+        args: r#""{" ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.wifi_status",
+        rule: "net-wifi-status",
+        args: r#""{" ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.dns_lookup",
+        rule: "net-dns-lookup",
+        args: r#""{" ws "\"name\"" ws ":" ws non-empty-string ( ws "," ws "\"server\"" ws ":" ws string )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.ping",
+        rule: "net-ping",
+        args: r#""{" ws "\"host\"" ws ":" ws non-empty-string ( ws "," ws "\"count\"" ws ":" ws positive-integer )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.traceroute",
+        rule: "net-traceroute",
+        args: r#""{" ws "\"host\"" ws ":" ws non-empty-string ( ws "," ws "\"maxHops\"" ws ":" ws positive-integer )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.neighbors",
+        rule: "net-neighbors",
+        args: r#""{" ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.port_check",
+        rule: "net-port-check",
+        args: r#""{" ws "\"host\"" ws ":" ws non-empty-string ws "," ws "\"ports\"" ws ":" ws positive-integer-array ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.dns_flush",
+        rule: "net-dns-flush",
+        args: r#""{" ws ( "\"reason\"" ws ":" ws string ws )? "}""#,
+    },
+    ToolGrammar {
+        name: "net.dhcp_renew",
+        rule: "net-dhcp-renew",
+        args: r#""{" ws ( "\"adapter\"" ws ":" ws non-empty-string ( ws "," ws "\"reason\"" ws ":" ws string )? | "\"reason\"" ws ":" ws string )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.adapter_restart",
+        rule: "net-adapter-restart",
+        args: r#""{" ws "\"adapter\"" ws ":" ws non-empty-string ( ws "," ws "\"reason\"" ws ":" ws string )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.set_dns",
+        rule: "net-set-dns",
+        args: r#""{" ws "\"adapter\"" ws ":" ws non-empty-string ws "," ws "\"servers\"" ws ":" ws string-array ( ws "," ws "\"reason\"" ws ":" ws string )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.wifi_reconnect",
+        rule: "net-wifi-reconnect",
+        args: r#""{" ws ( "\"adapter\"" ws ":" ws non-empty-string ( ws "," ws "\"reason\"" ws ":" ws string )? | "\"reason\"" ws ":" ws string )? ws "}""#,
+    },
+    ToolGrammar {
+        name: "net.stack_reset",
+        rule: "net-stack-reset",
+        args: r#""{" ws ( "\"reason\"" ws ":" ws string ws )? "}""#,
+    },
+    ToolGrammar {
+        name: "agent.delegate",
+        rule: "agent-delegate",
+        args: r#""{" ws "\"specialist\"" ws ":" ws non-empty-string ws "," ws "\"task\"" ws ":" ws non-empty-string ws "}""#,
+    },
+    ToolGrammar {
         name: "reply",
         rule: "reply",
         args: r#""{" ws "\"text\"" ws ":" ws non-empty-string ws "}""#,
@@ -270,6 +350,7 @@ call-suffix ::= ws "}"
 string-map ::= "{" ws ( string ws ":" ws string ( ws "," ws string ws ":" ws string )* )? ws "}"
 string-array ::= "[" ws ( string ( ws "," ws string )* )? ws "]"
 non-empty-string-array ::= "[" ws non-empty-string ( ws "," ws non-empty-string )* ws "]"
+positive-integer-array ::= "[" ws positive-integer ( ws "," ws positive-integer )* ws "]"
 
 string ::= "\"" chars "\""
 non-empty-string ::= "\"" char+ "\""
@@ -339,6 +420,22 @@ pub const GRAMMAR_TOOL_NAMES: &[&str] = &[
     "os.clipboard.read",
     "os.clipboard.write",
     "os.notify",
+    "net.system_map",
+    "net.connectivity",
+    "net.interfaces",
+    "net.wifi_status",
+    "net.dns_lookup",
+    "net.ping",
+    "net.traceroute",
+    "net.neighbors",
+    "net.port_check",
+    "net.dns_flush",
+    "net.dhcp_renew",
+    "net.adapter_restart",
+    "net.set_dns",
+    "net.wifi_reconnect",
+    "net.stack_reset",
+    "agent.delegate",
     "reply",
     "finish",
 ];
@@ -413,7 +510,7 @@ pub fn tool_call_grammar_dynamic(
     }
 
     // At most one prelude: emitting two would duplicate `prelude-trail-ws` and
-    // make the grammar unparseable.
+    // make the grammar unparsable.
     let prelude = match (profile.reasoning_open_tag(), profile.reasoning_close_tag()) {
         (Some(open), Some(close)) => Some(("channel", open, close)),
         _ if thinking => Some(("think", GENERIC_THINK_OPEN, GENERIC_THINK_CLOSE)),
@@ -433,7 +530,7 @@ pub fn tool_call_grammar_dynamic(
     if step_rules.is_empty() || terminal_rules.is_empty() {
         // Unreachable while `reply` and `finish` stay undisablable — the loop
         // has no way to end without them — but an empty alternation would be
-        // unparseable GBNF, so degrade to the unpositioned form.
+        // unparsable GBNF, so degrade to the unpositioned form.
         let call_rules = [step_rules.as_slice(), terminal_rules.as_slice()].concat();
         writeln!(
             grammar,
@@ -782,7 +879,7 @@ mod tests {
         for profile in [AgentModelProfile::Plain, AgentModelProfile::Gemma4Think] {
             for thinking in [false, true] {
                 let grammar = tool_call_grammar_for_profile(&registry, profile, thinking);
-                // A duplicate rule definition would make the GBNF unparseable.
+                // A duplicate rule definition would make the GBNF unparsable.
                 assert!(grammar.matches("prelude-trail-ws ::=").count() <= 1);
             }
         }

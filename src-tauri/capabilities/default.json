@@ -3,9 +3,6 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main", "thread-*"],
-  "remote": {
-    "urls": ["http://*"]
-  },
   "permissions": [
     "core:default",
     "core:webview:allow-print",
@@ -19,6 +16,8 @@
     "shell:allow-open",
     "core:app:allow-set-app-theme",
     "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
     "os:default",
     "opener:default",
     "log:default",
@@ -62,9 +61,6 @@
         },
         {
           "url": "http://127.0.0.1:*"
-        },
-        {
-          "url": "http://0.0.0.0:*"
         }
       ]
     }

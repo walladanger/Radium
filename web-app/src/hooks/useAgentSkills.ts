@@ -7,6 +7,7 @@ import {
   getAgentSkill,
   importAgentSkill,
   listAgentSkills,
+  moveAgentSkill,
   refreshAgentSkills,
   setAgentSkillEnabled,
   updateAgentSkill,
@@ -113,8 +114,11 @@ export function useAgentSkills(enabled = true) {
   )
 
   const remove = useCallback(
-    async (name: string) => {
-      await deleteAgentSkill(name)
+    async (name: string, path?: string) => {
+      // `path` picks one copy when two folders share a name.
+      await (path === undefined
+        ? deleteAgentSkill(name)
+        : deleteAgentSkill(name, path))
       if (selectedNameRef.current === name) {
         selectedNameRef.current = null
       }
@@ -135,6 +139,19 @@ export function useAgentSkills(enabled = true) {
       setSelected(detail)
     }
   }, [])
+
+  /** Move a skill into a category folder ('' for the top level). */
+  const move = useCallback(
+    async (name: string, category: string) => {
+      const detail = await moveAgentSkill(name, category)
+      if (selectedNameRef.current === name) {
+        setSelected(detail)
+      }
+      await load()
+      return detail
+    },
+    [load]
+  )
 
   const exportSkill = useCallback(async (name: string) => {
     const targetPath = await getServiceHub()
@@ -161,6 +178,7 @@ export function useAgentSkills(enabled = true) {
     addImported,
     remove,
     update,
+    move,
     exportSkill,
   }
 }

@@ -69,6 +69,18 @@ type Assistant = {
    * must stay outside `parameters` — that bag reaches the request body as is.
    */
   sampling_overridden?: boolean
+  /**
+   * Offered to the agent as a specialist it can hand tasks to with
+   * `agent.delegate` (see `@/lib/agent-specialists`).
+   */
+  specialist?: boolean
+  /**
+   * Model this assistant runs on when the agent delegates to it. Absent
+   * shares the coordinator's model.
+   */
+  specialist_model?: { provider: string; id: string }
+  /** Optional agent tool families this assistant switches on (e.g. `network`). */
+  tool_packs?: string[]
   // tool_steps?: number
 }
 

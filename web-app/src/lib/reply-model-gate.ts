@@ -124,10 +124,17 @@ function cloudOptions(
     if (!isProviderConnected(provider)) continue
 
     const models = provider.models ?? []
-    const preferred =
-      (lastUsed?.provider === provider.provider &&
-        models.find((model) => model.id === lastUsed.model)) ||
-      models[0]
+
+    let preferredModel = undefined
+    if (lastUsed?.provider === provider.provider) {
+      for (let i = 0; i < models.length; i++) {
+        if (models[i].id === lastUsed.model) {
+          preferredModel = models[i]
+          break
+        }
+      }
+    }
+    const preferred = preferredModel || models[0]
     if (!preferred) continue
 
     options.push({
@@ -172,33 +179,6 @@ export function replyGateBranch(
 }
 
 /**
- * Telemetry context for the widget's impression: how much of each kind was
- * found, and whether a cloud connection already exists.
- *
- * Counted over the raw provider list rather than over {@link collectReplyModels}
- * so the cloud figure is "providers the user connected", not "rows we chose to
- * render" — the latter is a presentation decision that could change.
- */
-export function replyGateContext(providers: ModelProvider[]): {
-  localModelCount: number
-  cloudProviderCount: number
-  hasCloudConnection: boolean
-} {
-  const localModelCount = localOptions(providers).length
-  const cloudProviderCount = providers.filter(
-    (provider) =>
-      !isLocalProvider(provider.provider) &&
-      provider.active !== false &&
-      isProviderConnected(provider)
-  ).length
-  return {
-    localModelCount,
-    cloudProviderCount,
-    hasCloudConnection: cloudProviderCount > 0,
-  }
-}
-
-/**
  * How a send with nothing selected was answered without asking.
  *
  *  - `last_used` — the model from the previous session, local or cloud. For a
@@ -209,10 +189,7 @@ export function replyGateContext(providers: ModelProvider[]): {
  *    one, on a default engine when there is one. It loads fastest.
  */
 export type ReplyResolution =
-  | 'last_used'
-  | 'cloud'
-  | 'single_local'
-  | 'smallest_local'
+  'last_used' | 'cloud' | 'single_local' | 'smallest_local'
 
 /**
  * Parameter count named in a model id, in billions, or `undefined`.

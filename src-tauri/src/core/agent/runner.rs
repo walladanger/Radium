@@ -8,14 +8,16 @@ use super::{
     rag_bridge::DocsBridge,
     session::AgentSessionState,
     skills::SkillRegistry,
-    tools::{ApprovalHook, DesktopServices, FolderAccessHook},
+    tools::{ApprovalHook, DesktopServices, FolderAccessHook, DelegateHook},
     types::{AgentEvent, AgentReasoning, ToolCallPayload, ToolOutcome},
 };
 use async_trait::async_trait;
-pub use atomic_agent_core::runner::{MAX_PARALLEL_TOOL_CALLS, MAX_STEPS};
+pub use atomic_agent_core::runner::{MAX_PARALLEL_TOOL_CALLS, MAX_STEPS, AGENT_SLOT_ID, ANY_SLOT};
 use std::path::{Path, PathBuf};
 use tokio_util::sync::CancellationToken;
 pub struct RunTurnInput<'a> {
+    pub delegate: Option<&'a dyn DelegateHook>,
+    pub slot_id: i32,
     pub run_id: &'a str,
     pub session_id: &'a str,
     pub user_message: &'a str,
@@ -63,6 +65,7 @@ pub async fn run_turn(
     emit: impl FnMut(AgentEvent) -> Result<(), String> + Send,
 ) -> Result<(), String> {
     let executor = NativeToolExecutor {
+        delegate: input.delegate,
         desktop: input.desktop,
         pty: input.pty,
         cache_dir: input.cache_dir,
@@ -76,6 +79,7 @@ pub async fn run_turn(
     };
     atomic_agent_core::runner::run_turn_with_deadline(
         atomic_agent_core::runner::RunTurnInput {
+            slot_id: input.slot_id,
             run_id: input.run_id,
             session_id: input.session_id,
             user_message: input.user_message,
@@ -109,6 +113,7 @@ pub async fn run_turn(
     .await
 }
 struct NativeToolExecutor<'a> {
+    delegate: Option<&'a dyn DelegateHook>,
     desktop: &'a dyn DesktopServices,
     pty: &'a PtyRegistry,
     cache_dir: &'a Path,
@@ -123,6 +128,7 @@ impl atomic_agent_core::tools::ToolExecutor for NativeToolExecutor<'_> {
         super::tools::execute(
             call,
             &super::tools::ToolContext {
+                delegate: self.delegate,
                 session_id: context.session_id,
                 working_dir: context.working_dir,
                 editable_roots: context.editable_roots,

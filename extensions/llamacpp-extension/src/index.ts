@@ -6,6 +6,7 @@
  * @module llamacpp-extension/src/index
  */
 
+import { planGpuPlacement } from './gpuPlacement'
 import {
   AIEngine,
   getJanDataFolderPath,
@@ -273,12 +274,11 @@ function codedLoadError(
 
 /**
  * Load failures that describe a recoverable user or environment condition
- * rather than a backend crash. Mirrors `RECOVERABLE_MODEL_LOAD_CODES` in the
- * web-app's `telemetry.ts`, which gates the same codes out of Sentry.
+ * rather than a backend crash.
  *
  * The extension logger writes through `@tauri-apps/plugin-log` into the Rust
- * logger, so an `error` here becomes a Sentry event regardless of the web-app
- * gates — these have to be classified at the call site.
+ * logger, so an `error` here lands in the app log as an error — these have to
+ * be classified at the call site.
  */
 const RECOVERABLE_LOAD_ERROR_CODES = new Set<string>([
   ERR_MODEL_FILE_NOT_FOUND,
@@ -456,7 +456,20 @@ export default class llamacpp_extension extends AIEngine {
   /// In-flight first-run download of the hardware-optimal backend. Awaited by
   /// `reconcileBackendReleaseTag` so the two never fetch the same archive.
   private firstRunAdoption: Promise<void> | null = null
+  /// Engine downloads nobody asked for (first-run adoption of the
+  /// hardware-optimal build, a newer release tag of the same build) no longer
+  /// start from `onLoad`. On a fresh install they ran even though this
+  /// provider ships switched off, before the user had picked anything, and
+  /// popped the download drawer over onboarding. The app starts them through
+  /// `runDeferredBackendMaintenance()` once it is on screen, onboarding is
+  /// finished and this provider is active.
+  private deferredMaintenanceStarted = false
+  /// The first-run adoption `configureBackends()` would have started, parked
+  /// until `runDeferredBackendMaintenance()` runs.
+  private pendingFirstRunAdoption: (() => Promise<void>) | null = null
   private loadingModels = new Map<string, Promise<SessionInfo>>() // Track loading promises
+  /// Which GPUs each loaded model occupies, for the GPU Placement setting.
+  private gpuAssignments = new Map<string, string[]>()
   private sessionCache = new Map<string, SessionInfo>()
   /// Tracks the ctx_size a model was last loaded with so the Local API
   /// Server auto-increase flow knows the "current" value — the extension's
@@ -611,11 +624,36 @@ export default class llamacpp_extension extends AIEngine {
         //! Раньше отклонённый промис терялся; без лога сложно понять вечный «loading» в настройках.
         logger.error('configureBackends failed:', err)
       })
-      .then(() => this.reconcileBackendReleaseTag())
+      // Moving to a newer release tag waits for runDeferredBackendMaintenance.
       .finally(() => {
         this.isInitializing = false
         this.configureBackendsPromise = null
       })
+  }
+
+  /**
+   * Starts the engine downloads `onLoad` no longer starts by itself: the
+   * first-run adoption of the hardware-optimal build, then the move to the
+   * newest release tag. Called by the app (`StartupBackendCoordinator`) once it
+   * is on screen, onboarding is done and this provider is active. Runs once
+   * per process; later calls are no-ops.
+   */
+  async runDeferredBackendMaintenance(): Promise<void> {
+    if (this.deferredMaintenanceStarted) return
+    this.deferredMaintenanceStarted = true
+    if (this.configureBackendsPromise) {
+      await this.configureBackendsPromise
+    }
+    const adopt = this.pendingFirstRunAdoption
+    this.pendingFirstRunAdoption = null
+    if (adopt) {
+      try {
+        await adopt()
+      } catch (err) {
+        logger.warn('runDeferredBackendMaintenance: first-run adoption failed:', err)
+      }
+    }
+    await this.reconcileBackendReleaseTag()
   }
 
   private getStoredBackendType(): string | null {
@@ -1379,12 +1417,20 @@ export default class llamacpp_extension extends AIEngine {
 
       // Detection still does not run on every launch (see the comment near the
       // top of this function) — only when the user has never made a choice.
-      await this.adoptOptimalBackendOnFirstRun(
-        storedBackendType,
-        effectiveBackendString,
-        bundledBackendString,
-        version_backends
-      )
+      // At startup it waits for `runDeferredBackendMaintenance()`; once that
+      // has run (e.g. "Install from file" later), it runs straight away.
+      const adopt = () =>
+        this.adoptOptimalBackendOnFirstRun(
+          storedBackendType,
+          effectiveBackendString,
+          bundledBackendString,
+          version_backends
+        )
+      if (this.deferredMaintenanceStarted) {
+        await adopt()
+      } else {
+        this.pendingFirstRunAdoption = adopt
+      }
     } finally {
       this.isConfiguringBackends = false
     }
@@ -3141,9 +3187,8 @@ export default class llamacpp_extension extends AIEngine {
           errorMessage.includes('Failed to verify file')
 
         // Classify before logging: the extension logger writes through to the
-        // Rust logger, where an `error` becomes a Sentry event. Logging first
-        // meant every user who pressed Cancel filed a crash report — and since
-        // the model id is part of the message, a separate issue per model.
+        // Rust logger, where an `error` is recorded as a failure. Logging first
+        // meant every Cancel was logged as a crash, one per model id.
         if (!isCancellationError) {
           logger.error('Error downloading model:', modelId, errorMessage)
         }
@@ -3797,6 +3842,8 @@ export default class llamacpp_extension extends AIEngine {
     // Migrate old env vars
     if (typeof cfg.fit === 'string') cfg.fit = true
 
+    await this.applyGpuPlacement(cfg, modelId, isEmbedding)
+
     logger.info(
       'Calling Tauri command load_llama_model with config:',
       JSON.stringify(cfg)
@@ -4145,6 +4192,44 @@ export default class llamacpp_extension extends AIEngine {
     }
   }
 
+  /// Apply the GPU Placement setting: decide which graphics card(s) this model
+  /// loads onto and write the result into `cfg`. A no-op for `manual`, for
+  /// embedding / voice models, and wherever no GPU can be listed - a placement
+  /// failure must never stop a model from loading.
+  private async applyGpuPlacement(
+    cfg: Partial<LlamacppConfig> & Record<string, any>,
+    modelId: string,
+    isEmbedding: boolean
+  ): Promise<void> {
+    const mode = cfg.gpu_placement ?? 'manual'
+    if (mode === 'manual' || isEmbedding) return
+    try {
+      const devices = await this.getDevices()
+      const loaded = new Set(await this.getLoadedModels())
+      for (const id of [...this.gpuAssignments.keys()]) {
+        if (!loaded.has(id)) this.gpuAssignments.delete(id)
+      }
+      const plan = planGpuPlacement({
+        mode,
+        devices,
+        assigned: this.gpuAssignments,
+        tensorSplit: cfg.tensor_split,
+      })
+      if (!plan) return
+      cfg.device = plan.device
+      cfg.split_mode = plan.split_mode
+      cfg.main_gpu = plan.main_gpu
+      cfg.tensor_split = plan.tensor_split
+      this.gpuAssignments.set(modelId, plan.assigned)
+      logger.info(
+        `GPU placement "${mode}" put "${modelId}" on ${plan.device}` +
+          (plan.tensor_split ? ` (split ${plan.tensor_split})` : '')
+      )
+    } catch (error) {
+      logger.warn(`GPU placement skipped for "${modelId}": ${error}`)
+    }
+  }
+
   override async unload(modelId: string): Promise<UnloadResult> {
     const sInfo: SessionInfo =
       this.sessionCache.get(modelId) ?? (await this.findSessionByModel(modelId))
@@ -4157,6 +4242,7 @@ export default class llamacpp_extension extends AIEngine {
 
       if (result.success) {
         this.sessionCache.delete(modelId)
+        this.gpuAssignments.delete(modelId)
         logger.info(`Successfully unloaded model with PID ${pid}`)
       } else {
         logger.warn(`Failed to unload model: ${result.error}`)

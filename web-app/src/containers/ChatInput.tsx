@@ -38,6 +38,8 @@ import {
 import { ArrowRight, PlusIcon } from 'lucide-react'
 import {
   IconCheck,
+  IconBolt,
+  IconMessageCode,
   IconPhoto,
   IconCodeCircle2,
   IconPlayerStopFilled,
@@ -50,8 +52,6 @@ import {
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { useGeneralSetting } from '@/hooks/useGeneralSetting'
 import { useModelProvider } from '@/hooks/useModelProvider'
-import { captureChatSendBlocked } from '@/lib/chat-telemetry'
-import { describeProviderState } from '@/lib/onboarding'
 
 import { modelStopKey, useAppState } from '@/hooks/useAppState'
 import { switchToModel } from '@/utils/switchModel'
@@ -59,7 +59,6 @@ import {
   ReplyModelGate,
   type ReplyModelGateResolution,
 } from '@/containers/ReplyModelGate'
-import { captureReplyGateReady } from '@/lib/reply-gate-telemetry'
 import { useReplyModelAutoStart } from '@/hooks/useReplyModelAutoStart'
 import { useModelLoad } from '@/hooks/useModelLoad'
 import { syncActiveModelsFromEngines } from '@/utils/activeModelsSync'
@@ -136,6 +135,11 @@ import { useAgentMode } from '@/hooks/useAgentMode'
 import { useDownloadStore } from '@/hooks/useDownloadStore'
 import DropdownModelProvider from '@/containers/DropdownModelProvider'
 import WebSearchToggle from '@/containers/WebSearchToggle'
+import MediaChatToggle from '@/containers/MediaChatToggle'
+import { ComposerChips } from '@/containers/ComposerChips'
+import { ComposerResizeHandle } from '@/containers/ComposerResizeHandle'
+import { useComposerLayout } from '@/stores/composer-layout-store'
+import { useMediaChatMode } from '@/stores/media-chat-mode-store'
 import VoiceInputToggle from '@/containers/VoiceInputToggle'
 import VoiceRecordingBar from '@/containers/chatInput/VoiceRecordingBar'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
@@ -383,7 +387,12 @@ const ChatInput = memo(function ChatInput({
     )
   )
 
-  const maxRows = 10
+  const composerRows = useComposerLayout((state) => state.rows)
+  const composerWidth = useComposerLayout((state) => state.width)
+  const toggleComposerChip = useComposerLayout((state) => state.toggleChip)
+  const composerChips = useComposerLayout((state) => state.chips)
+  const composerRef = useRef<HTMLDivElement>(null)
+  const maxRows = Math.max(10, composerRows)
   const ATTACHMENT_AUTO_INLINE_FALLBACK_BYTES = 512 * 1024
 
   const [message, setMessage] = useState('')
@@ -908,7 +917,10 @@ const ChatInput = memo(function ChatInput({
     if (!prompt.trim()) {
       return
     }
-    if (!selectedModel) {
+    // Media mode talks to the image/video model, so none of the language-model
+    // readiness checks below apply to it.
+    const mediaMode = useMediaChatMode.getState().task !== null
+    if (!selectedModel && !mediaMode) {
       // The composer cannot answer this, but the device often can: a model
       // from last time, a connected cloud provider, the only model on disk.
       // Decide silently first, and hold the message — it is sent, unchanged,
@@ -921,25 +933,9 @@ const ChatInput = memo(function ChatInput({
       }
       // Nothing to decide with: ask.
       setReplyGateOpen(true)
-      // Everything downstream captures a turn; this returns before any of it,
-      // so the most common first-run dead end produced no event at all. Now
-      // that ATO-453 answers it with a widget, this is also the baseline the
-      // widget's effect is measured against.
-      // Mapped by hand: `describeProviderState` is camelCase and a spread
-      // would ship its keys verbatim, leaving the documented snake_case
-      // properties permanently empty in PostHog.
-      const providerState = describeProviderState(
-        useModelProvider.getState().providers
-      )
-      captureChatSendBlocked({
-        reason: 'no_model',
-        is_agent_mode: agentRouteActive,
-        had_local_model_on_disk: providerState.hadLocalModelOnDisk,
-        had_cloud_key: providerState.hadCloudKey,
-      })
       return
     }
-    if (resumesStoppedModel) {
+    if (resumesStoppedModel && !mediaMode) {
       // Sending is the ask to bring a stopped model back: start it the way a
       // pick in the dropdown would, and hold the message until it can answer.
       setPrompt(prompt)
@@ -953,8 +949,6 @@ const ChatInput = memo(function ChatInput({
       setQueuedSend({
         outcome: 'auto_start',
         branch: 'auto_start',
-        decidedInMs: 0,
-        openedAtMs: Date.now(),
         modelLabel: getModelDisplayName(selectedModel),
         resumesStoppedModel: true,
       })
@@ -1252,15 +1246,6 @@ const ChatInput = memo(function ChatInput({
     // Whatever is in it now is what they meant; an empty field means they
     // changed their mind, and re-sending the old text would put words in.
     const pending = usePrompt.getState().prompt
-    if (!queuedSend.resumesStoppedModel) {
-      captureReplyGateReady({
-        branch: queuedSend.branch,
-        outcome: queuedSend.outcome,
-        readyInMs: Date.now() - queuedSend.openedAtMs,
-        queuedMessageSent: pending.trim().length > 0,
-        resolution: queuedSend.resolution,
-      })
-    }
     if (!pending.trim()) return
     void sendMessageRef.current(pending)
   }, [queuedSend, canSendToSelectedModel])
@@ -2712,8 +2697,12 @@ const ChatInput = memo(function ChatInput({
     // the send button. Writing to a model that is still downloading is the
     // whole point of ATO-460, so the composer has to stay reachable.
     <div
+      ref={composerRef}
       data-composer-anchor
       className="relative mx-auto w-full max-w-3xl"
+      // The chat box can be dragged wider or taller (see ComposerResizeHandle),
+      // up to the limits in the layout store, and never past its container.
+      style={composerWidth ? { maxWidth: composerWidth } : undefined}
     >
       {/* Pending approvals dock above the composer. Outside the streaming-
           disabled toolbar cluster: a run awaiting approval reports
@@ -2887,9 +2876,9 @@ const ChatInput = memo(function ChatInput({
                 <TextareaAutosize
                   dir="auto"
                   ref={textareaRef}
-                  minRows={2}
+                  minRows={composerRows}
                   rows={1}
-                  maxRows={10}
+                  maxRows={maxRows}
                   value={prompt}
                   data-testid={'chat-input'}
                   onChange={(e) => {
@@ -3032,6 +3021,7 @@ const ChatInput = memo(function ChatInput({
               placed at the static position overhangs the right edge by that
               much — enough for the page's scroll container to let the whole
               composer be dragged sideways. */}
+          <ComposerResizeHandle containerRef={composerRef} />
           <div className="absolute z-20 bg-transparent bottom-0 inset-x-0.5 p-2">
             <div className="flex justify-between items-center w-full">
               <div className="px-1 flex items-center gap-1 flex-1 min-w-0">
@@ -3111,6 +3101,32 @@ const ChatInput = memo(function ChatInput({
                             : 'Add documents or files'}
                         </span>
                       </DropdownMenuItem>
+                      {/* Chips: small pills added to the toolbar, like the
+                          model picker, for quick access to a feature. */}
+                      <DropdownMenuItem
+                        onClick={() => toggleComposerChip('prompts')}
+                      >
+                        <IconMessageCode
+                          size={18}
+                          className="text-muted-foreground"
+                        />
+                        <span>Prompts menu</span>
+                        {composerChips.includes('prompts') && (
+                          <IconCheck size={16} className="ml-auto text-primary" />
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => toggleComposerChip('skills')}
+                      >
+                        <IconBolt
+                          size={18}
+                          className="text-muted-foreground"
+                        />
+                        <span>Skills</span>
+                        {composerChips.includes('skills') && (
+                          <IconCheck size={16} className="ml-auto text-primary" />
+                        )}
+                      </DropdownMenuItem>
                       {/* Global Agent mode toggle. Like the connectors pin it
                           lives here and surfaces as a toolbar chip; routing
                           guards at send time, so it stays togglable even when
@@ -3175,6 +3191,15 @@ const ChatInput = memo(function ChatInput({
                     </DropdownMenuContent>
                   </DropdownMenu>
 
+                  <ComposerChips
+                    onInsertPrompt={(text) => {
+                      setPrompt(prompt ? `${prompt}\n${text}` : text)
+                      requestAnimationFrame(() => textareaRef.current?.focus())
+                    }}
+                    skills={agentSkills.filter((skill) => skill.enabled && !skill.error)}
+                    selectedSkill={selectedAgentSkill}
+                    onPickSkill={setSelectedAgentSkill}
+                  />
                   {/* Approval mode rides the toolbar in both engines: it
                       gates the agent's dangerous tools AND the MCP/RAG calls
                       of the chat pipeline (see lib/mcp-approval.ts). */}
@@ -3339,6 +3364,9 @@ const ChatInput = memo(function ChatInput({
                   {(supportsTools || agentRouteActive) && (
                     <WebSearchToggle initialMessage={initialMessage} />
                   )}
+                  {/* Picture / video: send to the media model chosen on the
+                      Media page and show the result in the thread. */}
+                  <MediaChatToggle />
                   {/* Agent mode chip — the toolbar face of the global toggle,
                       like the pinned connectors button. Last in the cluster on
                       purpose: turning the mode on then appends the chip instead
@@ -3395,7 +3423,7 @@ const ChatInput = memo(function ChatInput({
                     on, how hard it thinks — its panel holds the effort slider,
                     whose first stop switches thinking off, and leads into the
                     model list. */}
-                <DropdownModelProvider className="mb-1" />
+                <DropdownModelProvider className="mb-1 border-emerald-400/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300" />
 
                 {/* Beside Send, which is where users expect a microphone.
                     Note this cluster has no streaming guard of its own (the

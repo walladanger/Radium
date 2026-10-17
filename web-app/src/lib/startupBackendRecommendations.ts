@@ -1,5 +1,4 @@
 import { CACHE_EXPIRY_MS, localStorageKey } from '@/constants/localStorage'
-import { captureBackendRecommendationApplied } from '@/lib/backend-telemetry'
 import type { BackendRuntimeEvent } from '@/hooks/useBackendMismatch'
 import type { OptimalBackendCacheRecord } from '@/hooks/useBackendUpdater'
 
@@ -184,12 +183,6 @@ export async function applyStartupBackendUpgrade(
       localStorageKey.startupBackendUpgradeAttempt,
       JSON.stringify({ target, attemptedAt: now } satisfies StartupUpgradeAttempt)
     )
-    captureBackendRecommendationApplied({
-      provider: 'llamacpp-upstream',
-      backendFrom: records['llamacpp-upstream']?.currentBackend ?? null,
-      backendTo: target,
-      trigger: 'startup',
-    })
     await extension.downloadRecommendedBackend(target)
     return target
   } catch (error) {
@@ -199,6 +192,49 @@ export async function applyStartupBackendUpgrade(
     )
     return null
   }
+}
+
+type DeferredMaintenanceExtension = {
+  runDeferredBackendMaintenance?: () => Promise<void>
+}
+
+/**
+ * Starts the engine downloads the llama.cpp extensions no longer start from
+ * `onLoad` - the first-run adoption of the hardware-optimal build and the move
+ * to a newer release tag of the build already in use - for every llama.cpp
+ * provider that is switched on.
+ *
+ * They used to begin while the app was still starting: on a fresh install
+ * that was before onboarding had asked anything, for the TurboQuant provider
+ * too although it ships switched off, and their downloads opened over the
+ * onboarding screen. The caller runs this once the app is on screen and
+ * onboarding is finished. An extension without the method (an older bundled
+ * build) is skipped. Never rejects; returns the providers it started.
+ */
+export async function runDeferredBackendMaintenance(
+  extensions: ExtensionLookup,
+  isProviderActive: (providerId: string) => boolean
+): Promise<string[]> {
+  const started: string[] = []
+  await Promise.all(
+    PROVIDERS.map(async ({ provider, extensionName }) => {
+      if (!isProviderActive(provider)) return
+      const extension = extensions.getByName(
+        extensionName
+      ) as DeferredMaintenanceExtension | null
+      if (typeof extension?.runDeferredBackendMaintenance !== 'function') return
+      started.push(provider)
+      try {
+        await extension.runDeferredBackendMaintenance()
+      } catch (error) {
+        console.info(
+          `[backend-maintenance] ${provider} deferred maintenance failed`,
+          error
+        )
+      }
+    })
+  )
+  return started
 }
 
 export function buildLateBackendMismatch({
