@@ -422,9 +422,9 @@
     "feature": "Skills organized by creator and category",
     "forUsers": "Skills can live in nested category folders, each shows its creator, category, tags and size, and the Skills page groups, sorts and searches them and can move a skill between folders.",
     "paths": [
-      "src-tauri/src/core/agent/skills/discovery.rs",
-      "src-tauri/src/core/agent/skills/organization.rs",
-      "src-tauri/src/core/agent/skills/seeding.rs",
+      "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+      "src-tauri/atomic-agent-core/src/skills/organization.rs",
+      "src-tauri/atomic-agent-core/src/skills/seeding.rs",
       "src-tauri/resources/agent-skills/_catalog.json",
       "web-app/src/lib/skill-organization.ts",
       "web-app/src/containers/AgentSkillMoveDialog.tsx",
@@ -433,12 +433,12 @@
     ],
     "checks": [
       {
-        "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::skills",
-        "cwd": "src-tauri",
+        "run": "cargo test -- skills",
+        "cwd": "src-tauri/atomic-agent-core",
         "files": [
-          "src-tauri/src/core/agent/skills/discovery.rs",
-          "src-tauri/src/core/agent/skills/organization.rs",
-          "src-tauri/src/core/agent/skills/seeding.rs"
+          "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+          "src-tauri/atomic-agent-core/src/skills/organization.rs",
+          "src-tauri/atomic-agent-core/src/skills/seeding.rs"
         ]
       },
       {

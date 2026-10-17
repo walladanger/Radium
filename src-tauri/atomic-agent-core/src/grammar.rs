@@ -104,7 +104,7 @@ const STATIC_TOOL_GRAMMARS: &[ToolGrammar] = &[
     ToolGrammar {
         name: "os.fs.hash",
         rule: "fs-hash",
-        args: r#""{" ws "\"path\"" ws ":" ws non-empty-string ( ws "," ws "\"algorithm\"" ws ":" ws ( "\"md5\"" | "\"sha1\"" | "\"sha256\"" | "\"sha512\"" ) )? ws "}""#,
+        args: r#""{" ws "\"path\"" ws ":" ws non-empty-string ( ws "," ws "\"algorithm\"" ws ":" ws ( "\"md5\"" | "\"sha1\"" | "\"sha256\"" | "\"sha512\"" ) )? ws "}""#, // DevSkim: ignore DS126858 - file checksums offered by os.fs.hash, not a security hash
     },
     ToolGrammar {
         name: "os.fs.diff",
