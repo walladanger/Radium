@@ -1,4 +1,4 @@
-//! Second opinion on a network fix, before the user is asked to approve it.
+//! Second opinion on a system change, before the user is asked to approve it.
 //!
 //! A separate, single model call — not the agent that proposed the fix —
 //! reads the computer's system map, the proposed call, the agent's stated
@@ -15,7 +15,8 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tokio_util::sync::CancellationToken;
 
-use super::blast_radius;
+use super::blast;
+use super::ToolContext;
 use crate::core::agent::llm_client::{AgentLlmClient, AgentPrompt, CompletionRequest};
 
 const REVIEW_TIMEOUT: Duration = Duration::from_secs(45);
@@ -86,10 +87,10 @@ pub fn review_prompt(system_map: &str, tool: &str, args: &Value) -> AgentPrompt 
     if let Some(object) = shown_args.as_object_mut() {
         object.remove("reason");
     }
-    let radius = blast_radius(tool, args)
+    let radius = blast::for_call(tool, args)
         .map(|radius| radius.to_markdown())
         .unwrap_or_else(|| "(none)".into());
-    let system = "You are a cautious network engineer giving a second opinion on a change \
+    let system = "You are a cautious systems engineer giving a second opinion on a change \
 another assistant wants to make to this computer. You did not propose it. Judge only from \
 the system map and the facts below.\n\
 Answer \"agree\" when the change fits the problem and the computer, \"concern\" when it may \
@@ -133,6 +134,24 @@ pub fn parse_review(content: &str) -> Option<Review> {
         .take(MAX_REASON_CHARS)
         .collect();
     Some(Review { verdict, reason })
+}
+
+/// A second opinion for a change's approval card: network fixes are judged
+/// against the network system map, computer-care fixes against the computer
+/// overview. `None` for calls without a blast radius, or without a model.
+pub async fn review_for_approval(
+    tool: &str,
+    args: &Value,
+    context: &ToolContext<'_>,
+) -> Option<Review> {
+    blast::for_call(tool, args)?;
+    let client = context.client?;
+    let map = if tool.starts_with("net.") {
+        super::net::system_map_text(context).await
+    } else {
+        super::sys::overview_text().await
+    };
+    Some(review_with_map(client, &map, tool, args, context.cancellation).await)
 }
 
 /// Ask the model for a verdict on `tool(args)` against `system_map`.

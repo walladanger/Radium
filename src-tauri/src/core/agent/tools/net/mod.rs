@@ -15,12 +15,10 @@ mod fix;
 mod live_tests;
 pub(crate) mod parse;
 pub(crate) mod platform;
-pub(crate) mod review;
 pub(crate) mod run;
 
 use std::net::IpAddr;
 
-use serde::Serialize;
 use serde_json::Value;
 
 use super::ToolContext;
@@ -79,21 +77,11 @@ pub async fn execute(
     }
 }
 
-/// A second opinion on a network fix, for its approval card. `None` for
-/// anything that is not a network fix, or when no model is available.
-pub async fn review_for_approval(
-    tool: &str,
-    args: &Value,
-    context: &ToolContext<'_>,
-) -> Option<review::Review> {
-    if !NET_FIX_TOOLS.contains(&tool) {
-        return None;
-    }
-    let client = context.client?;
-    let map = match diagnose::system_map(context).await {
+/// The network system map as Markdown, for the reviewer.
+pub(crate) async fn system_map_text(context: &ToolContext<'_>) -> String {
+    match diagnose::system_map(context).await {
         Ok(outcome) | Err(outcome) => outcome.summary,
-    };
-    Some(review::review_with_map(client, &map, tool, args, context.cancellation).await)
+    }
 }
 
 // ------------------------------------------------------------ validation ---
@@ -176,42 +164,7 @@ pub fn is_local_address(address: &IpAddr) -> bool {
 
 // ----------------------------------------------------------- blast radius ---
 
-/// What a fix will do to the computer, shown on the approval card before the
-/// user decides and repeated in the result.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BlastRadius {
-    /// One plain sentence: what will happen.
-    pub action: String,
-    /// What changes on the computer.
-    pub changes: String,
-    /// What stops working, and for how long.
-    pub disruption: String,
-    /// Who else is affected (other apps, other adapters, other users).
-    pub affects: String,
-    /// How to put it back.
-    pub undo: String,
-    pub needs_admin: bool,
-    pub needs_reboot: bool,
-    /// "low", "medium" or "high".
-    pub risk: &'static str,
-}
-
-impl BlastRadius {
-    pub fn to_markdown(&self) -> String {
-        format!(
-            "Action: {}\n- Changes: {}\n- Disruption: {}\n- Affects: {}\n- Undo: {}\n- Admin rights: {}\n- Reboot needed: {}\n- Risk: {}",
-            self.action,
-            self.changes,
-            self.disruption,
-            self.affects,
-            self.undo,
-            if self.needs_admin { "yes" } else { "no" },
-            if self.needs_reboot { "yes" } else { "no" },
-            self.risk,
-        )
-    }
-}
+pub use super::blast::BlastRadius;
 
 fn adapter_arg(args: &Value) -> Option<String> {
     args.get("adapter")

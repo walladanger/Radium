@@ -89,10 +89,11 @@ describe('buildAgentSpecialists', () => {
   it('passes along known tool packs and drops unknown ones', () => {
     const tooled = assistant({
       ...network,
-      tool_packs: ['network', 'teleportation'],
+      tool_packs: ['network', 'computer', 'teleportation'],
     })
     expect(buildAgentSpecialists([tooled], undefined)[0].tool_packs).toEqual([
       'network',
+      'computer',
     ])
     expect(agentToolPacks(undefined)).toEqual([])
   })

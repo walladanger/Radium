@@ -81,8 +81,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-02** — [Add a `/v1/responses` translation shim to the local proxy so Codex CLI works on llama.cpp models](2026-06-02-add-a-v1-responses-translation-shim-to-the-local-proxy-so-codex.md)
 - **2026-06-01** — [Add a "Launch" page to install + configure external coding agents / assistants against the local OpenAI-compatible API](2026-06-01-add-a-launch-page-to-install-configure-external-coding-agents.md)
 
-## Agent mode — autonomous loop, tools, skills, workspace (48)
+## Agent mode — autonomous loop, tools, skills, workspace (49)
 
+- **2026-10-16** — [Give the agent computer-care tools behind the computer tool pack](2026-10-16-give-the-agent-computer-care-tools-behind-the-computer-tool-pack.md)
 - **2026-10-16** — [Ask before every MCP and third-party tool call](2026-10-16-ask-before-every-mcp-and-third-party-tool-call.md)
 - **2026-10-10** — [Give the agent network tools behind a tool pack, with blast-radius approvals](2026-10-10-give-the-agent-network-tools-behind-a-tool-pack-with-blast-radius-approvals.md)
 - **2026-10-10** — [Let the agent delegate tasks to specialist assistants](2026-10-10-let-the-agent-delegate-tasks-to-specialist-assistants.md)

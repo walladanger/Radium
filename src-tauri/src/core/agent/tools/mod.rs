@@ -1,6 +1,7 @@
 //! OS core tools invoked directly by the agent loop.
 
 mod archive;
+pub(crate) mod blast;
 mod clipboard;
 mod code;
 pub mod docs;
@@ -12,9 +13,11 @@ mod media;
 pub mod net;
 mod notify;
 mod proc;
+pub(crate) mod review;
 mod shell;
 mod skill_run_script;
 mod skill_view;
+pub mod sys;
 pub(super) mod tool_view;
 mod vision;
 mod web;
@@ -177,6 +180,7 @@ pub async fn execute(call: &ToolCallPayload, context: &ToolContext<'_>) -> ToolO
         "skill.view" => skill_view::execute(&call.args, context).await,
         "tool.view" => tool_view::execute(&call.args, context.loaded_tools, context.mcp).await,
         tool if tool.starts_with("net.") => net::execute(tool, &call.args, context).await,
+        tool if tool.starts_with("sys.") => sys::execute(tool, &call.args, context).await,
         "agent.delegate" => delegate(&call.args, context).await,
         "reply" => required_string(&call.args, "text")
             .map(ToolOutcome::ok)
@@ -316,7 +320,7 @@ async fn authorize_call(
     // A network fix gets a second opinion from a separate reviewer call,
     // shown on the card next to its blast radius; the user still decides.
     if let Some(review) =
-        net::review_for_approval(&prepared.call.tool, &prepared.call.args, context).await
+        review::review_for_approval(&prepared.call.tool, &prepared.call.args, context).await
     {
         if let Some(object) = preview.as_object_mut() {
             object.insert(
@@ -387,7 +391,7 @@ fn safe_preview(call: &ToolCallPayload) -> Value {
     }
     // A network fix shows its blast radius — what changes, what drops, how
     // to undo it — before the user decides.
-    if let Some(radius) = net::blast_radius(&call.tool, &call.args) {
+    if let Some(radius) = blast::for_call(&call.tool, &call.args) {
         preview.insert("action".into(), Value::String(radius.action.clone()));
         preview.insert(
             "blastRadius".into(),
