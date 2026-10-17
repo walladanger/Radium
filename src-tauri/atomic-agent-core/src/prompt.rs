@@ -632,7 +632,7 @@ pub const ITERATION_ONE_TOOLS: &[ToolDescriptor] = &[
     },
     ToolDescriptor {
         name: "sys.clean_temp",
-        summary: "FIX: delete your temporary files older than N days (default 2) and report the space freed. Needs approval.",
+        summary: "UNAVAILABLE: automatic temporary-file cleanup is disabled; direct the user to OS Storage settings. No files are deleted.",
         args_schema: r#"{ olderThanDays?: number, reason?: string }"#,
         tier: ToolTier::Frequent,
         examples: &[],

@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-289 records, 2026-05-19 → 2026-10-16.
+290 records, 2026-05-19 → 2026-10-16.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -17,6 +17,7 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ## Load-bearing — read before touching platform / provider / agent code
 
+- **2026-10-16** — [Disable unsafe temp cleanup and align startup flags](2026-10-16-disable-unsafe-temp-cleanup-and-align-startup-flags.md)
 - **2026-10-16** — [Media sizes come from the Rust catalog; images upscale after rendering](2026-10-16-media-sizes-come-from-the-rust-catalog-and-upscale-after-render.md)
 - **2026-10-16** — [Only the inference runtimes sync from upstream; registries are bundled, PostHog and the Atomic Agent integration are removed, crash reporting becomes Radium's own and opt-in](2026-10-16-only-runtimes-sync-from-upstream.md) — supersedes the Atomic Agent, atomic-chat-conf media, curated-catalog source, Atomic DFlash, PostHog and upstream-Sentry records
 - **2026-10-09** — [Media saves through real fs commands; chat reuses the Media page's settings](2026-10-09-media-saves-through-real-fs-commands-and-chat-reuses-media-settings.md)
