@@ -23,7 +23,6 @@ use std::sync::Arc;
 use oauth2::TokenResponse as _;
 use rmcp::transport::auth::{AuthorizationManager, OAuthState, OAuthTokenResponse};
 use tauri::{AppHandle, Runtime, State};
-use tauri_plugin_http::reqwest;
 use tokio::sync::{oneshot, Mutex};
 
 use crate::core::auth::state::{data_dir_for, now_unix};
@@ -178,7 +177,7 @@ impl McpOAuthState {
             return Ok(None);
         }
 
-        let http = reqwest::Client::builder()
+        let http = reqwest013::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .map_err(|e| format!("cannot build HTTP client: {e}"))?;

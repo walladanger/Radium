@@ -1,4 +1,4 @@
-use rmcp::model::{CallToolRequestParam, CallToolResult};
+use rmcp::model::CallToolResult;
 use rmcp::{service::Peer, RoleClient};
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
@@ -432,10 +432,10 @@ pub async fn call_tool<R: Runtime>(
             log::warn!("MCP server {srv_name}: pre-call token refresh failed: {e}");
         }
 
-        let tool_call = service.call_tool(CallToolRequestParam {
-            name: tool_name.clone().into(),
-            arguments: arguments.clone(),
-        });
+        let tool_call = service.call_tool(super::helpers::tool_call_params(
+            tool_name.clone(),
+            arguments.clone(),
+        ));
 
         // Race between timeout, tool call, and cancellation
         let result = if cancellation_token.is_some() {
@@ -511,10 +511,10 @@ pub async fn call_tool<R: Runtime>(
         };
         let retry = timeout(
             timeout_duration,
-            service.call_tool(CallToolRequestParam {
-                name: tool_name.clone().into(),
+            service.call_tool(super::helpers::tool_call_params(
+                tool_name.clone(),
                 arguments,
-            }),
+            )),
         )
         .await;
         return match retry {
@@ -815,10 +815,10 @@ enum PingResult {
 async fn try_ping_tool(service: &RunningServiceEnum) -> PingResult {
     let result = timeout(
         Duration::from_secs(3),
-        service.call_tool(CallToolRequestParam {
-            name: "ping".into(),
-            arguments: Some(Map::new()),
-        }),
+        service.call_tool(super::helpers::tool_call_params(
+            "ping".to_string(),
+            Some(Map::new()),
+        )),
     )
     .await;
 
@@ -853,10 +853,10 @@ async fn try_browser_snapshot_tool(service: &RunningServiceEnum) -> Result<bool,
         // Snapshot tool is very time-consuming
         // Extend timeout to make sure the tool call has enough time to succeed
         Duration::from_secs(20),
-        service.call_tool(CallToolRequestParam {
-            name: "browser_snapshot".into(),
-            arguments: Some(Map::new()),
-        }),
+        service.call_tool(super::helpers::tool_call_params(
+            "browser_snapshot".to_string(),
+            Some(Map::new()),
+        )),
     )
     .await;
 

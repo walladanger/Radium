@@ -14,7 +14,6 @@ use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
 use oauth2::TokenResponse as _;
 use rmcp::transport::auth::{OAuthState, OAuthTokenResponse};
-use tauri_plugin_http::reqwest;
 
 use super::store::McpOAuthEntry;
 use crate::core::auth::chatgpt::{parse_callback_query, CallbackParams};
@@ -166,7 +165,7 @@ pub(crate) async fn run_login(
     let (port, waiter) = start_callback_server()?;
     let redirect_uri = format!("http://127.0.0.1:{port}{CALLBACK_PATH}");
 
-    let http = reqwest::Client::builder()
+    let http = reqwest013::Client::builder()
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| format!("cannot build HTTP client: {e}"))?;

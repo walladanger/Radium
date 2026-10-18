@@ -550,8 +550,8 @@ fn write_skill_archive(root: &Path, target: &Path, files: &[PathBuf]) -> Result<
         .open(target)
         .map_err(|error| format!("Failed to create skill archive: {error}"))?;
     let mut archive = zip::ZipWriter::new(file);
-    let options =
-        zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
     for relative in files {
         let archive_path = relative
             .iter()
@@ -968,7 +968,9 @@ mod tests {
         let archive_file = File::create(&archive_path).unwrap();
         let mut archive = zip::ZipWriter::new(archive_file);
         for path in ["one/SKILL.md", "two/SKILL.md"] {
-            archive.start_file(path, SimpleFileOptions::default()).unwrap();
+            archive
+                .start_file(path, SimpleFileOptions::default())
+                .unwrap();
             archive
                 .write_all(b"---\nname: duplicate\ndescription: Duplicate\n---\nBody")
                 .unwrap();

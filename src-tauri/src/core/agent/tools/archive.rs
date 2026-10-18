@@ -63,7 +63,11 @@ fn list_archive(path: &Path) -> Result<ToolOutcome, ToolOutcome> {
         let mut rows = Vec::with_capacity(archive.len());
         for index in 0..archive.len() {
             let entry = archive.by_index(index).map_err(io_error)?;
-            rows.push(format!("{}\t{}", entry.size(), String::from_utf8_lossy(entry.name_raw())));
+            rows.push(format!(
+                "{}\t{}",
+                entry.size(),
+                String::from_utf8_lossy(entry.name_raw())
+            ));
         }
         return Ok(ToolOutcome::ok(truncate(
             rows.join("\n"),
@@ -203,7 +207,11 @@ fn validate_zip_entries(
                 )));
             }
         }
-        validate_size(entry.size(), &mut total, &String::from_utf8_lossy(entry.name_raw()))?;
+        validate_size(
+            entry.size(),
+            &mut total,
+            &String::from_utf8_lossy(entry.name_raw()),
+        )?;
         let output = destination.join(enclosed);
         validate_output_target(&output, destination, overwrite, is_dir)?;
         plans.push(ExtractPlan {

@@ -235,7 +235,7 @@ impl McpBridge for ScriptedMcpBridge {
             ));
         }
         Ok(rmcp::model::CallToolResult::success(vec![
-            rmcp::model::Content::text(format!("result from {}", descriptor.tool)),
+            rmcp::model::ContentBlock::text(format!("result from {}", descriptor.tool)),
         ]))
     }
 }

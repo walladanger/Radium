@@ -187,7 +187,10 @@ fn build_pdf_gap_warning(pages: &[&str]) -> Option<String> {
                 "  - {} (last text before gap, page {}: \"{}\")\n",
                 label, page_no, snippet
             )),
-            None => warning.push_str(&format!("  - {} (no text extracted before this gap)\n", label)),
+            None => warning.push_str(&format!(
+                "  - {} (no text extracted before this gap)\n",
+                label
+            )),
         }
     }
     if ranges.len() > PDF_GAP_MAX_RANGES {
@@ -462,7 +465,10 @@ fn parse_spreadsheet(file_path: &str) -> Result<String, RagError> {
             }
             out.push_str("\n");
             if let Some(cells) = fill_colors.get(&sheet_name) {
-                out.push_str(&format!("# Fill colors (non-default) — Sheet: {}\n", sheet_name));
+                out.push_str(&format!(
+                    "# Fill colors (non-default) — Sheet: {}\n",
+                    sheet_name
+                ));
                 for (cell_ref, color) in cells {
                     out.push_str(&format!("{}={}\n", cell_ref, color));
                 }
@@ -476,14 +482,14 @@ fn parse_spreadsheet(file_path: &str) -> Result<String, RagError> {
 /// Legacy indexed-color palette (ECMA-376 §18.8.27). Indices 64/65 are
 /// system-dependent and intentionally absent.
 const XLSX_INDEXED_COLORS: [&str; 64] = [
-    "000000", "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF",
-    "000000", "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF",
-    "800000", "008000", "000080", "808000", "800080", "008080", "C0C0C0", "808080",
-    "9999FF", "993366", "FFFFCC", "CCFFFF", "660066", "FF8080", "0066CC", "CCCCFF",
-    "000080", "FF00FF", "FFFF00", "00FFFF", "800080", "800000", "008080", "0000FF",
-    "00CCFF", "CCFFFF", "CCFFCC", "FFFF99", "99CCFF", "FF99CC", "CC99FF", "FFCC99",
-    "3366FF", "33CCCC", "99CC00", "FFCC00", "FF9900", "FF6600", "666699", "969696",
-    "003366", "339966", "003300", "333300", "993300", "993366", "333399", "333333",
+    "000000", "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF", "000000",
+    "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF", "800000", "008000",
+    "000080", "808000", "800080", "008080", "C0C0C0", "808080", "9999FF", "993366", "FFFFCC",
+    "CCFFFF", "660066", "FF8080", "0066CC", "CCCCFF", "000080", "FF00FF", "FFFF00", "00FFFF",
+    "800080", "800000", "008080", "0000FF", "00CCFF", "CCFFFF", "CCFFCC", "FFFF99", "99CCFF",
+    "FF99CC", "CC99FF", "FFCC99", "3366FF", "33CCCC", "99CC00", "FFCC00", "FF9900", "FF6600",
+    "666699", "969696", "003366", "339966", "003300", "333300", "993300", "993366", "333399",
+    "333333",
 ];
 
 #[derive(Default)]
@@ -558,7 +564,9 @@ fn fg_color_value(e: &BytesStart) -> Option<String> {
         return Some(rgb.to_ascii_uppercase());
     }
     if let Some(index) = xml_attr(e, b"indexed").and_then(|v| v.parse::<usize>().ok()) {
-        return XLSX_INDEXED_COLORS.get(index).map(|hex| format!("FF{}", hex));
+        return XLSX_INDEXED_COLORS
+            .get(index)
+            .map(|hex| format!("FF{}", hex));
     }
     if let Some(theme) = xml_attr(e, b"theme") {
         // Resolving theme colors needs xl/theme/theme1.xml; report the slot instead
@@ -747,9 +755,10 @@ fn parse_pptx(file_path: &str) -> Result<String, RagError> {
         // Speaker notes live at ppt/notesSlides/notesSlideN.xml. Mapping notesSlideN
         // to slideN by name convention is an approximation (the authoritative mapping
         // is in each slide's relationships), but holds for PowerPoint-produced files.
-        if let Some(notes_xml) =
-            read_zip_entry(&mut zip, &format!("ppt/notesSlides/notesSlide{}.xml", index))
-        {
+        if let Some(notes_xml) = read_zip_entry(
+            &mut zip,
+            &format!("ppt/notesSlides/notesSlide{}.xml", index),
+        ) {
             let notes = extract_pptx_text(&notes_xml);
             let notes = notes.trim();
             if !notes.is_empty() {
@@ -934,9 +943,17 @@ mod tests {
         let plain = parse_spreadsheet(plain_path.to_str().unwrap()).unwrap();
         let colored = parse_spreadsheet(colored_path.to_str().unwrap()).unwrap();
 
-        assert!(plain.starts_with("# Sheet: Sheet1\n"), "values missing: {:?}", plain);
+        assert!(
+            plain.starts_with("# Sheet: Sheet1\n"),
+            "values missing: {:?}",
+            plain
+        );
         assert!(plain.contains("42"), "values missing: {:?}", plain);
-        assert!(!plain.contains("# Fill colors"), "unexpected color section: {:?}", plain);
+        assert!(
+            !plain.contains("# Fill colors"),
+            "unexpected color section: {:?}",
+            plain
+        );
         // The values pass must stay byte-identical; the color section is additive
         assert_eq!(
             colored,
@@ -1045,7 +1062,10 @@ mod tests {
             vec![(2, 4), (6, 6)]
         );
         assert_eq!(empty_page_ranges(&[0, 0], 20), vec![(1, 2)]);
-        assert_eq!(empty_page_ranges(&[100, 100], 20), Vec::<(usize, usize)>::new());
+        assert_eq!(
+            empty_page_ranges(&[100, 100], 20),
+            Vec::<(usize, usize)>::new()
+        );
         assert_eq!(empty_page_ranges(&[], 20), Vec::<(usize, usize)>::new());
     }
 
@@ -1136,10 +1156,16 @@ mod tests {
 
     #[test]
     fn test_split_pdftotext_pages() {
-        assert_eq!(split_pdftotext_pages("one\u{c}two\u{c}"), vec!["one", "two"]);
+        assert_eq!(
+            split_pdftotext_pages("one\u{c}two\u{c}"),
+            vec!["one", "two"]
+        );
         // An empty final page is kept — only the terminator segment is dropped
         assert_eq!(split_pdftotext_pages("one\u{c}\u{c}"), vec!["one", ""]);
-        assert_eq!(split_pdftotext_pages("no-terminator"), vec!["no-terminator"]);
+        assert_eq!(
+            split_pdftotext_pages("no-terminator"),
+            vec!["no-terminator"]
+        );
     }
 
     #[test]
@@ -1159,8 +1185,8 @@ mod tests {
         let pdf = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R/Size 4>>\n%%EOF\n";
         let path = temp_path("empty.pdf");
         std::fs::write(&path, pdf).unwrap();
-        let out = run_pdftotext(path.to_str().unwrap())
-            .expect("pdftotext should handle a minimal PDF");
+        let out =
+            run_pdftotext(path.to_str().unwrap()).expect("pdftotext should handle a minimal PDF");
         assert_eq!(split_pdftotext_pages(&out).len(), 1);
         let _ = std::fs::remove_file(&path);
     }

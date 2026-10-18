@@ -1,9 +1,9 @@
 use rmcp::{
-    model::{ClientCapabilities, ClientInfo, Implementation, InitializeRequestParam},
+    model::{ClientCapabilities, ClientInfo, Implementation, InitializeRequestParams},
     service::RunningService,
     transport::{
-        streamable_http_client::StreamableHttpClientTransportConfig, SseClientTransport,
-        StreamableHttpClientTransport, TokioChildProcess,
+        streamable_http_client::StreamableHttpClientTransportConfig, StreamableHttpClientTransport,
+        TokioChildProcess,
     },
     RoleClient, ServiceExt,
 };
@@ -269,7 +269,7 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
     config: &McpServerConfig,
     transport_type: &str,
     use_sign_in: bool,
-) -> Result<RunningService<RoleClient, InitializeRequestParam>, String> {
+) -> Result<RunningService<RoleClient, InitializeRequestParams>, String> {
     let url = config
         .url
         .as_deref()
@@ -281,17 +281,10 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
 
     timeout(handshake_timeout, async {
         let client = build_remote_http_client(config, handshake_timeout)?;
-        let client_info = ClientInfo {
-            protocol_version: Default::default(),
-            capabilities: ClientCapabilities::default(),
-            client_info: Implementation {
-                name: "Radium MCP Client".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-                title: Some("Radium".to_string()),
-                website_url: None,
-                icons: None,
-            },
-        };
+        let mut implementation =
+            Implementation::new("Radium MCP Client", env!("CARGO_PKG_VERSION"));
+        implementation.title = Some("Radium".to_string());
+        let client_info = ClientInfo::new(ClientCapabilities::default(), implementation);
 
         // A server the user signed into gets its session restored (refreshed
         // first when close to expiry) and wrapped around the base client. The
@@ -321,10 +314,7 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
                 // pre-fills the token and AuthClient never runs.
                 let transport = StreamableHttpClientTransport::with_client(
                     auth_client,
-                    StreamableHttpClientTransportConfig {
-                        uri: url.into(),
-                        ..Default::default()
-                    },
+                    StreamableHttpClientTransportConfig::with_uri(url),
                 );
                 client_info
                     .serve(transport)
@@ -334,51 +324,17 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
             ("http", None) => {
                 let transport = StreamableHttpClientTransport::with_client(
                     client,
-                    StreamableHttpClientTransportConfig {
-                        uri: url.into(),
-                        ..Default::default()
-                    },
+                    StreamableHttpClientTransportConfig::with_uri(url),
                 );
                 client_info
                     .serve(transport)
                     .await
                     .map_err(|e| format!("Streamable HTTP handshake failed: {e}"))
             }
-            ("sse", Some(manager)) => {
-                let auth_client = rmcp::transport::auth::AuthClient::new(client, manager);
-                app.state::<AppState>()
-                    .mcp_oauth
-                    .register_live(name, auth_client.auth_manager.clone())
-                    .await;
-                let transport = SseClientTransport::start_with_client(
-                    auth_client,
-                    rmcp::transport::sse_client::SseClientConfig {
-                        sse_endpoint: url.into(),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map_err(|e| format!("SSE transport failed: {e}"))?;
-                client_info
-                    .serve(transport)
-                    .await
-                    .map_err(|e| format!("SSE handshake failed: {e}"))
-            }
-            ("sse", None) => {
-                let transport = SseClientTransport::start_with_client(
-                    client,
-                    rmcp::transport::sse_client::SseClientConfig {
-                        sse_endpoint: url.into(),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map_err(|e| format!("SSE transport failed: {e}"))?;
-                client_info
-                    .serve(transport)
-                    .await
-                    .map_err(|e| format!("SSE handshake failed: {e}"))
-            }
+            ("sse", _) => Err(
+                "The legacy SSE MCP transport is no longer supported; use Streamable HTTP instead"
+                    .to_string(),
+            ),
             (other, _) => Err(format!("Unsupported remote MCP transport '{other}'")),
         }
     })
@@ -394,7 +350,7 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
 fn build_remote_http_client(
     config: &McpServerConfig,
     connect_timeout: Duration,
-) -> Result<reqwest::Client, String> {
+) -> Result<reqwest013::Client, String> {
     let mut headers = reqwest::header::HeaderMap::new();
     for (key, value) in &config.headers {
         if let Some(value) = value.as_str() {
@@ -407,7 +363,7 @@ fn build_remote_http_client(
         }
     }
 
-    reqwest::Client::builder()
+    reqwest013::Client::builder()
         .default_headers(headers)
         .connect_timeout(connect_timeout)
         .build()
@@ -1501,4 +1457,15 @@ mod tests {
         let parsed = extract_command_args(&config).expect("config parses");
         assert_eq!(parsed.cwd, None);
     }
+}
+
+/// Builds a `tools/call` request. rmcp 2.x marks its request structs
+/// non-exhaustive, so they are built through the constructor and then filled in.
+pub(crate) fn tool_call_params(
+    name: String,
+    arguments: Option<serde_json::Map<String, Value>>,
+) -> rmcp::model::CallToolRequestParams {
+    let mut params = rmcp::model::CallToolRequestParams::new(name);
+    params.arguments = arguments;
+    params
 }

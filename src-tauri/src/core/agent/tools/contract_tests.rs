@@ -515,7 +515,10 @@ async fn filesystem_read_document_extracts_docx_and_honors_character_cap() {
     let fixture = ToolFixture::allowed().await;
     let mut archive = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     archive
-        .start_file("word/document.xml", zip::write::SimpleFileOptions::default())
+        .start_file(
+            "word/document.xml",
+            zip::write::SimpleFileOptions::default(),
+        )
         .unwrap();
     archive
         .write_all(

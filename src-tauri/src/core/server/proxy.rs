@@ -3316,7 +3316,8 @@ async fn inner_proxy_request<R: Runtime>(
                                 is_context_limit_error(hy_status(fallback_status), &fallback_error);
 
                             // Return the error to client
-                            let mut error_response = Response::builder().status(hy_status(fallback_status));
+                            let mut error_response =
+                                Response::builder().status(hy_status(fallback_status));
                             error_response = add_cors_headers_with_host_and_origin(
                                 error_response,
                                 &host_header,
@@ -3392,7 +3393,8 @@ async fn inner_proxy_request<R: Runtime>(
                 state.error_kind = Some(upstream_error_kind(state.backend));
                 state.upstream_status = Some(status.as_u16());
                 state.oom_detected = body_indicates_oom(&error_body);
-                state.ctx_overflow_detected = is_context_limit_error(hy_status(status), &error_body);
+                state.ctx_overflow_detected =
+                    is_context_limit_error(hy_status(status), &error_body);
                 let mut error_response = Response::builder().status(hy_status(status));
                 error_response = add_cors_headers_with_host_and_origin(
                     error_response,
@@ -3534,7 +3536,8 @@ async fn inner_proxy_request<R: Runtime>(
                 state.error_kind = Some(upstream_error_kind(state.backend));
                 state.upstream_status = Some(status.as_u16());
                 state.oom_detected = body_indicates_oom(&error_body);
-                state.ctx_overflow_detected = is_context_limit_error(hy_status(status), &error_body);
+                state.ctx_overflow_detected =
+                    is_context_limit_error(hy_status(status), &error_body);
                 // ATO-182: For local engines (llama.cpp / mlx), forward a
                 // structured OpenAI error envelope with a typed `code` instead
                 // of a raw stderr dump / `{"detail": ...}`. Remote providers

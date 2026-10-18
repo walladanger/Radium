@@ -5,7 +5,7 @@ use crate::core::{
     downloads::models::DownloadManagerState, mcp::models::McpSettings,
 };
 use rmcp::{
-    model::{CallToolRequestParam, CallToolResult, InitializeRequestParam, Tool},
+    model::{CallToolRequestParams, CallToolResult, InitializeRequestParams, Tool},
     service::{Peer, RunningService},
     RoleClient, ServiceError,
 };
@@ -127,7 +127,7 @@ impl LocalServerEndpoint {
 
 pub enum RunningServiceEnum {
     NoInit(RunningService<RoleClient, ()>),
-    WithInit(RunningService<RoleClient, InitializeRequestParam>),
+    WithInit(RunningService<RoleClient, InitializeRequestParams>),
 }
 pub type SharedMcpServers = Arc<Mutex<HashMap<String, RunningServiceEnum>>>;
 
@@ -202,7 +202,7 @@ impl RunningServiceEnum {
     }
     pub async fn call_tool(
         &self,
-        params: CallToolRequestParam,
+        params: CallToolRequestParams,
     ) -> Result<CallToolResult, ServiceError> {
         match self {
             Self::NoInit(s) => s.call_tool(params).await,
