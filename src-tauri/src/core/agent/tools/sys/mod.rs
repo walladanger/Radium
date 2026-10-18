@@ -55,7 +55,7 @@ pub async fn execute(
         "sys.startup_items" => diagnose::startup_items().await,
         "sys.pending_updates" => diagnose::pending_updates(context.cancellation).await,
         "sys.recent_errors" => diagnose::recent_errors(args, context.cancellation).await,
-        "sys.clean_temp" => fix::clean_temp(args, context).await,
+        "sys.clean_temp" => fix::clean_temp(args).await,
         "sys.empty_recycle_bin" => fix::empty_recycle_bin(context).await,
         "sys.disable_startup_item" => fix::set_startup_item(args, false, context).await,
         "sys.enable_startup_item" => fix::set_startup_item(args, true, context).await,
@@ -70,14 +70,6 @@ pub(crate) async fn overview_text() -> String {
     }
 }
 
-/// Days of age before a temp file may be cleaned (default 2, 1-365).
-pub fn older_than_days(args: &Value) -> u64 {
-    args.get("olderThanDays")
-        .and_then(Value::as_u64)
-        .unwrap_or(2)
-        .clamp(1, 365)
-}
-
 fn name_arg(args: &Value) -> String {
     args.get("name")
         .and_then(Value::as_str)
@@ -89,21 +81,16 @@ fn name_arg(args: &Value) -> String {
 /// The blast radius of a `sys.*` fix call; `None` for diagnose tools.
 pub fn blast_radius(tool: &str, args: &Value) -> Option<BlastRadius> {
     Some(match tool {
-        "sys.clean_temp" => {
-            let days = older_than_days(args);
-            BlastRadius {
-                action: format!(
-                    "Delete files older than {days} day(s) from your user temporary folder."
-                ),
-                changes: "Frees disk space. Files in use and anything newer are skipped.".into(),
-                disruption: "None expected. A program that kept old work in its temp files (rare) loses it.".into(),
-                affects: "Only your own temporary folder; system folders and other users are untouched.".into(),
-                undo: "Deleted temp files cannot be restored.".into(),
-                needs_admin: false,
-                needs_reboot: false,
-                risk: "low",
-            }
-        }
+        "sys.clean_temp" => BlastRadius {
+            action: "Automatic temporary-file cleanup is unavailable.".into(),
+            changes: "Nothing will be deleted. Review temporary files in your operating system's Storage settings.".into(),
+            disruption: "None.".into(),
+            affects: "No files or folders.".into(),
+            undo: "No change to undo.".into(),
+            needs_admin: false,
+            needs_reboot: false,
+            risk: "low",
+        },
         "sys.empty_recycle_bin" => BlastRadius {
             action: "Permanently delete everything in the Recycle Bin / Trash.".into(),
             changes: "Frees the space the deleted files still use.".into(),
@@ -192,12 +179,10 @@ mod tests {
     }
 
     #[test]
-    fn temp_age_is_bounded() {
-        assert_eq!(older_than_days(&json!({})), 2);
-        assert_eq!(older_than_days(&json!({"olderThanDays": 0})), 1);
-        assert_eq!(older_than_days(&json!({"olderThanDays": 9999})), 365);
+    fn cleanup_preview_does_not_promise_deletion() {
         let radius = blast_radius("sys.clean_temp", &json!({"olderThanDays": 7})).unwrap();
-        assert!(radius.action.contains("7 day(s)"));
+        assert!(radius.action.contains("unavailable"));
+        assert!(radius.changes.contains("Nothing will be deleted"));
     }
 
     #[test]

@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-284 records, 2026-05-19 → 2026-10-16.
+290 records, 2026-05-19 → 2026-10-16.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -17,6 +17,7 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ## Load-bearing — read before touching platform / provider / agent code
 
+- **2026-10-16** — [Disable unsafe temp cleanup and align startup flags](2026-10-16-disable-unsafe-temp-cleanup-and-align-startup-flags.md)
 - **2026-10-16** — [Media sizes come from the Rust catalog; images upscale after rendering](2026-10-16-media-sizes-come-from-the-rust-catalog-and-upscale-after-render.md)
 - **2026-10-16** — [Only the inference runtimes sync from upstream; registries are bundled, PostHog and the Atomic Agent integration are removed, crash reporting becomes Radium's own and opt-in](2026-10-16-only-runtimes-sync-from-upstream.md) — supersedes the Atomic Agent, atomic-chat-conf media, curated-catalog source, Atomic DFlash, PostHog and upstream-Sentry records
 - **2026-10-09** — [Media saves through real fs commands; chat reuses the Media page's settings](2026-10-09-media-saves-through-real-fs-commands-and-chat-reuses-media-settings.md)
@@ -41,8 +42,9 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ---
 
-## Radium Media platform (13)
+## Radium Media platform (14)
 
+- **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)
 The model-agnostic media platform: provider adapters, the v2 contract, the
 library on disk, and how the frozen surface is allowed to change.
 
@@ -335,7 +337,13 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-11** — [Add a unified "Sampling — {assistant}" popover (assistant switcher + sampling params in one place) (ATO-155)](2026-06-11-add-a-unified-sampling-assistant-popover-assistant-switcher.md)
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
-## Other (21)
+## Other (26)
+
+- **2026-10-16** — [Resize workspace panels and filter controller activity](2026-10-16-resize-workspace-panels-and-filter-controller-activity.md)
+- **2026-10-04** — [Open Agent and Production panels beside chat](2026-10-04-open-agent-and-production-panels-beside-chat.md)
+- **2026-10-03** — [Own coordinated tasks in a local controller](2026-10-03-own-coordinated-tasks-in-a-local-controller.md)
+- **2026-10-03** — [Reuse the runtime adapter branch and default managed Ollama to local execution](2026-10-03-reconcile-runtime-adapters-with-local-defaults.md)
+- **2026-10-16** — [Recover security triage with explicit local state](2026-10-16-recover-security-triage-with-explicit-local-state.md)
 
 - **2026-10-10** — [Align Vitest 5 tooling and preserve critical coverage](2026-10-10-align-vitest-5-tooling-and-preserve-critical-coverage.md)
 

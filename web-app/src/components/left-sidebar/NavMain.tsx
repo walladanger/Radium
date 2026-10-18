@@ -3,7 +3,10 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   ChevronRight,
   Clapperboard as MediaIcon,
+  GitBranch,
   LayoutGrid as LayoutGridIcon,
+  Users,
+  Workflow,
 } from 'lucide-react'
 import {
   Collapsible,
@@ -32,6 +35,7 @@ import { SearchDialog } from '@/containers/dialogs/SearchDialog'
 import { route } from '@/constants/routes'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { useGeneralSetting } from '@/hooks/useGeneralSetting'
+import { useWorkspacePanel } from '@/hooks/useWorkspacePanel'
 import { useLeftPanel } from '@/hooks/useLeftPanel'
 import { useProjectDialog } from '@/hooks/useProjectDialog'
 import { useSearchDialog } from '@/hooks/useSearchDialog'
@@ -46,6 +50,7 @@ type AnimatedIconHandle = {
 export function NavMain() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const workspace = useWorkspacePanel()
   const { pathname } = useLocation()
   const newChatIconRef = useRef<AnimatedIconHandle>(null)
   const modelsIconRef = useRef<AnimatedIconHandle>(null)
@@ -108,18 +113,32 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith('/hub')}
+            isActive={!workspace.panel && pathname.startsWith('/hub')}
             className="data-[active=true]:bg-sidebar-foreground/15"
             onMouseEnter={() => modelsIconRef.current?.startAnimation()}
             onMouseLeave={() => modelsIconRef.current?.stopAnimation()}
           >
-            <Link to={route.hub.index}>
+            <Link to={route.hub.index} onClick={workspace.close}>
               <BlocksIcon
                 ref={modelsIconRef}
                 className="text-foreground/70"
                 size={16}
               />
               <span>{t('common:models')}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        {(['agents', 'production'] as const).map(panel => <SidebarMenuItem key={panel}>
+          <SidebarMenuButton isActive={workspace.panel === panel} onClick={() => workspace.toggle(panel)} aria-pressed={workspace.panel === panel} className="data-[active=true]:bg-sidebar-foreground/15">
+            {panel === 'agents' ? <Users className="text-foreground/70" size={16} /> : <Workflow className="text-foreground/70" size={16} />}
+            <span>{t(`workspace-panel:${panel}`)}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>)}
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={!workspace.panel && pathname.startsWith('/tasks')} className="data-[active=true]:bg-sidebar-foreground/15">
+            <Link to={route.tasks} onClick={workspace.close}>
+              <GitBranch className="text-foreground/70" size={16} />
+              <span>{t('atomic-tasks:title')}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -132,10 +151,10 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith('/media')}
+            isActive={!workspace.panel && pathname.startsWith('/media')}
             className="data-[active=true]:bg-sidebar-foreground/15"
           >
-            <Link to={route.media}>
+            <Link to={route.media} onClick={workspace.close}>
               <MediaIcon className="text-foreground/70" size={16} />
               <span>{t('media:settings.title', { defaultValue: 'Media' })}</span>
             </Link>
@@ -148,10 +167,10 @@ export function NavMain() {
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith('/workspace')}
+            isActive={!workspace.panel && pathname.startsWith('/workspace')}
             className="data-[active=true]:bg-sidebar-foreground/15"
           >
-            <Link to={route.workspace.index}>
+            <Link to={route.workspace.index} onClick={workspace.close}>
               <LayoutGridIcon className="text-foreground/70" size={16} />
               <span>{t('common:workspace', { defaultValue: 'Workspace' })}</span>
             </Link>
@@ -170,7 +189,7 @@ export function NavMain() {
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
-                isActive={isPluginsRoute && !pluginsExpanded}
+                isActive={!workspace.panel && isPluginsRoute && !pluginsExpanded}
                 className="data-[active=true]:bg-sidebar-foreground/15"
                 onMouseEnter={() => pluginsIconRef.current?.startAnimation()}
                 onMouseLeave={() => pluginsIconRef.current?.stopAnimation()}
@@ -201,10 +220,10 @@ export function NavMain() {
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton
                     asChild
-                    isActive={pathname.startsWith('/connectors')}
+                    isActive={!workspace.panel && pathname.startsWith('/connectors')}
                     className="data-[active=true]:bg-sidebar-foreground/15"
                   >
-                    <Link to={route.connectors.index}>
+                    <Link to={route.connectors.index} onClick={workspace.close}>
                       <span>{t('common:connectors')}</span>
                       {!connectorsBadgeSeen && (
                         <span className="ml-auto shrink-0 rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:bg-blue-400/15 dark:text-blue-400">
@@ -217,10 +236,10 @@ export function NavMain() {
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton
                     asChild
-                    isActive={pathname.startsWith('/skills')}
+                    isActive={!workspace.panel && pathname.startsWith('/skills')}
                     className="data-[active=true]:bg-sidebar-foreground/15"
                   >
-                    <Link to={route.skills.index}>
+                    <Link to={route.skills.index} onClick={workspace.close}>
                       <span>{t('common:skills')}</span>
                     </Link>
                   </SidebarMenuSubButton>
@@ -247,7 +266,7 @@ export function NavMain() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith('/launch')}
+                isActive={!workspace.panel && pathname.startsWith('/launch')}
                 className="data-[active=true]:bg-sidebar-foreground/15"
                 onMouseEnter={() =>
                   integrationsIconRef.current?.startAnimation()
@@ -256,7 +275,7 @@ export function NavMain() {
                   integrationsIconRef.current?.stopAnimation()
                 }
               >
-                <Link to={route.launch.index}>
+                <Link to={route.launch.index} onClick={workspace.close}>
                   <PlugIcon
                     ref={integrationsIconRef}
                     className="text-foreground/70"

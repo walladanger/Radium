@@ -113,7 +113,7 @@ pub fn parse_desktop_entry(text: &str) -> Option<(String, String, bool)> {
     Some((name?, exec, enabled))
 }
 
-/// A `.desktop` file with `Hidden=` set to hide (disable) or show it.
+/// Toggle both standard Hidden and existing GNOME startup flags together.
 pub fn desktop_with_hidden(text: &str, hidden: bool) -> String {
     let mut out = Vec::new();
     let mut in_entry = false;
@@ -129,7 +129,19 @@ pub fn desktop_with_hidden(text: &str, hidden: bool) -> String {
             out.push(line.to_owned());
             continue;
         }
-        if in_entry && trimmed.starts_with("Hidden=") {
+        if in_entry
+            && trimmed
+                .split_once('=')
+                .is_some_and(|(key, _)| key.trim() == "X-GNOME-Autostart-enabled")
+        {
+            out.push(format!("X-GNOME-Autostart-enabled={}", !hidden));
+            continue;
+        }
+        if in_entry
+            && trimmed
+                .split_once('=')
+                .is_some_and(|(key, _)| key.trim() == "Hidden")
+        {
             if !written {
                 out.push(format!("Hidden={hidden}"));
                 written = true;
@@ -477,6 +489,19 @@ mod tests {
         assert_eq!(shown.matches("Hidden=").count(), 1);
         let gnome_off = "[Desktop Entry]\nName=X\nX-GNOME-Autostart-enabled=false\n";
         assert!(!parse_desktop_entry(gnome_off).unwrap().2);
+    }
+
+    #[test]
+    fn gnome_disabled_entries_can_be_enabled_and_disabled_again() {
+        let original = "[Desktop Entry]\nName=Sync\nHidden=true\nX-GNOME-Autostart-enabled = false\n[Desktop Action Stop]\nX-GNOME-Autostart-enabled=false\n";
+        let enabled = desktop_with_hidden(original, false);
+        assert!(parse_desktop_entry(&enabled).unwrap().2);
+        assert!(enabled.contains("Hidden=false"));
+        assert!(enabled.contains("X-GNOME-Autostart-enabled=true"));
+        assert!(enabled.contains("[Desktop Action Stop]\nX-GNOME-Autostart-enabled=false"));
+        let disabled = desktop_with_hidden(&enabled, true);
+        assert!(!parse_desktop_entry(&disabled).unwrap().2);
+        assert!(disabled.contains("X-GNOME-Autostart-enabled=false"));
     }
 
     #[test]

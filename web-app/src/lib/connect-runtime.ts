@@ -52,8 +52,14 @@ function portOf(baseUrl: string): string {
 }
 
 /**
- * What connecting a detection means, or `null` when it cannot be connected:
- * a runtime with no OpenAI-compatible API (TGI speaks it, InvokeAI does not).
+ * Resolve a scan result to a chat provider, a Media destination, or no target.
+ *
+ * @param detection Scan result with a server-root baseUrl, without a /v1 suffix.
+ * Unidentified detections are assumed to have passed the OpenAI models probe.
+ * @param byId Runtime catalog indexed by runtime id.
+ * @returns A Media destination for known image runtimes, a provider with /v1
+ * appended for compatible servers, or null for a known incompatible runtime.
+ * This only builds a target; it does not contact or start the server.
  */
 export function connectTarget(
   detection: RuntimeDetection,
@@ -80,7 +86,14 @@ export function connectTarget(
   }
 }
 
-/** True when a provider with this id already points at this address. */
+/**
+ * Check stored connection state without probing server availability.
+ *
+ * @param target Target to match; null and Media targets return false.
+ * @param providers Current provider records.
+ * @returns True only for an active matching id and normalized URL with at
+ * least one stored model. A stale model list can still satisfy this check.
+ */
 export function isConnected(
   target: ConnectTarget | null,
   providers: ModelProvider[]
@@ -141,7 +154,17 @@ export type ConnectResult = {
  * Creates or updates the provider for `target`, then fills its model list
  * from the server's own `/v1/models`. If that read fails, the models the scan
  * already saw are used, so a connection that works is never left empty.
- * Throws when neither yields a model: a provider with no models is not usable.
+ * Existing model records are retained and merged by id; discovery does not
+ * remove stale entries. The provider is added or activated before discovery,
+ * so a failed connection can leave that store update in place.
+ *
+ * @param target Chat-provider target with an OpenAI base URL ending in /v1.
+ * @param scannedModels Model ids to use if live discovery fails or is empty.
+ * @param deps Provider store operations and model-discovery service.
+ * @returns Provider id, discovered id count (not merged store size), and
+ * whether the scan fallback supplied that list.
+ * @throws When neither live discovery nor the scan yields models. Store or
+ * service errors outside the discovery fallback also propagate.
  */
 export async function connectRuntime(
   target: Extract<ConnectTarget, { kind: 'provider' }>,
@@ -199,6 +222,7 @@ export async function connectRuntime(
     )
   }
 
+  // Keep user-configured model metadata and models absent from this scan.
   const current = deps.getProviderByName(providerId)?.models ?? existing?.models ?? []
   const byId = new Map<string, Model>()
   for (const model of current) if (model.id) byId.set(model.id, model)
