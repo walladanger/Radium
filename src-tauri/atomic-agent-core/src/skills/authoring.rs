@@ -551,7 +551,7 @@ fn write_skill_archive(root: &Path, target: &Path, files: &[PathBuf]) -> Result<
         .map_err(|error| format!("Failed to create skill archive: {error}"))?;
     let mut archive = zip::ZipWriter::new(file);
     let options =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     for relative in files {
         let archive_path = relative
             .iter()
@@ -654,7 +654,7 @@ mod tests {
     use super::*;
     use crate::core::agent::skills::SkillPlatform;
     use tempfile::TempDir;
-    use zip::write::FileOptions;
+    use zip::write::SimpleFileOptions;
 
     #[cfg(windows)]
     fn create_junction(link: &Path, target: &Path) {
@@ -941,13 +941,13 @@ mod tests {
         let archive_file = File::create(&archive_path).unwrap();
         let mut archive = zip::ZipWriter::new(archive_file);
         archive
-            .start_file("archived/SKILL.md", FileOptions::default())
+            .start_file("archived/SKILL.md", SimpleFileOptions::default())
             .unwrap();
         archive
             .write_all(b"---\nname: archived-skill\ndescription: Archived\n---\nInstructions")
             .unwrap();
         archive
-            .start_file("archived/scripts/run.sh", FileOptions::default())
+            .start_file("archived/scripts/run.sh", SimpleFileOptions::default())
             .unwrap();
         archive.write_all(b"echo ok").unwrap();
         archive.finish().unwrap();
@@ -968,7 +968,7 @@ mod tests {
         let archive_file = File::create(&archive_path).unwrap();
         let mut archive = zip::ZipWriter::new(archive_file);
         for path in ["one/SKILL.md", "two/SKILL.md"] {
-            archive.start_file(path, FileOptions::default()).unwrap();
+            archive.start_file(path, SimpleFileOptions::default()).unwrap();
             archive
                 .write_all(b"---\nname: duplicate\ndescription: Duplicate\n---\nBody")
                 .unwrap();

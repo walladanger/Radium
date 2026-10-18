@@ -102,7 +102,7 @@ async fn decompress_unpacks_a_zip_off_the_main_thread() {
     {
         let file = File::create(data.join(&archive)).unwrap();
         let mut zip = zip::ZipWriter::new(file);
-        zip.start_file("llama-server.exe", zip::write::FileOptions::default())
+        zip.start_file("llama-server.exe", zip::write::SimpleFileOptions::default())
             .unwrap();
         zip.write_all(b"binary").unwrap();
         zip.finish().unwrap();

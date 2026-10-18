@@ -855,6 +855,32 @@ fn is_local_url(url: &str) -> bool {
         || url.contains("://[::1]")
 }
 
+/// Conversions between the hyper 0.14 types this proxy serves with and the
+/// `http` 1.x types reqwest and tauri use. Both sides wrap the same wire values.
+fn rq_method(m: &hyper::Method) -> reqwest::Method {
+    reqwest::Method::from_bytes(m.as_str().as_bytes()).expect("valid HTTP method")
+}
+
+fn rq_name(n: &hyper::header::HeaderName) -> reqwest::header::HeaderName {
+    reqwest::header::HeaderName::from_bytes(n.as_str().as_bytes()).expect("valid header name")
+}
+
+fn rq_value(v: &hyper::header::HeaderValue) -> reqwest::header::HeaderValue {
+    reqwest::header::HeaderValue::from_bytes(v.as_bytes()).expect("valid header value")
+}
+
+fn hy_status(s: reqwest::StatusCode) -> hyper::StatusCode {
+    hyper::StatusCode::from_u16(s.as_u16()).expect("valid status code")
+}
+
+fn hy_name(n: &reqwest::header::HeaderName) -> hyper::header::HeaderName {
+    hyper::header::HeaderName::from_bytes(n.as_str().as_bytes()).expect("valid header name")
+}
+
+fn hy_value(v: &reqwest::header::HeaderValue) -> hyper::header::HeaderValue {
+    hyper::header::HeaderValue::from_bytes(v.as_bytes()).expect("valid header value")
+}
+
 fn is_context_limit_error(status: StatusCode, body: &str) -> bool {
     shared_is_context_limit_error(status.as_u16(), body)
 }
@@ -1171,10 +1197,10 @@ async fn retry_local_upstream(
     body: Option<Bytes>,
 ) -> Result<reqwest::Response, reqwest::Error> {
     let upstream_url = format!("http://127.0.0.1:{new_port}/v1{destination_path}");
-    let mut req = local_client.request(method.clone(), &upstream_url);
+    let mut req = local_client.request(rq_method(&method), &upstream_url);
     for (name, value) in headers.iter() {
         if name != hyper::header::HOST && name != hyper::header::AUTHORIZATION {
-            req = req.header(name, value);
+            req = req.header(rq_name(name), rq_value(value));
         }
     }
     if !new_api_key.is_empty() {
@@ -1200,10 +1226,10 @@ fn build_streaming_response(
     inspector: Option<InspectorHandle>,
 ) -> Response<Body> {
     let status = response.status();
-    let mut builder = Response::builder().status(status);
+    let mut builder = Response::builder().status(hy_status(status));
     for (name, value) in response.headers() {
-        if !is_cors_header(name.as_str()) && name != hyper::header::CONTENT_LENGTH {
-            builder = builder.header(name, value);
+        if !is_cors_header(name.as_str()) && name != reqwest::header::CONTENT_LENGTH {
+            builder = builder.header(hy_name(name), hy_value(value));
         }
     }
     builder =
@@ -1467,7 +1493,7 @@ async fn handle_responses_request(
                     && name != hyper::header::CONTENT_LENGTH
                     && name != hyper::header::CONTENT_TYPE
                 {
-                    req = req.header(name, value);
+                    req = req.header(rq_name(name), rq_value(value));
                 }
             }
             if let Some(key) = api_key {
@@ -1523,7 +1549,7 @@ async fn handle_responses_request(
                     .await
                     .unwrap_or_else(|e| format!("Failed to read error body: {e}"));
                 state.oom_detected = body_indicates_oom(&err_body);
-                state.ctx_overflow_detected = is_context_limit_error(status, &err_body);
+                state.ctx_overflow_detected = is_context_limit_error(hy_status(status), &err_body);
                 let code = StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
                 return Ok(make_err(code, &err_body));
             }
@@ -2904,7 +2930,7 @@ async fn inner_proxy_request<R: Runtime>(
             let mut upstream_req = local_client.get(&upstream);
             if !upstream_api_key.is_empty() {
                 upstream_req = upstream_req.header(
-                    hyper::header::AUTHORIZATION,
+                    reqwest::header::AUTHORIZATION,
                     format!("Bearer {upstream_api_key}"),
                 );
             }
@@ -2914,14 +2940,14 @@ async fn inner_proxy_request<R: Runtime>(
                     let status = resp.status();
                     let content_type = resp
                         .headers()
-                        .get(hyper::header::CONTENT_TYPE)
+                        .get(reqwest::header::CONTENT_TYPE)
                         .and_then(|v| v.to_str().ok())
                         .unwrap_or("text/plain; version=0.0.4")
                         .to_string();
                     let bytes = resp.bytes().await.unwrap_or_default();
 
                     let mut response_builder = Response::builder()
-                        .status(status)
+                        .status(hy_status(status))
                         .header(hyper::header::CONTENT_TYPE, content_type);
                     response_builder = add_cors_headers_with_host_and_origin(
                         response_builder,
@@ -3122,11 +3148,11 @@ async fn inner_proxy_request<R: Runtime>(
     } else {
         &client
     };
-    let mut outbound_req = effective_client.request(method.clone(), upstream_url);
+    let mut outbound_req = effective_client.request(rq_method(&method), upstream_url);
 
     for (name, value) in headers.iter() {
         if name != hyper::header::HOST && name != hyper::header::AUTHORIZATION {
-            outbound_req = outbound_req.header(name, value);
+            outbound_req = outbound_req.header(rq_name(name), rq_value(value));
         }
     }
 
@@ -3155,7 +3181,7 @@ async fn inner_proxy_request<R: Runtime>(
             // The client's `content-length` was forwarded verbatim in the
             // header loop above; leaving it would truncate the rewritten body.
             outbound_req =
-                outbound_req.header(hyper::header::CONTENT_LENGTH, rewritten.len().to_string());
+                outbound_req.header(reqwest::header::CONTENT_LENGTH, rewritten.len().to_string());
             buffered_body_for_req = Some(rewritten);
             injected_stream_usage = true;
         }
@@ -3262,7 +3288,7 @@ async fn inner_proxy_request<R: Runtime>(
                             && name != hyper::header::CONTENT_LENGTH
                             && name != hyper::header::ACCEPT_ENCODING
                         {
-                            fallback_req = fallback_req.header(name, value);
+                            fallback_req = fallback_req.header(rq_name(name), rq_value(value));
                         }
                     }
                     if let Some(key) = fallback_api_key {
@@ -3287,10 +3313,10 @@ async fn inner_proxy_request<R: Runtime>(
                                 .unwrap_or_else(|e| format!("Failed to read error: {}", e));
                             state.oom_detected = body_indicates_oom(&fallback_error);
                             state.ctx_overflow_detected =
-                                is_context_limit_error(fallback_status, &fallback_error);
+                                is_context_limit_error(hy_status(fallback_status), &fallback_error);
 
                             // Return the error to client
-                            let mut error_response = Response::builder().status(fallback_status);
+                            let mut error_response = Response::builder().status(hy_status(fallback_status));
                             error_response = add_cors_headers_with_host_and_origin(
                                 error_response,
                                 &host_header,
@@ -3300,12 +3326,12 @@ async fn inner_proxy_request<R: Runtime>(
                             return Ok(error_response.body(Body::from(fallback_error)).unwrap());
                         }
 
-                        let mut builder = Response::builder().status(fallback_status);
+                        let mut builder = Response::builder().status(hy_status(fallback_status));
                         for (name, value) in res.headers() {
                             if !is_cors_header(name.as_str())
-                                && name != hyper::header::CONTENT_LENGTH
+                                && name != reqwest::header::CONTENT_LENGTH
                             {
-                                builder = builder.header(name, value);
+                                builder = builder.header(hy_name(name), hy_value(value));
                             }
                         }
                         builder = add_cors_headers_with_host_and_origin(
@@ -3366,8 +3392,8 @@ async fn inner_proxy_request<R: Runtime>(
                 state.error_kind = Some(upstream_error_kind(state.backend));
                 state.upstream_status = Some(status.as_u16());
                 state.oom_detected = body_indicates_oom(&error_body);
-                state.ctx_overflow_detected = is_context_limit_error(status, &error_body);
-                let mut error_response = Response::builder().status(status);
+                state.ctx_overflow_detected = is_context_limit_error(hy_status(status), &error_body);
+                let mut error_response = Response::builder().status(hy_status(status));
                 error_response = add_cors_headers_with_host_and_origin(
                     error_response,
                     &host_header,
@@ -3393,7 +3419,7 @@ async fn inner_proxy_request<R: Runtime>(
                     && state.model_id.is_some()
                     && buffered_body.is_some();
 
-                if can_retry_local && is_context_limit_error(status, &error_body) {
+                if can_retry_local && is_context_limit_error(hy_status(status), &error_body) {
                     let model_id = state.model_id.clone().unwrap();
                     let backend = state.backend;
                     log::info!(
@@ -3465,7 +3491,7 @@ async fn inner_proxy_request<R: Runtime>(
                 // We deliberately do NOT auto-retry the same request here: a
                 // deterministic prompt-processing OOM would just re-poison the
                 // fresh backend.
-                if can_retry_local && is_compute_backend_error(status, &error_body) {
+                if can_retry_local && is_compute_backend_error(hy_status(status), &error_body) {
                     let model_id = state.model_id.clone().unwrap();
                     let backend = state.backend;
                     log::warn!(
@@ -3508,7 +3534,7 @@ async fn inner_proxy_request<R: Runtime>(
                 state.error_kind = Some(upstream_error_kind(state.backend));
                 state.upstream_status = Some(status.as_u16());
                 state.oom_detected = body_indicates_oom(&error_body);
-                state.ctx_overflow_detected = is_context_limit_error(status, &error_body);
+                state.ctx_overflow_detected = is_context_limit_error(hy_status(status), &error_body);
                 // ATO-182: For local engines (llama.cpp / mlx), forward a
                 // structured OpenAI error envelope with a typed `code` instead
                 // of a raw stderr dump / `{"detail": ...}`. Remote providers
@@ -3523,7 +3549,7 @@ async fn inner_proxy_request<R: Runtime>(
                 } else {
                     error_body
                 };
-                let mut error_response = Response::builder().status(status);
+                let mut error_response = Response::builder().status(hy_status(status));
                 error_response = add_cors_headers_with_host_and_origin(
                     error_response,
                     &host_header,
@@ -3630,7 +3656,7 @@ async fn inner_proxy_request<R: Runtime>(
                 // verbatim — reconstruct the minimum set the client needs
                 // for a non-streaming OpenAI JSON response.
                 let mut builder = Response::builder()
-                    .status(status)
+                    .status(hy_status(status))
                     .header(hyper::header::CONTENT_TYPE, "application/json");
                 builder = add_cors_headers_with_host_and_origin(
                     builder,
@@ -3641,11 +3667,11 @@ async fn inner_proxy_request<R: Runtime>(
                 return Ok(builder.body(Body::from(body_bytes)).unwrap());
             }
 
-            let mut builder = Response::builder().status(status);
+            let mut builder = Response::builder().status(hy_status(status));
 
             for (name, value) in response.headers() {
-                if !is_cors_header(name.as_str()) && name != hyper::header::CONTENT_LENGTH {
-                    builder = builder.header(name, value);
+                if !is_cors_header(name.as_str()) && name != reqwest::header::CONTENT_LENGTH {
+                    builder = builder.header(hy_name(name), hy_value(value));
                 }
             }
 
@@ -3661,7 +3687,7 @@ async fn inner_proxy_request<R: Runtime>(
             // actually sent, not on what the client asked for.
             let upstream_is_sse = response
                 .headers()
-                .get(hyper::header::CONTENT_TYPE)
+                .get(reqwest::header::CONTENT_TYPE)
                 .and_then(|v| v.to_str().ok())
                 .is_some_and(|ct| ct.starts_with("text/event-stream"));
 

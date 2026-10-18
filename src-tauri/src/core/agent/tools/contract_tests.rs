@@ -515,7 +515,7 @@ async fn filesystem_read_document_extracts_docx_and_honors_character_cap() {
     let fixture = ToolFixture::allowed().await;
     let mut archive = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     archive
-        .start_file("word/document.xml", zip::write::FileOptions::default())
+        .start_file("word/document.xml", zip::write::SimpleFileOptions::default())
         .unwrap();
     archive
         .write_all(
@@ -1335,7 +1335,7 @@ async fn symlink_escape_requires_folder_access_and_denial_prevents_read() {
 fn create_zip(workspace: &TestWorkspace, relative: &str, entries: &[(&str, &str)]) {
     let file = std::fs::File::create(workspace.path().join(relative)).expect("create zip fixture");
     let mut archive = zip::ZipWriter::new(file);
-    let options = zip::write::FileOptions::default();
+    let options = zip::write::SimpleFileOptions::default();
     for (name, content) in entries {
         archive
             .start_file(*name, options)

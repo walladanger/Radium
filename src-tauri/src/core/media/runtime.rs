@@ -787,7 +787,7 @@ mod tests {
     fn zip_with(path: &Path, entries: &[(&str, &[u8])]) {
         let file = fs::File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
-        let options = zip::write::FileOptions::default();
+        let options = zip::write::SimpleFileOptions::default();
         for (name, bytes) in entries {
             zip.start_file(*name, options).unwrap();
             zip.write_all(bytes).unwrap();

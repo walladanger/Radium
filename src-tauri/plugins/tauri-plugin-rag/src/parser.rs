@@ -1,12 +1,11 @@
 use crate::RagError;
-use calamine::{open_workbook_auto, DataType, Reader as _};
+use calamine::{open_workbook_auto, Data, Reader as _};
 use chardetng::EncodingDetector;
 use csv as csv_crate;
 use html2text;
 use infer;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Cursor, Read};
@@ -336,7 +335,7 @@ fn parse_docx(file_path: &str) -> Result<String, RagError> {
     // Tables (w:tbl/w:tr/w:tc) are emitted as one line per row with tab-separated
     // cells, and w:br produces a newline.
     let mut reader = Reader::from_str(&xml_content);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     let mut result = String::new();
     let mut in_text = false;
@@ -345,11 +344,7 @@ fn parse_docx(file_path: &str) -> Result<String, RagError> {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
-                let name: String = reader
-                    .decoder()
-                    .decode(e.name().as_ref())
-                    .unwrap_or(Cow::Borrowed(""))
-                    .into_owned();
+                let name: String = e.name().as_ref().to_string();
                 if name.ends_with(":t") || name == "w:t" || name == "t" {
                     in_text = true;
                 }
@@ -358,11 +353,7 @@ fn parse_docx(file_path: &str) -> Result<String, RagError> {
                 }
             }
             Ok(Event::Empty(e)) => {
-                let name: String = reader
-                    .decoder()
-                    .decode(e.name().as_ref())
-                    .unwrap_or(Cow::Borrowed(""))
-                    .into_owned();
+                let name: String = e.name().as_ref().to_string();
                 if name.ends_with(":br") || name == "br" {
                     // Explicit line break; inside a table cell keep the row on one line
                     if table_depth == 0 {
@@ -373,11 +364,7 @@ fn parse_docx(file_path: &str) -> Result<String, RagError> {
                 }
             }
             Ok(Event::End(e)) => {
-                let name: String = reader
-                    .decoder()
-                    .decode(e.name().as_ref())
-                    .unwrap_or(Cow::Borrowed(""))
-                    .into_owned();
+                let name: String = e.name().as_ref().to_string();
                 if name.ends_with(":t") || name == "w:t" || name == "t" {
                     in_text = false;
                     result.push(' ');
@@ -408,7 +395,9 @@ fn parse_docx(file_path: &str) -> Result<String, RagError> {
             }
             Ok(Event::Text(t)) => {
                 if in_text {
-                    let text = t.unescape().unwrap_or_default();
+                    let text = quick_xml::escape::unescape(&t)
+                        .map(|c| c.into_owned())
+                        .unwrap_or_default();
                     result.push_str(&text);
                 }
             }
@@ -458,12 +447,12 @@ fn parse_spreadsheet(file_path: &str) -> Result<String, RagError> {
                 let cells = row
                     .iter()
                     .map(|c| match c {
-                        DataType::Empty => "".to_string(),
-                        DataType::String(s) => s.to_string(),
-                        DataType::Float(f) => format!("{}", f),
-                        DataType::Int(i) => i.to_string(),
-                        DataType::Bool(b) => b.to_string(),
-                        DataType::DateTime(f) => format!("{}", f),
+                        Data::Empty => "".to_string(),
+                        Data::String(s) => s.to_string(),
+                        Data::Float(f) => format!("{}", f),
+                        Data::Int(i) => i.to_string(),
+                        Data::Bool(b) => b.to_string(),
+                        Data::DateTime(f) => format!("{}", f),
                         other => other.to_string(),
                     })
                     .collect::<Vec<_>>()
@@ -549,11 +538,12 @@ fn read_zip_entry(zip: &mut ZipArchive<std::fs::File>, name: &str) -> Option<Str
 /// Returns the value of the attribute with the given local name (namespace
 /// prefixes such as `r:` are ignored).
 fn xml_attr(e: &BytesStart, name: &[u8]) -> Option<String> {
+    let want = std::str::from_utf8(name).ok()?;
     e.attributes()
         .flatten()
-        .find(|a| a.key.local_name().as_ref() == name)
+        .find(|a| a.key.local_name().as_ref() == want)
         .map(|a| {
-            let raw = String::from_utf8_lossy(&a.value).into_owned();
+            let raw = a.value.to_string();
             match quick_xml::escape::unescape(&raw) {
                 Ok(unescaped) => unescaped.into_owned(),
                 Err(_) => raw,
@@ -580,7 +570,7 @@ fn fg_color_value(e: &BytesStart) -> Option<String> {
 /// Streams xl/styles.xml collecting the fills list and the cellXfs xf -> fillId map.
 fn parse_xlsx_styles(xml: &str) -> XlsxStyles {
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     let mut styles = XlsxStyles::default();
     let mut in_fills = false;
@@ -589,26 +579,26 @@ fn parse_xlsx_styles(xml: &str) -> XlsxStyles {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e) | Event::Empty(e)) => match e.name().local_name().as_ref() {
-                b"fills" => in_fills = true,
-                b"cellXfs" => in_cell_xfs = true,
-                b"fill" if in_fills => {
+                "fills" => in_fills = true,
+                "cellXfs" => in_cell_xfs = true,
+                "fill" if in_fills => {
                     styles.fills.push(None);
                     pattern_active = false;
                 }
-                b"patternFill" if in_fills => {
+                "patternFill" if in_fills => {
                     // patternType defaults to "none" when absent
                     pattern_active = xml_attr(&e, b"patternType")
                         .map(|t| t != "none")
                         .unwrap_or(false);
                 }
-                b"fgColor" if in_fills && pattern_active => {
+                "fgColor" if in_fills && pattern_active => {
                     if let Some(slot) = styles.fills.last_mut() {
                         if slot.is_none() {
                             *slot = fg_color_value(&e);
                         }
                     }
                 }
-                b"xf" if in_cell_xfs => {
+                "xf" if in_cell_xfs => {
                     let fill_id = xml_attr(&e, b"fillId")
                         .and_then(|v| v.parse::<usize>().ok())
                         .unwrap_or(0);
@@ -617,9 +607,9 @@ fn parse_xlsx_styles(xml: &str) -> XlsxStyles {
                 _ => {}
             },
             Ok(Event::End(e)) => match e.name().local_name().as_ref() {
-                b"fills" => in_fills = false,
-                b"cellXfs" => in_cell_xfs = false,
-                b"fill" | b"patternFill" => pattern_active = false,
+                "fills" => in_fills = false,
+                "cellXfs" => in_cell_xfs = false,
+                "fill" | "patternFill" => pattern_active = false,
                 _ => {}
             },
             Ok(Event::Eof) => break,
@@ -636,12 +626,12 @@ fn parse_xlsx_styles(xml: &str) -> XlsxStyles {
 fn parse_xlsx_sheet_paths(workbook_xml: &str, rels_xml: &str) -> Vec<(String, String)> {
     let mut rel_targets: HashMap<String, String> = HashMap::new();
     let mut reader = Reader::from_str(rels_xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e) | Event::Empty(e)) => {
-                if e.name().local_name().as_ref() == b"Relationship" {
+                if e.name().local_name().as_ref() == "Relationship" {
                     if let (Some(id), Some(target)) = (xml_attr(&e, b"Id"), xml_attr(&e, b"Target"))
                     {
                         rel_targets.insert(id, target);
@@ -657,12 +647,12 @@ fn parse_xlsx_sheet_paths(workbook_xml: &str, rels_xml: &str) -> Vec<(String, St
 
     let mut sheets = Vec::new();
     let mut reader = Reader::from_str(workbook_xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e) | Event::Empty(e)) => {
-                if e.name().local_name().as_ref() == b"sheet" {
+                if e.name().local_name().as_ref() == "sheet" {
                     // `r:id` has local name `id`; `sheetId` does not collide with it
                     if let (Some(name), Some(rel_id)) = (xml_attr(&e, b"name"), xml_attr(&e, b"id"))
                     {
@@ -691,12 +681,12 @@ fn parse_xlsx_sheet_paths(workbook_xml: &str, rels_xml: &str) -> Vec<(String, St
 fn collect_styled_cells(sheet_xml: &str, styles: &XlsxStyles) -> Vec<(String, String)> {
     let mut cells = Vec::new();
     let mut reader = Reader::from_str(sheet_xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e) | Event::Empty(e)) => {
-                if e.name().local_name().as_ref() == b"c" {
+                if e.name().local_name().as_ref() == "c" {
                     let style_index = xml_attr(&e, b"s").and_then(|v| v.parse::<usize>().ok());
                     if let (Some(cell_ref), Some(style_index)) = (xml_attr(&e, b"r"), style_index) {
                         if let Some(&fill_id) = styles.xf_fill_ids.get(style_index) {
@@ -728,7 +718,7 @@ fn parse_pptx(file_path: &str) -> Result<String, RagError> {
     for i in 0..zip.len() {
         let name = zip
             .by_index(i)
-            .map(|f| f.name().to_string())
+            .map(|f| f.name().map(|n| n.to_string()).unwrap_or_default())
             .unwrap_or_default();
         if let Some(index) = pptx_slide_index(&name) {
             slides.push((index, name));
@@ -785,28 +775,20 @@ fn pptx_slide_index(zip_entry_name: &str) -> Option<usize> {
 
 fn extract_pptx_text(xml: &str) -> String {
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
     let mut result = String::new();
     let mut in_text = false;
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
-                let name: String = reader
-                    .decoder()
-                    .decode(e.name().as_ref())
-                    .unwrap_or(Cow::Borrowed(""))
-                    .into_owned();
+                let name: String = e.name().as_ref().to_string();
                 if name.ends_with(":t") || name == "a:t" || name == "t" {
                     in_text = true;
                 }
             }
             Ok(Event::End(e)) => {
-                let name: String = reader
-                    .decoder()
-                    .decode(e.name().as_ref())
-                    .unwrap_or(Cow::Borrowed(""))
-                    .into_owned();
+                let name: String = e.name().as_ref().to_string();
                 if name.ends_with(":t") || name == "a:t" || name == "t" {
                     in_text = false;
                     result.push(' ');
@@ -814,7 +796,9 @@ fn extract_pptx_text(xml: &str) -> String {
             }
             Ok(Event::Text(t)) => {
                 if in_text {
-                    let text = t.unescape().unwrap_or_default();
+                    let text = quick_xml::escape::unescape(&t)
+                        .map(|c| c.into_owned())
+                        .unwrap_or_default();
                     result.push_str(&text);
                 }
             }
@@ -852,7 +836,7 @@ mod tests {
     use super::*;
     use std::io::Write;
     use std::path::{Path, PathBuf};
-    use zip::write::FileOptions;
+    use zip::write::SimpleFileOptions;
 
     fn temp_path(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join("tauri-plugin-rag-tests");
@@ -864,7 +848,7 @@ mod tests {
         let file = std::fs::File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
         for (name, content) in entries {
-            zip.start_file(*name, FileOptions::default()).unwrap();
+            zip.start_file(*name, SimpleFileOptions::default()).unwrap();
             zip.write_all(content.as_bytes()).unwrap();
         }
         zip.finish().unwrap();

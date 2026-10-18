@@ -328,6 +328,12 @@ pub fn create_proxy_from_config(config: &ProxyConfig) -> Result<reqwest::Proxy, 
     // Validate the configuration first
     validate_proxy_config(config)?;
 
+    // reqwest 0.12 accepts socks URLs even without its `socks` feature and only
+    // fails later at connect time, so reject them here to keep the error up front.
+    if config.url.trim_start().to_ascii_lowercase().starts_with("socks") {
+        return Err("SOCKS proxies are not supported".to_string());
+    }
+
     let mut proxy = reqwest::Proxy::all(&config.url).map_err(err_to_string)?;
 
     // Add authentication if provided
