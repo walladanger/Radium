@@ -8,16 +8,14 @@ use super::{
     rag_bridge::DocsBridge,
     session::AgentSessionState,
     skills::SkillRegistry,
-    tools::{ApprovalHook, DesktopServices, FolderAccessHook, DelegateHook},
+    tools::{ApprovalHook, DelegateHook, DesktopServices, FolderAccessHook},
     types::{AgentEvent, AgentReasoning, ToolCallPayload, ToolOutcome},
 };
 use async_trait::async_trait;
-pub use atomic_agent_core::runner::{MAX_PARALLEL_TOOL_CALLS, MAX_STEPS, AGENT_SLOT_ID, ANY_SLOT};
+pub use atomic_agent_core::runner::{AGENT_SLOT_ID, ANY_SLOT, MAX_PARALLEL_TOOL_CALLS, MAX_STEPS};
 use std::path::{Path, PathBuf};
 use tokio_util::sync::CancellationToken;
 pub struct RunTurnInput<'a> {
-    pub delegate: Option<&'a dyn DelegateHook>,
-    pub slot_id: i32,
     pub run_id: &'a str,
     pub session_id: &'a str,
     pub user_message: &'a str,
@@ -45,6 +43,8 @@ pub struct RunTurnInput<'a> {
     pub disabled_tools: &'a std::collections::BTreeSet<String>,
     /// Auto-approve MCP-origin tools (migrated chat `allowAllMCPPermissions`).
     pub auto_approve_mcp: bool,
+    /// Runs `agent.delegate`. `None` disables delegation for this turn.
+    pub delegate: Option<&'a dyn DelegateHook>,
     pub client: &'a dyn AgentLlmClient,
     pub approval: &'a dyn ApprovalHook,
     pub folder_access: &'a dyn FolderAccessHook,
@@ -58,6 +58,9 @@ pub struct RunTurnInput<'a> {
     pub pty: &'a PtyRegistry,
     /// Cache directory for the code index.
     pub cache_dir: &'a Path,
+    /// llama.cpp slot for this turn's completions ([`AGENT_SLOT_ID`] or
+    /// [`ANY_SLOT`]). Chat transports ignore it.
+    pub slot_id: i32,
 }
 
 pub async fn run_turn(
@@ -65,10 +68,10 @@ pub async fn run_turn(
     emit: impl FnMut(AgentEvent) -> Result<(), String> + Send,
 ) -> Result<(), String> {
     let executor = NativeToolExecutor {
-        delegate: input.delegate,
         desktop: input.desktop,
         pty: input.pty,
         cache_dir: input.cache_dir,
+        delegate: input.delegate,
     };
     // Dependency crates are not compiled with cfg(test) for desktop tests.
     // Preserve the original native deadline fixture through the injected seam.
@@ -79,7 +82,6 @@ pub async fn run_turn(
     };
     atomic_agent_core::runner::run_turn_with_deadline(
         atomic_agent_core::runner::RunTurnInput {
-            slot_id: input.slot_id,
             run_id: input.run_id,
             session_id: input.session_id,
             user_message: input.user_message,
@@ -106,17 +108,21 @@ pub async fn run_turn(
             skill_registry: input.skill_registry,
             bundled_script_runtime: input.bundled_script_runtime,
             executor: &executor,
+            slot_id: input.slot_id,
         },
         deadline,
         emit,
     )
     .await
 }
+/// The desktop's tools behind the shared loop. Carries what only the desktop
+/// has: OS services, the process registry, the code-index cache, and the
+/// specialist roster for `agent.delegate`.
 struct NativeToolExecutor<'a> {
-    delegate: Option<&'a dyn DelegateHook>,
     desktop: &'a dyn DesktopServices,
     pty: &'a PtyRegistry,
     cache_dir: &'a Path,
+    delegate: Option<&'a dyn DelegateHook>,
 }
 #[async_trait]
 impl atomic_agent_core::tools::ToolExecutor for NativeToolExecutor<'_> {
@@ -128,7 +134,6 @@ impl atomic_agent_core::tools::ToolExecutor for NativeToolExecutor<'_> {
         super::tools::execute(
             call,
             &super::tools::ToolContext {
-                delegate: self.delegate,
                 session_id: context.session_id,
                 working_dir: context.working_dir,
                 editable_roots: context.editable_roots,
@@ -148,6 +153,7 @@ impl atomic_agent_core::tools::ToolExecutor for NativeToolExecutor<'_> {
                 docs: context.docs,
                 disabled_tools: context.disabled_tools,
                 auto_approve_mcp: context.auto_approve_mcp,
+                delegate: self.delegate,
             },
         )
         .await

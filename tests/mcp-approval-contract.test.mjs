@@ -20,6 +20,8 @@ const repoRoot = path.resolve(
 const read = (rel) => readFileSync(path.join(repoRoot, rel), 'utf8')
 
 test('the agent wire request asks unless auto_approve_mcp is sent', () => {
+  // The wire types and resource classes live in the shared agent crate;
+  // src/core/agent/{types,resource_class}.rs only re-export them.
   const types = read('src-tauri/atomic-agent-core/src/types.rs')
   assert.match(
     types,
@@ -29,7 +31,7 @@ test('the agent wire request asks unless auto_approve_mcp is sent', () => {
 })
 
 test('readOnlyHint never skips the agent approval gate', () => {
-  const resourceClass = read('src-tauri/src/core/agent/resource_class.rs')
+  const resourceClass = read('src-tauri/atomic-agent-core/src/resource_class.rs')
   assert.doesNotMatch(resourceClass, /McpRead/, 'no read-only MCP bypass class')
   assert.doesNotMatch(
     resourceClass,

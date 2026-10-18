@@ -5,3 +5,7 @@
 skip = *.lock,*/locales/cs/*,*/locales/de-DE/*,*/locales/es/*,*/locales/fr/*,*/locales/id/*,*/locales/ja/*,*/locales/ko/*,*/locales/pl/*,*/locales/pt-BR/*,*/locales/ru/*,*/locales/vn/*,*/locales/zh-CN/*,*/locales/zh-TW/*
 # `afterAll` is the vitest/jest hook, not a misspelling of "after all".
 ignore-words-list = afterall
+# Deliberate fragments, not words: stream-chunking tests feed "hel" then "lo"
+# and cut JSON mid-key ({"te), and "/FO" is a flag of Windows `tasklist`.
+# Matched as literals so real "hel"/"te" typos elsewhere are still caught.
+ignore-regex = "hel"|\{"te\b|"/FO"

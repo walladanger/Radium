@@ -248,9 +248,13 @@ impl CompletionRequest {
         }
     }
 
-    /// An unconstrained completion, used by native specialist reviewers.
+    /// A standalone completion outside the tool loop (e.g. a reviewer's
+    /// verdict): no grammar, schema or slot until the caller sets them.
     pub fn oneshot(prompt: AgentPrompt, max_tokens: u32) -> Self {
-        Self { max_tokens, ..Self::base(prompt) }
+        Self {
+            max_tokens,
+            ..Self::base(prompt)
+        }
     }
 
     fn base(prompt: AgentPrompt) -> Self {

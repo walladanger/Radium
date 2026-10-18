@@ -30,11 +30,6 @@ pub trait DesktopServices: Send + Sync {
     async fn write_clipboard(&self, text: String) -> Result<(), String>;
     async fn notify(&self, title: String, body: String) -> Result<(), String>;
 }
-/// Native hosts may provide one-level delegation. Sandboxed workers omit it.
-#[async_trait]
-pub trait DelegateHook: Send + Sync {
-    async fn delegate(&self, specialist: &str, task: &str) -> ToolOutcome;
-}
 /// Implementations enforce permissions, cancellation and isolation before dispatch.
 #[async_trait]
 pub trait ToolExecutor: Send + Sync {

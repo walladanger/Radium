@@ -499,7 +499,6 @@ impl WorkerCoordinator {
         let mut terminal = String::new();
         run_turn(
             RunTurnInput {
-                slot_id: atomic_agent_core::runner::AGENT_SLOT_ID,
                 run_id: attempt,
                 session_id: attempt,
                 user_message: &instructions,
@@ -526,6 +525,9 @@ impl WorkerCoordinator {
                 session: &mut session,
                 skill_registry: &registry,
                 bundled_script_runtime: None,
+                // Workers never take the coordinator's pinned llama.cpp slot,
+                // so they cannot evict its KV prefix or queue behind it.
+                slot_id: atomic_agent_core::runner::ANY_SLOT,
             },
             |event| {
                 if let AgentEvent::ToolCallParsed { ref call, .. } = event {

@@ -472,8 +472,8 @@
     "feature": "Skills organized by creator and category",
     "forUsers": "Skills can live in nested category folders, each shows its creator, category, tags and size, and the Skills page groups, sorts and searches them and can move a skill between folders.",
     "paths": [
-      "src-tauri/src/core/agent/skills/discovery.rs",
-      "src-tauri/src/core/agent/skills/organization.rs",
+      "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+      "src-tauri/atomic-agent-core/src/skills/organization.rs",
       "src-tauri/atomic-agent-core/src/skills/seeding.rs",
       "src-tauri/resources/agent-skills/_catalog.json",
       "web-app/src/lib/skill-organization.ts",
@@ -486,8 +486,8 @@
         "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::skills",
         "cwd": "src-tauri",
         "files": [
-          "src-tauri/src/core/agent/skills/discovery.rs",
-          "src-tauri/src/core/agent/skills/organization.rs",
+          "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+          "src-tauri/atomic-agent-core/src/skills/organization.rs",
           "src-tauri/atomic-agent-core/src/skills/seeding.rs"
         ]
       },
@@ -685,11 +685,19 @@
       {
         "cwd": "web-app",
         "run": "npx vitest run src/components/ComposerClock.test.tsx src/containers/TokenSpeedIndicator.test.tsx src/containers/ContextSizeControl.test.tsx src/lib/context-usage.test.ts src/lib/live-generation-metrics.test.ts",
-        "files": ["web-app/src/components/ComposerClock.test.tsx", "web-app/src/containers/TokenSpeedIndicator.test.tsx", "web-app/src/containers/ContextSizeControl.test.tsx", "web-app/src/lib/context-usage.test.ts", "web-app/src/lib/live-generation-metrics.test.ts"]
+        "files": [
+          "web-app/src/components/ComposerClock.test.tsx",
+          "web-app/src/containers/TokenSpeedIndicator.test.tsx",
+          "web-app/src/containers/ContextSizeControl.test.tsx",
+          "web-app/src/lib/context-usage.test.ts",
+          "web-app/src/lib/live-generation-metrics.test.ts"
+        ]
       },
       {
         "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml --locked prompt::tests::context_categories_group_the_request_without_exporting_prompt_text",
-        "files": ["src-tauri/atomic-agent-core/src/prompt.rs"]
+        "files": [
+          "src-tauri/atomic-agent-core/src/prompt.rs"
+        ]
       }
     ],
     "decision": "docs/decisions/2026-10-16-float-annotations-and-report-live-generation-metrics.md",

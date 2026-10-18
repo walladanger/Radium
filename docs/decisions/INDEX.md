@@ -379,3 +379,4 @@ library on disk, and how the frozen surface is allowed to change.
 - [Pin standalone controller and core build resolutions](2026-10-16-pin-standalone-controller-and-core-build-resolutions.md)
 
 - [Float annotations and report live generation metrics](2026-10-16-float-annotations-and-report-live-generation-metrics.md)
+- **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)

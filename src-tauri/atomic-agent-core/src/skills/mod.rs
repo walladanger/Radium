@@ -1,5 +1,6 @@
+// `authoring` and `discovery` are public because the desktop's skill commands
+// (`src/core/agent/skills/commands.rs`) build on them.
 pub mod authoring;
-
 pub mod discovery;
 pub mod loaded;
 mod manifest;

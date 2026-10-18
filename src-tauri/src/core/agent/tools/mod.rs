@@ -30,6 +30,7 @@ mod contract_tests;
 
 use std::path::{Path, PathBuf};
 
+use async_trait::async_trait;
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
@@ -41,9 +42,7 @@ use super::mcp_tools::{McpBridge, MCP_TOOL_PREFIX};
 use super::path_policy::{prepare_call_paths, EditableRoots};
 use super::pty::PtyRegistry;
 use super::rag_bridge::DocsBridge;
-use super::resource_class::{
-    mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass,
-};
+use super::resource_class::{mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass};
 use super::shell_guard::{evaluate_shell_command, join_command_stream, ShellGuardVerdict};
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::types::{
@@ -52,7 +51,16 @@ use super::types::{
 
 pub const MAX_TOOL_OUTPUT_CHARS: usize = 16_000;
 
-pub use atomic_agent_core::tools::{ApprovalHook, DesktopServices, FolderAccessHook, DelegateHook};
+pub use atomic_agent_core::tools::{ApprovalHook, DesktopServices, FolderAccessHook};
+
+/// Runs a specialist's turn for `agent.delegate`. Present only on turns that
+/// carry specialists; a specialist's own turn never gets one, so delegation
+/// is one level deep. A desktop capability: the shared loop never sees it.
+#[async_trait]
+pub trait DelegateHook: Send + Sync {
+    async fn delegate(&self, specialist: &str, task: &str) -> ToolOutcome;
+}
+
 pub struct ToolContext<'a> {
     /// Owning agent session. Scopes the process registry so one thread can
     /// never read or signal another thread's processes.

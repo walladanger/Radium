@@ -46,14 +46,15 @@ use super::types::{
 
 pub const MAX_STEPS: u32 = 25;
 pub const MAX_PARALLEL_TOOL_CALLS: usize = 8;
+/// The llama.cpp slot a coordinator turn pins for KV-prefix reuse.
 pub const AGENT_SLOT_ID: i32 = 0;
+/// Lets llama.cpp pick any idle slot. Specialist turns use it so parallel
+/// specialists never queue behind, or evict, the coordinator's pinned slot.
 pub const ANY_SLOT: i32 = -1;
 const REPAIR_MAX_TOKENS: u32 = 1024;
 pub const DEFAULT_COMPLETION_DEADLINE: Duration = Duration::from_secs(600);
 
 pub struct RunTurnInput<'a> {
-    /// Native specialist turns use ANY_SLOT; isolated workers retain their own service slot.
-    pub slot_id: i32,
     pub run_id: &'a str,
     pub session_id: &'a str,
     pub user_message: &'a str,
@@ -89,6 +90,9 @@ pub struct RunTurnInput<'a> {
     pub session: &'a mut AgentSessionState,
     pub skill_registry: &'a SkillRegistry,
     pub bundled_script_runtime: Option<&'a Path>,
+    /// llama.cpp slot for this turn's completions ([`AGENT_SLOT_ID`] or
+    /// [`ANY_SLOT`]). Chat transports ignore it.
+    pub slot_id: i32,
 }
 
 pub async fn run_turn(
@@ -765,7 +769,7 @@ fn validate_batch(
         .collect::<Vec<_>>();
     let delegation_batch = is_delegation_batch(&classes);
     for (index, call) in calls.iter().enumerate() {
-        let class = resource_class_for_call(&call.tool, mcp);
+        let class = classes[index];
         if class == ResourceClass::Unknown {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::Unknown,
@@ -823,7 +827,7 @@ fn trim_to_first_approval_gated(
     let kept_index = calls
         .iter()
         .position(|call| runs_solo(resource_class_for_call(&call.tool, mcp)))
-        .expect("approval-only validation requires an approval-gated call");
+        .expect("approval-only validation requires a solo-only call");
     let kept = calls[kept_index].clone();
     let dropped = calls
         .iter()

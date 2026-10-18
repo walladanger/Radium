@@ -319,7 +319,7 @@ lint: install-and-build
 # Testing
 .PHONY: test test-all test-local test-web test-extensions test-rust stub-resources app-icons \
 	test-selective-v2032 rebaseline-selective-v2032 stage-windows-backends verify-windows-backends \
-	typecheck verify-fast verify clippy-rust test-quality test-hardening-contracts \
+	typecheck verify-fast verify clippy-rust test-agent-core clippy-agent-core test-control clippy-control test-quality test-hardening-contracts \
 	test-coverage-critical install-extensions \
 	capture-capabilities capture-hw-profile \
 	sync-upstream-baseline gen-amd-rocm-pci-ids test-live test-live-cloud mutants

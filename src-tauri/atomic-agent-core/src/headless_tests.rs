@@ -51,7 +51,6 @@ async fn run(
     let mut events = Vec::new();
     run_turn(
         RunTurnInput {
-            slot_id: crate::runner::AGENT_SLOT_ID,
             run_id: "run",
             session_id: "headless-test",
             user_message: "Read scoped evidence then reply",
@@ -78,6 +77,7 @@ async fn run(
             skill_registry: &registry,
             bundled_script_runtime: None,
             executor: &broker,
+            slot_id: crate::runner::AGENT_SLOT_ID,
         },
         |event| {
             events.push(event);

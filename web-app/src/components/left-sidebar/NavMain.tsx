@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import { ChevronRight, GitBranch, Users, Workflow, Clapperboard as MediaIcon, LayoutGrid as LayoutGridIcon } from 'lucide-react'
+import {
+  ChevronRight,
+  Clapperboard as MediaIcon,
+  GitBranch,
+  LayoutGrid as LayoutGridIcon,
+  Users,
+  Workflow,
+} from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,

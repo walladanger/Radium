@@ -382,6 +382,9 @@ mod tests {
             assert!(!informational.manifest.dangerous);
             assert_eq!(informational.organization, DeclaredOrganization::default());
         }
+        // `license` and `metadata` are display-only and accept any YAML value
+        // (they feed `ParsedSkillFile::organization`), so only keys that could
+        // widen what a skill may do, or reach outside it, are refused here.
         for header in [
             "unknown_permission: allow",
             "requires_scripts: [../escape.py]",

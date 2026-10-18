@@ -156,8 +156,8 @@ pub const ITERATION_ONE_TOOLS: &[ToolDescriptor] = &[
     },
     ToolDescriptor {
         name: "skill.view",
-        summary: "Load one enabled skill's full SKILL.md body into the variable prompt tail.",
-        args_schema: r#"{ name: string }"#,
+        summary: "Load a bounded page of an enabled skill's SKILL.md. Follow next offset until all needed instructions are read.",
+        args_schema: r#"{ name: string, offset?: number }"#,
         tier: ToolTier::Frequent,
         examples: &[],
     },
