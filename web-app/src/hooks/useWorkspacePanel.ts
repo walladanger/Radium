@@ -6,6 +6,8 @@ export const useWorkspacePanel = create<{ panel: WorkspacePanel | null; producti
   productionView: 'steps',
   setProductionView: productionView => set({ productionView }),
   openAnnotations: () => set({ panel: 'production', productionView: 'annotations' }),
-  toggle: panel => set(state => ({ panel: state.panel === panel ? null : panel })),
+  toggle: panel => set(state => panel === 'production' && state.productionView === 'annotations'
+    ? { panel: 'production', productionView: 'steps' }
+    : { panel: state.panel === panel ? null : panel }),
   close: () => set({ panel: null }),
 }))

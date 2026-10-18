@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-294 records, 2026-05-19 → 2026-10-16.
+295 records, 2026-05-19 → 2026-10-18.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -380,3 +380,5 @@ library on disk, and how the frozen surface is allowed to change.
 
 - [Float annotations and report live generation metrics](2026-10-16-float-annotations-and-report-live-generation-metrics.md)
 - **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)
+
+- [Preserve workspace pages under the annotation overlay](2026-10-18-preserve-workspace-pages-under-the-annotation-overlay.md)

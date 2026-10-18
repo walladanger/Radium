@@ -6,6 +6,15 @@ import { useAppState } from '@/hooks/useAppState'
 
 describe('TokenSpeedIndicator', () => {
   afterEach(() => { cleanup(); vi.useRealTimers() })
+  it('retains clearly marked estimates if a provider finishes without usage data', () => {
+    vi.useFakeTimers()
+    const view = render(<TokenSpeedIndicator messageId="no-usage" streaming streamingText="An answer without reported usage" />)
+    act(() => { vi.advanceTimersByTime(500) })
+    const count = screen.getByText(/^≈ .* tokens$/).textContent
+    view.rerender(<TokenSpeedIndicator messageId="no-usage" streaming={false} />)
+    expect(screen.getByText(/^≈ .* tokens$/).textContent).toBe(count)
+    expect(screen.getByText(/^≈ .* tok\/sec$/)).toBeInTheDocument()
+  })
   it('shows growing live metrics and switches to final reported usage', () => {
     vi.useFakeTimers()
     const view = render(<TokenSpeedIndicator messageId="live" streaming streamingText="hello" />)
@@ -13,6 +22,7 @@ describe('TokenSpeedIndicator', () => {
     expect(screen.getByText(/^≈ .* tok\/sec$/)).toBeInTheDocument()
     const initial = screen.getByText(/≈ .* tokens/).textContent
     view.rerender(<TokenSpeedIndicator messageId="live" streaming streamingText="hello world and more generated words" />)
+    act(() => { vi.advanceTimersByTime(250) })
     expect(screen.getByText(/≈ .* tokens/).textContent).not.toBe(initial)
     view.rerender(<TokenSpeedIndicator messageId="live" streaming={false} metadata={{ usage: { outputTokens: 12 }, tokenSpeed: { tokenSpeed: 24 } }} />)
     expect(screen.getByText('12 tokens')).toBeInTheDocument()
