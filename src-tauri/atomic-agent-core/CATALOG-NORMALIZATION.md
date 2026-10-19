@@ -1,8 +1,10 @@
-# Vendored BioNeMo identity normalization
+# Vendored BioNeMo identity audit
 
-Source: Radium baseline d60f2408982f36171de9088d3cb68fae5aa1fc98, src-tauri/resources/agent-skills. The catalog README identifies NVIDIA/skills as its publisher. Original name headers differed from eleven prefixed directory IDs, causing the existing registry to reject them. Only name headers were changed; bodies, descriptions, licenses and permission metadata were preserved. Registry identity checks remain enforced.
+Source: Radium baseline d60f2408982f36171de9088d3cb68fae5aa1fc98, src-tauri/resources/agent-skills. The catalog README identifies NVIDIA/skills as its publisher. Eleven publisher name headers differ from their prefixed directory IDs. Vendored headers and bodies remain unchanged; the registry rejects these identities and displays the diagnostic instead of enabling an alias.
 
-| Original publisher name | Radium directory and canonical ID |
+`mirrored_identity_mismatches_are_pinned_and_rejected` records the exact directory/name pairs below and verifies their runtime rejection. A changed mismatch set requires review. Curated entries must match their directory identities in `bundled_skills_follow_explicit_platform_metadata_policy`. Informational publisher metadata never grants native tool or script permissions.
+
+| Publisher name (unchanged) | Radium directory (rejected identity) |
 | --- | --- |
 | kermt-add-cmim-pretrain | bionemo-kermt-add-cmim-pretrain |
 | kermt-continue-pretrain | bionemo-kermt-continue-pretrain |

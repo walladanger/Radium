@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 export type WorkspacePanel = 'agents' | 'production'
-export const useWorkspacePanel = create<{ panel: WorkspacePanel | null; toggle: (panel: WorkspacePanel) => void; close: () => void }>(set => ({
+export type ProductionView = 'steps' | 'topology' | 'branches' | 'annotations'
+export const useWorkspacePanel = create<{ panel: WorkspacePanel | null; productionView: ProductionView; setProductionView: (view: ProductionView) => void; openAnnotations: () => void; toggle: (panel: WorkspacePanel) => void; close: () => void }>(set => ({
   panel: null,
-  toggle: panel => set(state => ({ panel: state.panel === panel ? null : panel })),
+  productionView: 'steps',
+  setProductionView: productionView => set({ productionView }),
+  openAnnotations: () => set({ panel: 'production', productionView: 'annotations' }),
+  toggle: panel => set(state => panel === 'production' && state.productionView === 'annotations'
+    ? { panel: 'production', productionView: 'steps' }
+    : { panel: state.panel === panel ? null : panel }),
   close: () => set({ panel: null }),
 }))

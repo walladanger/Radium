@@ -121,6 +121,8 @@ export function reduceAgentRunState(
         startedAtMs: state.startedAtMs ?? nowMs,
         status: 'running',
       }
+    case 'context_usage':
+      return { ...state, contextUsage: { categories: event.categories, contextWindow: event.context_window ?? undefined, updatedAt: nowMs, estimated: true } }
     case 'step_started':
       return {
         ...state,

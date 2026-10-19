@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-290 records, 2026-05-19 → 2026-10-16.
+295 records, 2026-05-19 → 2026-10-18.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -42,9 +42,8 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ---
 
-## Radium Media platform (14)
+## Radium Media platform (13)
 
-- **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)
 The model-agnostic media platform: provider adapters, the v2 contract, the
 library on disk, and how the frozen surface is allowed to change.
 
@@ -83,9 +82,8 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-02** — [Add a `/v1/responses` translation shim to the local proxy so Codex CLI works on llama.cpp models](2026-06-02-add-a-v1-responses-translation-shim-to-the-local-proxy-so-codex.md)
 - **2026-06-01** — [Add a "Launch" page to install + configure external coding agents / assistants against the local OpenAI-compatible API](2026-06-01-add-a-launch-page-to-install-configure-external-coding-agents.md)
 
-## Agent mode — autonomous loop, tools, skills, workspace (49)
+## Agent mode — autonomous loop, tools, skills, workspace (48)
 
-- **2026-10-16** — [Give the agent computer-care tools behind the computer tool pack](2026-10-16-give-the-agent-computer-care-tools-behind-the-computer-tool-pack.md)
 - **2026-10-16** — [Ask before every MCP and third-party tool call](2026-10-16-ask-before-every-mcp-and-third-party-tool-call.md)
 - **2026-10-10** — [Give the agent network tools behind a tool pack, with blast-radius approvals](2026-10-10-give-the-agent-network-tools-behind-a-tool-pack-with-blast-radius-approvals.md)
 - **2026-10-10** — [Let the agent delegate tasks to specialist assistants](2026-10-10-let-the-agent-delegate-tasks-to-specialist-assistants.md)
@@ -337,13 +335,14 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-11** — [Add a unified "Sampling — {assistant}" popover (assistant switcher + sampling params in one place) (ATO-155)](2026-06-11-add-a-unified-sampling-assistant-popover-assistant-switcher.md)
 - **2026-06-10** — [Render inline image (`file`) parts in the chat thread bubble (ATO-120)](2026-06-10-render-inline-image-file-parts-in-the-chat-thread-bubble-ato-120.md)
 
-## Other (26)
+## Other (27)
 
+- **2026-07-01** — [Fix `llamacpp-upstream` hot-swap race: persist `version_backend` *before* unloading, not after (Windows "optimal backend selected but still running on CPU" bug)](2026-07-01-fix-llamacpp-upstream-hot-swap-race-persist-version-backend.md)
+- **2026-06-17** — [Resolve the `llamacpp-upstream` backend *index* from a static `atomic-chat-conf` manifest (raw.githubusercontent.com) instead of the rate-limited `api.github.com` (ATO-199)](2026-06-17-resolve-the-llamacpp-upstream-backend-index-from-a-static.md)
 - **2026-10-16** — [Resize workspace panels and filter controller activity](2026-10-16-resize-workspace-panels-and-filter-controller-activity.md)
-- **2026-10-04** — [Open Agent and Production panels beside chat](2026-10-04-open-agent-and-production-panels-beside-chat.md)
-- **2026-10-03** — [Own coordinated tasks in a local controller](2026-10-03-own-coordinated-tasks-in-a-local-controller.md)
 - **2026-10-03** — [Reuse the runtime adapter branch and default managed Ollama to local execution](2026-10-03-reconcile-runtime-adapters-with-local-defaults.md)
-- **2026-10-16** — [Recover security triage with explicit local state](2026-10-16-recover-security-triage-with-explicit-local-state.md)
+- **2026-10-03** — [Own coordinated tasks in a local controller](2026-10-03-own-coordinated-tasks-in-a-local-controller.md)
+- **2026-10-04** — [Open Agent and Production panels beside chat](2026-10-04-open-agent-and-production-panels-beside-chat.md)
 
 - **2026-10-10** — [Align Vitest 5 tooling and preserve critical coverage](2026-10-10-align-vitest-5-tooling-and-preserve-critical-coverage.md)
 
@@ -369,3 +368,17 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-07-28** — [Isolate the unstable Tauri IPC test API](2026-07-28-isolate-tauri-ipc-test-api.md)
 - **2026-07-23** — [Isolate the Windows Common Controls test manifest by feature](2026-07-23-isolate-the-windows-common-controls-test-manifest-by-feature.md)
 - **2026-07-20** — [Open Agent-referenced files from assistant summaries](2026-07-20-open-agent-referenced-files-from-assistant-summaries.md)
+
+- [Keep annotation screenshots with their production log entry](2026-10-16-keep-annotation-screenshots-with-their-production-log-entry.md)
+
+- **2026-10-16** — [Give the agent computer-care tools behind the computer tool pack](2026-10-16-give-the-agent-computer-care-tools-behind-the-computer-tool-pack.md)
+- **2026-10-16** — [Recover security triage with explicit local state](2026-10-16-recover-security-triage-with-explicit-local-state.md)
+
+- [Scope checksum grammar scanner exception to legacy names](2026-10-16-scope-checksum-grammar-scanner-exception-to-legacy-names.md)
+
+- [Pin standalone controller and core build resolutions](2026-10-16-pin-standalone-controller-and-core-build-resolutions.md)
+
+- [Float annotations and report live generation metrics](2026-10-16-float-annotations-and-report-live-generation-metrics.md)
+- **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)
+
+- [Preserve workspace pages under the annotation overlay](2026-10-18-preserve-workspace-pages-under-the-annotation-overlay.md)

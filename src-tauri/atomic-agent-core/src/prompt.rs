@@ -1075,6 +1075,51 @@ pub struct PromptParts {
 }
 
 impl PromptParts {
+    /// Group the actual rendered request for display. These are heuristic
+    /// counts, not tokenizer measurements. No prompt text leaves the runner.
+    pub fn token_categories(&self) -> std::collections::BTreeMap<String, usize> {
+        let mut groups = std::collections::BTreeMap::<String, String>::new();
+        let mut category = "systemPrompt";
+        let mut in_tools = false;
+        let mut in_conversation = false;
+        for line in self.system.lines().chain(self.tail.lines()) {
+            // Conversation and skill bodies can contain arbitrary headings.
+            // Once conversation starts, do not interpret user text as telemetry.
+            if let Some(section) = line.strip_prefix("### ").filter(|_| !in_conversation) {
+                in_tools = matches!(section, "tools" | "loaded-tools");
+                category = match section {
+                    "conversation" => "messages",
+                    "tools" | "loaded-tools" => "systemTools",
+                    "skills" | "loaded-skills" => "skills",
+                    "specialists" | "assistant" => "customAgents",
+                    "documents" => "documents",
+                    _ => "systemPrompt",
+                };
+                in_conversation = section == "conversation";
+            } else if in_tools && line == "# mcp" {
+                category = "mcpTools";
+            } else if in_tools && line.starts_with("- ") {
+                category = if line.starts_with("- mcp.") {
+                    "mcpTools"
+                } else {
+                    "systemTools"
+                };
+            }
+            let group = groups.entry(category.to_string()).or_default();
+            group.push_str(line);
+            group.push('\n');
+        }
+        groups
+            .into_iter()
+            .map(|(key, text)| {
+                (
+                    key,
+                    crate::core::agent::token_budget::estimate_tokens(&text),
+                )
+            })
+            .collect()
+    }
+
     /// The flat form. Must stay byte-identical to what llama.cpp received
     /// before the split existed.
     pub fn rendered(&self) -> String {
@@ -1325,6 +1370,26 @@ fn render_loaded_tools(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn context_categories_group_the_request_without_exporting_prompt_text() {
+        let prompt = PromptParts {
+            system: "### system\nPrivate system text\n### tools\n- os.fs.read { path }\n# mcp\n- mcp.server.tool (summary)\n### skills\nPrivate skill summary".into(),
+            tail: "### conversation\nUSER: private message\n### tools\nThese user headings are still conversation.".into(),
+        };
+        let counts = prompt.token_categories();
+        for key in [
+            "systemPrompt",
+            "systemTools",
+            "mcpTools",
+            "skills",
+            "messages",
+        ] {
+            assert!(counts[key] > 0, "missing category {key}");
+        }
+        assert_eq!(counts["messages"], crate::core::agent::token_budget::estimate_tokens("### conversation\nUSER: private message\n### tools\nThese user headings are still conversation.\n"));
+        assert!(!serde_json::to_string(&counts).unwrap().contains("Private"));
+    }
 
     fn test_caps(platform: &str) -> CapabilitiesSummary {
         CapabilitiesSummary {

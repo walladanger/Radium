@@ -12,7 +12,7 @@ function readWidth() {
 }
 
 /** Size against the available chat area, including when the navigation resizes. */
-export function useWorkspacePanelSize(open: boolean) {
+export function useWorkspacePanelSize(open: boolean, resizeFromLeft = false) {
   const panelRef = useRef<HTMLElement>(null)
   const drag = useRef<{ pointer: number; x: number; width: number } | null>(null)
   const [preferredWidth, setPreferredWidth] = useState(readWidth)
@@ -57,11 +57,11 @@ export function useWorkspacePanelSize(open: boolean) {
   }
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (!drag.current || drag.current.pointer !== event.pointerId) return
-    resize(drag.current.width + event.clientX - drag.current.x)
+    resize(drag.current.width + (event.clientX - drag.current.x) * (resizeFromLeft ? -1 : 1))
   }
   const stopDrag = () => { drag.current = null }
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const sizes: Record<string, number> = { ArrowLeft: width - 24, ArrowRight: width + 24, Home: minWidth, End: maxWidth }
+    const sizes: Record<string, number> = { ArrowLeft: width + (resizeFromLeft ? 24 : -24), ArrowRight: width + (resizeFromLeft ? -24 : 24), Home: minWidth, End: maxWidth }
     const next = Object.prototype.hasOwnProperty.call(sizes, event.key) ? sizes[event.key] : undefined
     if (next === undefined) return
     event.preventDefault()

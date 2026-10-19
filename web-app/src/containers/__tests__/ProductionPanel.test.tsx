@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { ProductionPanel } from '../ProductionPanel'
 import { useAtomicTasks } from '@/stores/atomic-tasks-store'
 import type { ControlSnapshot } from '@/lib/atomic-control'
+import { useWorkspacePanel } from '@/hooks/useWorkspacePanel'
 
 vi.mock('@/i18n/react-i18next-compat', () => ({ useTranslation: () => ({
   t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key,
@@ -17,7 +18,7 @@ const snapshot = (): ControlSnapshot => ({ schema_version: 1, sequence: 1,
     instructions: ['Read settings'], acceptance_criteria: ['Tests pass'] }],
   attempts: [], workers: [], approvals: [], artifacts: [], candidates: [],
 })
-afterEach(() => { cleanup(); useAtomicTasks.setState(initial, true) })
+afterEach(() => { cleanup(); useAtomicTasks.setState(initial, true); useWorkspacePanel.getState().setProductionView('steps') })
 
 it('saves explicit instructions against the selected task revision', async () => {
   const command = vi.fn().mockResolvedValue(true)
@@ -26,13 +27,12 @@ it('saves explicit instructions against the selected task revision', async () =>
   fireEvent.click(screen.getByRole('button', { name: /1\. Edit settings/ }))
   fireEvent.change(screen.getByLabelText(/Exact instructions/), { target: { value: 'Read file\nEdit scoped file' } })
   fireEvent.click(screen.getByRole('button', { name: 'save' }))
-  await waitFor(() => expect(command).toHaveBeenCalledTimes(1))
-  const [edit, revision] = command.mock.calls[0]!
-  expect(edit).toMatchObject({
+  await waitFor(() => expect(command).toHaveBeenCalledWith(expect.objectContaining({
     type: 'update_task', task_id: 't', instructions: ['Read file', 'Edit scoped file'],
     acceptance_criteria: ['Tests pass'],
-  })
-  expect(revision).toBe(7)
+  }), 7))
+  expect(await screen.findByText('Plan step saved.')).toBeInTheDocument()
+  expect(screen.getByLabelText(/Exact instructions/)).toHaveValue('Read file\nEdit scoped file')
 })
 
 it('preserves drafts and disables saving when a newer revision arrives', () => {

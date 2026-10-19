@@ -26,13 +26,11 @@ const imageMimeFromName = (fileName: string): string => {
 }
 
 /**
- * The context gauge as it sits in the page header, top right. It reads the
- * thread and its pending image attachments itself so every chat route can drop
- * it in without threading composer state up through the layout — the composer
- * no longer carries it. Renders nothing for providers with no context knob of
- * their own (the control decides that).
+ * The context gauge reads the active thread and pending attachments itself.
+ * It can sit beside the composer without threading draft state through routes.
+ * Providers with no context setting render no control.
  */
-const HeaderContextSize = memo(function HeaderContextSize() {
+const HeaderContextSize = memo(function HeaderContextSize({ placement = 'header' }: { placement?: 'header' | 'composer' }) {
   const currentThreadId = useThreads((state) => state.currentThreadId)
   const messages = useMessages(
     useShallow((state) =>
@@ -69,11 +67,12 @@ const HeaderContextSize = memo(function HeaderContextSize() {
     <div
       className={cn(
         'shrink-0',
-        overlayButtons === 1 && 'mr-10',
-        overlayButtons >= 2 && 'mr-20'
+        placement === 'header' && overlayButtons === 1 && 'mr-10',
+        placement === 'header' && overlayButtons >= 2 && 'mr-20'
       )}
     >
       <ContextSizeControl
+        placement={placement}
         messages={messages || []}
         uploadedFiles={uploadedFiles}
       />

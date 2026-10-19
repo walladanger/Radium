@@ -2,7 +2,7 @@
 pub use atomic_agent_core::resource_class::*;
 
 #[cfg(test)]
-mod tests {
+mod native_tests {
     use super::*;
 
     /// The `net.*` and `sys.*` tools live in the desktop, so their resource

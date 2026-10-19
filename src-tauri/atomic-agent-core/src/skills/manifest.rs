@@ -372,6 +372,16 @@ mod tests {
         assert!(parsed.manifest.requires_tools.is_empty());
         assert!(parsed.manifest.requires_scripts.is_empty());
         assert!(!parsed.manifest.dangerous);
+        for header in ["license: []", "metadata: []"] {
+            let informational = parse_skill_file(&format!(
+                "---\nname: vendor-skill\ndescription: Safe\n{header}\n---\nBody"
+            ))
+            .unwrap();
+            assert!(informational.manifest.requires_tools.is_empty());
+            assert!(informational.manifest.requires_scripts.is_empty());
+            assert!(!informational.manifest.dangerous);
+            assert_eq!(informational.organization, DeclaredOrganization::default());
+        }
         // `license` and `metadata` are display-only and accept any YAML value
         // (they feed `ParsedSkillFile::organization`), so only keys that could
         // widen what a skill may do, or reach outside it, are refused here.

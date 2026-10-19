@@ -80,6 +80,20 @@ function setSelectedModel(providerName: string, fit?: boolean) {
 }
 
 describe('ContextSizeControl', () => {
+  it('shows the saved prompt breakdown without free-space metrics or invented missing counts', () => {
+    setSelectedModel('llamacpp')
+    const messages = [{ role: 'assistant', metadata: { contextUsage: {
+      categories: { messages: 100, systemPrompt: 40, mcpTools: 20, skills: 10, completion: 5 },
+      contextWindow: 16384, updatedAt: Date.now(), estimated: true,
+    } } } as ThreadMessage]
+    render(<ContextSizeControl messages={messages} placement="composer" />)
+    fireEvent.click(screen.getByRole('button', { name: /Context usage:/ }))
+    expect(screen.getByText('175 / 16.4K')).toBeInTheDocument()
+    expect(screen.getByText('MCP server instructions')).toBeInTheDocument()
+    expect(screen.getAllByText('Not reported').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Free space')).not.toBeInTheDocument()
+    expect(screen.getByText('Estimated prompt composition')).toBeInTheDocument()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     tokenCountState.value = 164

@@ -56,6 +56,8 @@ const AppLayout = () => {
   useTrayStatusSync()
   const isSetupCompleted = useSetupCompleted()
   const workspacePanel = useWorkspacePanel(state => state.panel)
+  const productionView = useWorkspacePanel(state => state.productionView)
+  const annotationOverlay = workspacePanel === 'production' && productionView === 'annotations'
   const closeWorkspacePanel = useWorkspacePanel(state => state.close)
   const pathname = useRouterState({ select: state => state.location.pathname })
   // Navigating to any routed page leaves the workspace page.
@@ -84,9 +86,9 @@ const AppLayout = () => {
           <SidebarInset>
             <div className="bg-neutral-50 dark:bg-background flex size-full min-h-0 min-w-0 flex-col">
               <WorkspacePanel />
-              {/* One page per screen: the routed page stays mounted (drafts
-                survive) but is hidden while a workspace page is open. */}
-              <div hidden={!!workspacePanel} className="min-h-0 min-w-0 flex-1 overflow-y-auto"><Outlet /></div>
+              {/* Workspace pages hide the mounted route; Annotating floats
+                over it so the conversation and its draft remain visible. */}
+              <div hidden={!!workspacePanel && !annotationOverlay} className="min-h-0 min-w-0 flex-1 overflow-y-auto"><Outlet /></div>
             </div>
           </SidebarInset>
 

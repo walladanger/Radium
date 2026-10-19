@@ -23,7 +23,9 @@
       },
       {
         "run": "node --test tests/verify-selective-v2032.test.mjs",
-        "files": ["tests/verify-selective-v2032.test.mjs"]
+        "files": [
+          "tests/verify-selective-v2032.test.mjs"
+        ]
       },
       {
         "run": "node scripts/verify-selective-v2032.mjs",
@@ -40,7 +42,9 @@
     "id": "media-sidebar-entry",
     "feature": "Media in the sidebar",
     "forUsers": "A Media row in the left sidebar opens Radium Media. Upstream has no such row.",
-    "paths": ["web-app/src/components/left-sidebar/NavMain.tsx"],
+    "paths": [
+      "web-app/src/components/left-sidebar/NavMain.tsx"
+    ],
     "checks": [
       {
         "run": "npx vitest run src/components/left-sidebar/__tests__/NavMain.test.tsx",
@@ -67,7 +71,9 @@
     "checks": [
       {
         "run": "node scripts/verify-selective-v2032.mjs",
-        "files": ["scripts/verify-selective-v2032.mjs"]
+        "files": [
+          "scripts/verify-selective-v2032.mjs"
+        ]
       }
     ],
     "decision": "e0b537747 (PR #3)",
@@ -87,7 +93,9 @@
     "checks": [
       {
         "run": "node --test tests/radium-product-name.test.mjs",
-        "files": ["tests/radium-product-name.test.mjs"]
+        "files": [
+          "tests/radium-product-name.test.mjs"
+        ]
       }
     ],
     "decision": "docs/decisions/2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md",
@@ -108,7 +116,9 @@
         "env": {
           "TAURI_CONFIG": "{\"bundle\":{\"icon\":[\"icons/icon.png\"]}}"
         },
-        "files": ["src-tauri/src/core/app/data_migration.rs"]
+        "files": [
+          "src-tauri/src/core/app/data_migration.rs"
+        ]
       }
     ],
     "decision": "docs/decisions/2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md",
@@ -129,7 +139,9 @@
         "env": {
           "TAURI_CONFIG": "{\"bundle\":{\"icon\":[\"icons/icon.png\"]}}"
         },
-        "files": ["src-tauri/src/core/setup.rs"]
+        "files": [
+          "src-tauri/src/core/setup.rs"
+        ]
       }
     ],
     "decision": "Tracker T21-S16 (PR #15), found on this PC 2026-09-14",
@@ -139,12 +151,16 @@
     "id": "launch-at-startup-rename",
     "feature": "Launch at startup survives the rename",
     "forUsers": "If Atomic Chat was set to start with the computer, Radium keeps starting with it.",
-    "paths": ["web-app/src/lib/launchAtStartup.ts"],
+    "paths": [
+      "web-app/src/lib/launchAtStartup.ts"
+    ],
     "checks": [
       {
         "run": "npx vitest run src/lib/__tests__/launchAtStartup.test.ts",
         "cwd": "web-app",
-        "files": ["web-app/src/lib/__tests__/launchAtStartup.test.ts"]
+        "files": [
+          "web-app/src/lib/__tests__/launchAtStartup.test.ts"
+        ]
       }
     ],
     "decision": "docs/decisions/2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md",
@@ -154,12 +170,16 @@
     "id": "assistant-name-migration",
     "feature": "Saved assistants say Radium",
     "forUsers": "The default assistant's name and instructions that said Atomic Chat or Radium Chat are updated to Radium.",
-    "paths": ["extensions/assistant-extension/src/**"],
+    "paths": [
+      "extensions/assistant-extension/src/**"
+    ],
     "checks": [
       {
         "run": "npx vitest run src/index.test.ts",
         "cwd": "extensions/assistant-extension",
-        "files": ["extensions/assistant-extension/src/index.test.ts"]
+        "files": [
+          "extensions/assistant-extension/src/index.test.ts"
+        ]
       }
     ],
     "decision": "450100bda",
@@ -179,7 +199,9 @@
     "checks": [
       {
         "run": "node --test tests/no-auto-update.test.mjs",
-        "files": ["tests/no-auto-update.test.mjs"]
+        "files": [
+          "tests/no-auto-update.test.mjs"
+        ]
       }
     ],
     "decision": "docs/decisions/2026-09-12-radium-never-auto-updates.md",
@@ -198,7 +220,9 @@
     "checks": [
       {
         "run": "node --test tests/stage-windows-backends.test.mjs",
-        "files": ["tests/stage-windows-backends.test.mjs"]
+        "files": [
+          "tests/stage-windows-backends.test.mjs"
+        ]
       }
     ],
     "decision": "b0d716a95, 60bc3b914",
@@ -249,12 +273,16 @@
     "checks": [
       {
         "run": "node --test tests/window-controls.test.mjs",
-        "files": ["tests/window-controls.test.mjs"]
+        "files": [
+          "tests/window-controls.test.mjs"
+        ]
       },
       {
         "run": "npx vitest run src/components/__tests__/WindowFrame.test.tsx src/components/__tests__/WindowControls.test.tsx",
         "cwd": "web-app",
-        "files": ["web-app/src/components/__tests__/WindowFrame.test.tsx"]
+        "files": [
+          "web-app/src/components/__tests__/WindowFrame.test.tsx"
+        ]
       }
     ],
     "decision": "Task 23, D30 = A, D35 (supersedes D33) (PR #10). Lost once already in the v2.0.35 sync.",
@@ -264,12 +292,16 @@
     "id": "hub-uncensored-in-filter-menu",
     "feature": "Uncensored filter in the Hub filter menu",
     "forUsers": "The Uncensored checkbox sits inside the Hub's sort and filter menu with the other filters.",
-    "paths": ["web-app/src/containers/hub/HubFilters.tsx"],
+    "paths": [
+      "web-app/src/containers/hub/HubFilters.tsx"
+    ],
     "checks": [
       {
         "run": "npx vitest run src/containers/hub/__tests__/HubFilters.test.tsx",
         "cwd": "web-app",
-        "files": ["web-app/src/containers/hub/__tests__/HubFilters.test.tsx"]
+        "files": [
+          "web-app/src/containers/hub/__tests__/HubFilters.test.tsx"
+        ]
       }
     ],
     "decision": "Task 24 (PR #11)",
@@ -279,7 +311,9 @@
     "id": "windows-test-build-ci",
     "feature": "Unsigned Windows test installer from GitHub Actions",
     "forUsers": "Every branch can produce a Windows installer to try on this PC before merging.",
-    "paths": [".github/workflows/windows-test-build.yml"],
+    "paths": [
+      ".github/workflows/windows-test-build.yml"
+    ],
     "checks": [],
     "decision": "d0f56745c, 72bd66144",
     "status": "no-check"
@@ -298,7 +332,10 @@
     "checks": [
       {
         "run": "node --test tests/app-version.test.mjs tests/build-version.test.mjs",
-        "files": ["tests/app-version.test.mjs", "tests/build-version.test.mjs"]
+        "files": [
+          "tests/app-version.test.mjs",
+          "tests/build-version.test.mjs"
+        ]
       }
     ],
     "decision": "Tracker D34, Task 27 (PR #17)",
@@ -311,7 +348,7 @@
     "paths": [
       "src-tauri/src/core/mcp/review.rs",
       "src-tauri/src/core/mcp/helpers.rs",
-      "src-tauri/src/core/agent/skills/registry.rs",
+      "src-tauri/atomic-agent-core/src/skills/registry.rs",
       "src-tauri/src/core/agent/skills/commands.rs",
       "web-app/src/lib/review-before-use.ts",
       "web-app/src/containers/SkillReviewDialog.tsx",
@@ -329,7 +366,7 @@
         "files": [
           "src-tauri/src/core/mcp/review.rs",
           "src-tauri/src/core/mcp/tests.rs",
-          "src-tauri/src/core/agent/skills/registry.rs"
+          "src-tauri/atomic-agent-core/src/skills/registry.rs"
         ]
       },
       {
@@ -343,6 +380,15 @@
           "web-app/src/hooks/__tests__/useConnectorReview.test.ts",
           "web-app/src/routes/skills/__tests__/SkillsPage.review.test.tsx",
           "web-app/src/routes/connectors/__tests__/index.test.tsx"
+        ]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml skills::",
+        "files": [
+          "src-tauri/atomic-agent-core/src/skills/registry.rs",
+          "src-tauri/atomic-agent-core/src/skills/seeding.rs",
+          "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+          "src-tauri/atomic-agent-core/src/skills/organization.rs"
         ]
       }
     ],
@@ -370,12 +416,16 @@
     "checks": [
       {
         "run": "node --test tests/radium-logo.test.mjs",
-        "files": ["tests/radium-logo.test.mjs"]
+        "files": [
+          "tests/radium-logo.test.mjs"
+        ]
       },
       {
         "run": "npx vitest run src/components/__tests__/AppLogo.test.tsx",
         "cwd": "web-app",
-        "files": ["web-app/src/components/__tests__/AppLogo.test.tsx"]
+        "files": [
+          "web-app/src/components/__tests__/AppLogo.test.tsx"
+        ]
       }
     ],
     "decision": "Tracker D37, Task 29 (PR #19)",
@@ -433,8 +483,8 @@
     ],
     "checks": [
       {
-        "run": "cargo test -- skills",
-        "cwd": "src-tauri/atomic-agent-core",
+        "run": "cargo test --no-default-features --features test-tauri --lib -- core::agent::skills",
+        "cwd": "src-tauri",
         "files": [
           "src-tauri/atomic-agent-core/src/skills/discovery.rs",
           "src-tauri/atomic-agent-core/src/skills/organization.rs",
@@ -448,6 +498,15 @@
           "web-app/src/lib/skill-organization.test.ts",
           "web-app/src/routes/skills/index.test.tsx",
           "web-app/src/services/agent/skills.test.ts"
+        ]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml skills::",
+        "files": [
+          "src-tauri/atomic-agent-core/src/skills/registry.rs",
+          "src-tauri/atomic-agent-core/src/skills/seeding.rs",
+          "src-tauri/atomic-agent-core/src/skills/discovery.rs",
+          "src-tauri/atomic-agent-core/src/skills/organization.rs"
         ]
       }
     ],
@@ -572,6 +631,110 @@
     "status": "checked"
   },
   {
+    "id": "coordinated-local-tasks",
+    "feature": "Shared local agent workspace",
+    "forUsers": "Plan dependent tasks, inspect durable progress and review isolated local worker outputs through Radium and DeepSeek. Release acceptance remains pending.",
+    "paths": [
+      "src-tauri/atomic-control/**",
+      "src-tauri/atomic-agent-core/**",
+      "web-app/src/routes/tasks*",
+      "web-app/src/lib/atomic-control*",
+      "web-app/src/stores/atomic-tasks-store*"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-control/Cargo.toml",
+        "files": [
+          "src-tauri/atomic-control/tests/kernel.rs",
+          "src-tauri/atomic-control/tests/sandbox.rs"
+        ]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml",
+        "files": [
+          "src-tauri/atomic-agent-core/src/runner.rs"
+        ]
+      },
+      {
+        "run": "npx vitest run src/routes/tasks.test.tsx src/lib/atomic-control.test.ts src/stores/atomic-tasks-store.test.ts",
+        "cwd": "web-app",
+        "files": [
+          "web-app/src/routes/tasks.test.tsx",
+          "web-app/src/lib/atomic-control.test.ts",
+          "web-app/src/stores/atomic-tasks-store.test.ts"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-03-own-coordinated-tasks-in-a-local-controller.md",
+    "status": "pending"
+  },
+  {
+    "id": "live-generation-context-metrics",
+    "feature": "Live generation and prompt composition metrics",
+    "forUsers": "See the current time in composers, historical message dates, growing generation counts and a context breakdown beside chat. Estimates are marked and unavailable counts remain unknown.",
+    "paths": [
+      "web-app/src/components/ComposerClock.tsx",
+      "web-app/src/containers/TokenSpeedIndicator.tsx",
+      "web-app/src/containers/ContextSizeControl.tsx",
+      "web-app/src/lib/context-usage.ts",
+      "web-app/src/lib/live-generation-metrics.ts",
+      "src-tauri/atomic-agent-core/src/prompt.rs",
+      "src-tauri/atomic-agent-core/src/runner.rs"
+    ],
+    "checks": [
+      {
+        "cwd": "web-app",
+        "run": "npx vitest run src/components/ComposerClock.test.tsx src/containers/TokenSpeedIndicator.test.tsx src/containers/ContextSizeControl.test.tsx src/lib/context-usage.test.ts src/lib/live-generation-metrics.test.ts",
+        "files": [
+          "web-app/src/components/ComposerClock.test.tsx",
+          "web-app/src/containers/TokenSpeedIndicator.test.tsx",
+          "web-app/src/containers/ContextSizeControl.test.tsx",
+          "web-app/src/lib/context-usage.test.ts",
+          "web-app/src/lib/live-generation-metrics.test.ts"
+        ]
+      },
+      {
+        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml --locked prompt::tests::context_categories_group_the_request_without_exporting_prompt_text",
+        "files": [
+          "src-tauri/atomic-agent-core/src/prompt.rs"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-16-float-annotations-and-report-live-generation-metrics.md",
+    "status": "pending"
+  },
+  {
+    "id": "production-annotation-log",
+    "feature": "Local screenshot-linked annotation log",
+    "forUsers": "Record edits and quick memory notes with screenshots in a folder of your choice, using an expandable black glass panel and resizable note area.",
+    "paths": [
+      "src-tauri/src/core/production_log.rs",
+      "web-app/src/containers/ProductionLog.tsx",
+      "web-app/src/lib/production-log.ts",
+      "web-app/src/containers/HeaderPage.tsx",
+      "web-app/src/hooks/useWorkspacePanel.ts"
+    ],
+    "checks": [
+      {
+        "run": "cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features test-tauri --lib core::production_log::tests",
+        "files": [
+          "src-tauri/src/core/production_log.rs"
+        ]
+      },
+      {
+        "cwd": "web-app",
+        "run": "npx vitest run src/lib/production-log.test.ts src/containers/__tests__/ProductionLog.test.tsx src/hooks/useWorkspacePanel.test.ts",
+        "files": [
+          "web-app/src/lib/production-log.test.ts",
+          "web-app/src/containers/__tests__/ProductionLog.test.tsx",
+          "web-app/src/hooks/useWorkspacePanel.test.ts"
+        ]
+      }
+    ],
+    "decision": "docs/decisions/2026-10-16-keep-annotation-screenshots-with-their-production-log-entry.md",
+    "status": "pending"
+  },
+  {
     "id": "agent-computer-care-tools",
     "feature": "Computer care specialist tools",
     "forUsers": "An assistant with Computer care tools turned on (or the Computer care specialist template) can check disk space, what is using memory and CPU, startup programs, pending updates and recent system errors, turn startup programs off or back on, and empty the Recycle Bin. Automatic temporary-file cleanup is unavailable; use operating-system Storage settings. Approval-required changes ask first and show what they will affect and whether they can be undone, unless auto_approve=true allows them to proceed without prompting.",
@@ -600,35 +763,6 @@
       }
     ],
     "decision": "docs/decisions/2026-10-16-give-the-agent-computer-care-tools-behind-the-computer-tool-pack.md",
-    "status": "pending"
-  },
-  {
-    "id": "coordinated-local-tasks",
-    "feature": "Shared local agent workspace",
-    "forUsers": "Plan dependent tasks, inspect durable progress and review isolated local worker outputs through Radium and DeepSeek. Release acceptance remains pending.",
-    "paths": [
-      "src-tauri/atomic-control/**",
-      "src-tauri/atomic-agent-core/**",
-      "web-app/src/routes/tasks*",
-      "web-app/src/lib/atomic-control*",
-      "web-app/src/stores/atomic-tasks-store*"
-    ],
-    "checks": [
-      {
-        "run": "cargo test --manifest-path src-tauri/atomic-control/Cargo.toml",
-        "files": ["src-tauri/atomic-control/tests/kernel.rs", "src-tauri/atomic-control/tests/sandbox.rs"]
-      },
-      {
-        "run": "cargo test --manifest-path src-tauri/atomic-agent-core/Cargo.toml",
-        "files": ["src-tauri/atomic-agent-core/src/runner.rs"]
-      },
-      {
-        "run": "npx vitest run src/routes/tasks.test.tsx src/lib/atomic-control.test.ts src/stores/atomic-tasks-store.test.ts",
-        "cwd": "web-app",
-        "files": ["web-app/src/routes/tasks.test.tsx", "web-app/src/lib/atomic-control.test.ts", "web-app/src/stores/atomic-tasks-store.test.ts"]
-      }
-    ],
-    "decision": "docs/decisions/2026-10-03-own-coordinated-tasks-in-a-local-controller.md",
     "status": "pending"
   }
 ]

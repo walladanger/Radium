@@ -104,7 +104,10 @@ const STATIC_TOOL_GRAMMARS: &[ToolGrammar] = &[
     ToolGrammar {
         name: "os.fs.hash",
         rule: "fs-hash",
-        args: r#""{" ws "\"path\"" ws ":" ws non-empty-string ( ws "," ws "\"algorithm\"" ws ":" ws ( "\"md5\"" | "\"sha1\"" | "\"sha256\"" | "\"sha512\"" ) )? ws "}""#, // DevSkim: ignore DS126858 - file checksums offered by os.fs.hash, not a security hash
+        // These are compatibility checksum names, not cryptographic operations.
+        // The filesystem executor defaults to SHA-256; this vocabulary stays in
+        // sync with its explicitly selectable legacy file-checksum algorithms.
+        args: r#""{" ws "\"path\"" ws ":" ws non-empty-string ( ws "," ws "\"algorithm\"" ws ":" ws ( "\"md5\"" | "\"sha1\"" | "\"sha256\"" | "\"sha512\"" ) )? ws "}""#, // DevSkim: ignore DS126858 because this line declares grammar vocabulary, not a security hash operation.
     },
     ToolGrammar {
         name: "os.fs.diff",

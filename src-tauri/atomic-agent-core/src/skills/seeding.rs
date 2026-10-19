@@ -447,7 +447,13 @@ mod tests {
         let expected = reviewed_platform_policy();
 
         let names = list_starter_skill_names(&source);
-        assert!(!names.is_empty(), "bundled starter skills must exist");
+        assert!(
+            names.len() >= expected.len(),
+            "curated platform policies must remain in the catalog"
+        );
+        for name in expected.keys() {
+            assert!(names.contains(*name), "missing curated skill {name}");
+        }
 
         // Skills that declare a `platforms` restriction must appear in the
         // reviewed policy with it. Skills without a restriction — the whole
@@ -472,113 +478,139 @@ mod tests {
                     continue;
                 }
             };
-            assert_eq!(
-                parsed.manifest.platforms.as_ref(),
-                expected.get(name.as_str()),
-                "platform metadata changed for bundled skill `{name}`; review and update the policy explicitly"
+            if reviewed {
+                assert_eq!(
+                    parsed.manifest.name, name,
+                    "reviewed manifest identity must match its directory"
+                );
+            }
+            assert!(
+                !parsed.body.trim().is_empty(),
+                "bundled instructions must be nonempty"
             );
+            if let Some(policy) = expected.get(name.as_str()) {
+                assert_eq!(
+                    parsed.manifest.platforms.as_ref(),
+                    Some(policy),
+                    "platform metadata changed for curated skill `{name}`"
+                );
+            }
             for script in &parsed.manifest.requires_scripts {
                 assert!(
-                    skill_root.join("scripts").join(script).is_file(),
+                    Path::new(script)
+                        .components()
+                        .all(|component| matches!(component, std::path::Component::Normal(_)))
+                        && skill_root.join("scripts").join(script).is_file()
+                        && fs::canonicalize(skill_root.join("scripts").join(script))
+                            .unwrap()
+                            .starts_with(fs::canonicalize(skill_root.join("scripts")).unwrap()),
                     "bundled skill `{name}` declares missing script `{script}`"
                 );
             }
         }
     }
 
-    /// Mirrored skills this repository's parser refuses outright.
-    ///
-    /// Every one has a `description` that folds out past the 512-character
-    /// cap. The NVIDIA catalog writes long multi-paragraph trigger
-    /// descriptions as YAML folded scalars, and folded they run from 517
-    /// characters upwards. The app does not hide them: the skills registry
-    /// reports each as broken, with the reason, so a user can see what is
-    /// wrong rather than wondering where a skill went.
-    ///
-    /// Not repaired here, because every repair available is worse than the
-    /// symptom. The catalog is mirrored from product repositories by
-    /// automation and its own README says the product folders must not be
-    /// hand-edited, so editing 91 descriptions would be undone by the next
-    /// sync. Raising the cap instead would weaken it for hand-written skills,
-    /// whose descriptions go into every prompt — which is what the cap is
-    /// for.
-    ///
-    /// So what is asserted is the part that must not slip:
-    ///
-    /// 1. no *reviewed* skill is ever among the refused — ours always parse,
-    ///    and that is a hard assertion with no ceiling;
-    /// 2. the count cannot grow. A mirror update that brings more broken
-    ///    skills fails here instead of shipping them quietly. The ceiling is
-    ///    the count as imported, so it records the state rather than blessing
-    ///    it, and it may shrink freely.
+    /// Publisher files stay unchanged. Known identity mismatches are audit
+    /// evidence, not aliases: the registry must continue to reject them.
     #[test]
-    fn mirrored_skills_the_parser_refuses_cannot_grow() {
-        /// The count when the NVIDIA catalog was imported (`d60f2408`), all of
-        /// them over-long descriptions. Lower it when upstream shortens one;
-        /// never raise it.
-        const REFUSED_CEILING: usize = 91;
-
+    fn mirrored_identity_mismatches_are_pinned_and_rejected() {
         let source = bundled_skills_root();
-        let reviewed = reviewed_platform_policy();
-        let refused: Vec<String> = list_starter_skill_names(&source)
-            .into_iter()
-            .filter(|name| {
-                let content = fs::read_to_string(source.join(name).join("SKILL.md")).unwrap();
-                parse_skill_file(&content).is_err()
-            })
-            .collect();
-
-        let reviewed_and_refused: Vec<&String> = refused
+        let expected = BTreeMap::from([
+            ("bionemo-kermt-add-cmim-pretrain", "kermt-add-cmim-pretrain"),
+            ("bionemo-kermt-continue-pretrain", "kermt-continue-pretrain"),
+            ("bionemo-kermt-embed", "kermt-embed"),
+            ("bionemo-kermt-finetune", "kermt-finetune"),
+            ("bionemo-kermt-infer", "kermt-infer"),
+            ("bionemo-kermt-monitor", "kermt-monitor"),
+            ("bionemo-kermt-pretrain-scratch", "kermt-pretrain-scratch"),
+            ("bionemo-kermt-setup", "kermt-setup"),
+            (
+                "bionemo-msa-structure-prediction-pipeline",
+                "msa-structure-prediction-pipeline",
+            ),
+            ("bionemo-nvmolkit-usage", "nvmolkit-usage"),
+            ("bionemo-openfold2-nim", "openfold2-nim"),
+        ]);
+        let mut observed = BTreeMap::new();
+        for name in list_starter_skill_names(&source) {
+            let content = fs::read_to_string(source.join(&name).join("SKILL.md")).unwrap();
+            if let Ok(parsed) = parse_skill_file(&content) {
+                if parsed.manifest.name != name {
+                    observed.insert(name, parsed.manifest.name);
+                }
+            }
+        }
+        let expected_owned: BTreeMap<String, String> = expected
             .iter()
-            .filter(|name| reviewed.contains_key(name.as_str()))
+            .map(|(directory, publisher)| (directory.to_string(), publisher.to_string()))
             .collect();
-        assert!(
-            reviewed_and_refused.is_empty(),
-            "reviewed bundled skills no longer parse: {reviewed_and_refused:?}. These are ours; \
-             fix the SKILL.md rather than the limit"
-        );
+        assert_eq!(observed, expected_owned, "mirrored identity audit changed");
 
-        assert!(
-            refused.len() <= REFUSED_CEILING,
-            "{} bundled skills are refused by the parser, up from {REFUSED_CEILING}. The new ones \
-             are shipped broken and reported as such in the skills list. Full set: {refused:?}",
-            refused.len()
-        );
+        let registry = super::super::SkillRegistry::load(
+            source,
+            &BTreeSet::new(),
+            &super::super::available_tool_names(),
+        )
+        .unwrap();
+        for (directory, publisher) in expected {
+            assert!(registry.get(directory).is_none());
+            let entry = registry.entry(directory).expect("rejection stays visible");
+            assert!(!entry.enabled);
+            assert_eq!(
+                entry.error.as_deref(),
+                Some(format!("Manifest name `{publisher}` does not match its directory").as_str())
+            );
+        }
     }
 
-    /// `skill.view` truncates the runtime contract plus the body at
-    /// LOADED_SKILL_BODY_MAX_CHARS. A bundled skill that overruns it loses its
-    /// closing sections: ui-ux-pro-max arrived 568 characters over and its
-    /// pre-delivery checklist never reached the model.
-    ///
-    /// Asserted for the reviewed skills, which are ours to restructure. The
-    /// mirrored catalog overruns it in bulk, and its bodies are not ours to
-    /// move into `references/`; what it loses is marked `[truncated]` in the
-    /// loaded text (asserted in `loaded.rs`), so it is visible rather than
-    /// silent.
-    #[test]
-    fn every_reviewed_bundled_skill_body_survives_the_load_limit() {
+    /// Every bundled instruction is retrievable across bounded pages, without
+    /// silently losing late sections from larger publisher skills.
+    #[tokio::test]
+    async fn every_bundled_skill_body_survives_the_load_limit() {
         use crate::core::agent::skills::loaded::LOADED_SKILL_BODY_MAX_CHARS;
 
-        let source = bundled_skills_root();
-        let reviewed = reviewed_platform_policy();
-        let present = list_starter_skill_names(&source);
-
-        for name in reviewed.keys() {
-            assert!(
-                present.contains(*name),
-                "reviewed bundled skill `{name}` is no longer bundled"
-            );
-            let content = fs::read_to_string(source.join(name).join("SKILL.md")).unwrap();
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../resources/agent-skills");
+        let mut registry = super::super::SkillRegistry::load(
+            source.clone(),
+            &BTreeSet::new(),
+            &super::super::available_tool_names(),
+        )
+        .unwrap();
+        registry.trust_all();
+        for name in list_starter_skill_names(&source) {
+            let content = fs::read_to_string(source.join(&name).join("SKILL.md")).unwrap();
             let parsed = parse_skill_file(&content).unwrap();
-            // The contract `view` prepends is longest when scripts are declared;
-            // 400 characters covers its wording plus the filenames it lists.
-            let contract = 400 + parsed.manifest.requires_scripts.join(", ").chars().count();
-            let total = contract + parsed.body.chars().count();
-            assert!(
-                total <= LOADED_SKILL_BODY_MAX_CHARS,
-                "bundled skill `{name}` would be cut off when loaded: {total} characters against a \
-                 limit of {LOADED_SKILL_BODY_MAX_CHARS}. Move late sections into references/."
+            // Incompatible host-specific skills remain unavailable; their parsed body
+            // still passes catalog identity validation above.
+            if registry.get_enabled(&name).is_none() {
+                continue;
+            }
+            let loaded = super::super::loaded::LoadedSkills::default();
+            let mut offset = 0;
+            let mut reconstructed = String::new();
+            loop {
+                let outcome = loaded.view_page(&name, &registry, offset).await;
+                assert_eq!(
+                    outcome.status,
+                    crate::types::ToolStatus::Ok,
+                    "cannot page skill {name}"
+                );
+                assert!(
+                    loaded.snapshot().await[0].body.chars().count() <= LOADED_SKILL_BODY_MAX_CHARS
+                );
+                let details = outcome.details.unwrap();
+                reconstructed.push_str(details["page"].as_str().unwrap());
+                match details["next_offset"].as_u64() {
+                    Some(next) => {
+                        assert!(next > offset as u64);
+                        offset = next as usize;
+                    }
+                    None => break,
+                }
+            }
+            assert_eq!(
+                reconstructed, parsed.body,
+                "pagination lost instructions for {name}"
             );
         }
     }

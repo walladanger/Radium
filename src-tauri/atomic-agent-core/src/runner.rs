@@ -247,6 +247,11 @@ pub async fn run_turn_with_deadline(
             input.mcp,
             input.documents_note,
         );
+        let context_categories = prompt.token_categories();
+        emit(AgentEvent::ContextUsage {
+            categories: context_categories.clone(),
+            context_window,
+        })?;
         notice = None;
         let mut request = CompletionRequest {
             reasoning: completion_reasoning.clone(),
@@ -312,6 +317,15 @@ pub async fn run_turn_with_deadline(
         let mut parsed = match completion {
             Ok(completion) => {
                 usage.observe(&completion);
+                let mut categories = context_categories.clone();
+                categories.insert(
+                    "completion".into(),
+                    completion.timing.predicted_tokens.max(0.0) as usize,
+                );
+                emit(AgentEvent::ContextUsage {
+                    categories,
+                    context_window,
+                })?;
                 previous_output.clone_from(&completion.content);
                 if !completion.reasoning_content.is_empty() && !server_reasoning_streamed {
                     emit(AgentEvent::ReasoningDelta {
