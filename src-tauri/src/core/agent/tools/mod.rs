@@ -279,7 +279,8 @@ async fn authorize_call(
         return Ok(prepared.call);
     }
     let fingerprint = fingerprint_prepared_action(&prepared.call.tool, &prepared.call.args);
-    let can_remember = is_approval_gated && !prepared.escaped_root;
+    let never_remember = prepared.call.tool == "sys.empty_recycle_bin";
+    let can_remember = is_approval_gated && !prepared.escaped_root && !never_remember;
     if can_remember && context.approval.is_allowed(&fingerprint).await {
         return Ok(prepared.call);
     }
@@ -1101,6 +1102,62 @@ mod tests {
         assert!(allowed.is_ok());
         assert_eq!(approval.calls.load(Ordering::SeqCst), 1);
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn empty_recycle_bin_never_uses_or_offers_remembered_approval() {
+        let root = tempfile::TempDir::new().unwrap();
+        let root = root.path();
+        let approval = RememberingApproval::default();
+        let call = ToolCallPayload {
+            tool: "sys.empty_recycle_bin".into(),
+            args: serde_json::json!({}),
+        };
+        // Even an existing fingerprint must not bypass a fresh decision.
+        approval
+            .allowed
+            .lock()
+            .unwrap()
+            .insert(fingerprint_prepared_action(&call.tool, &call.args));
+        let loaded_tools = tool_view::LoadedTools::default();
+        let loaded_skills = LoadedSkills::default();
+        let skill_registry = test_skill_registry(root);
+        let desktop = TestDesktop::default();
+        let cancellation = CancellationToken::new();
+        let editable_roots = EditableRoots::new(root, &[]).await.unwrap();
+        let folder_access = TestFolderAccess {
+            allowed: false,
+            calls: AtomicUsize::new(0),
+        };
+        let context = ToolContext {
+            session_id: "test-session",
+            working_dir: root,
+            editable_roots: &editable_roots,
+            trusted_read_roots: &[],
+            client: None,
+            approval: &approval,
+            folder_access: &folder_access,
+            cancellation: &cancellation,
+            loaded_tools: &loaded_tools,
+            loaded_skills: &loaded_skills,
+            skill_registry: &skill_registry,
+            bundled_script_runtime: None,
+            desktop: &desktop,
+            pty: &PtyRegistry::new(),
+            cache_dir: &std::env::temp_dir(),
+            mcp: None,
+            docs: None,
+            disabled_tools: &std::collections::BTreeSet::new(),
+            auto_approve_mcp: true,
+            delegate: None,
+        };
+
+        // Authorize only: the test never executes the destructive tool.
+        assert!(authorize_call(&call, &context).await.is_ok());
+        assert!(authorize_call(&call, &context).await.is_ok());
+        let requests = approval.requests.lock().unwrap();
+        assert_eq!(requests.len(), 2);
+        assert!(requests.iter().all(|request| !request.can_remember));
     }
 
     #[tokio::test]
