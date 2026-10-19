@@ -199,6 +199,14 @@ function looksLikeMmproj(fileName: string): boolean {
 }
 
 /**
+ * Folders the model scan skips: underscore-prefixed folders and anything with
+ * "backup" in the name. These hold copies, not models in use.
+ */
+function isIgnoredScanFolder(name: string): boolean {
+  return name.startsWith('_') || /backup/i.test(name)
+}
+
+/**
  * Recursively collect `.gguf` files under a directory (bounded depth). Splits
  * results into the main weight files and the mmproj projector files.
  */
@@ -216,6 +224,9 @@ async function collectGgufFiles(
     const st = await statOf(child)
     if (!st) continue
     if (st.isDirectory) {
+      // Backup and private folders (`_radium-yml-backup`, `_old`, ...) hold
+      // copies of models and configs. Scanning them duplicated every entry.
+      if (isIgnoredScanFolder(name)) continue
       const nested = await collectGgufFiles(child, depth + 1)
       models.push(...nested.models)
       mmprojs.push(...nested.mmprojs)

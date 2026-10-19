@@ -427,6 +427,11 @@ const DropdownModelProvider = memo(function DropdownModelProvider({
         // Skip embedding models - they can't be used for chat
         if (modelItem.embedding || modelItem.id === EMBEDDING_MODEL_ID) return
 
+        // Skip entries whose file is gone from disk (flagged `missing`). They
+        // can't run, and they crowded the list with UNAVAILABLE rows. They
+        // stay in Settings, where they can be re-imported or deleted.
+        if (modelItem.missing) return
+
         // Skip catalogue entries for providers the user has not set up.
         // `isProviderConnected` is the check, not a bare `api_key` test: a
         // subscription carries its token in the backend and a loopback server
