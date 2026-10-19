@@ -247,7 +247,7 @@ const DropdownModelProvider = memo(function DropdownModelProvider({
 
       const { preloadModelOnStartup } = useGeneralSetting.getState()
       if (!preloadModelOnStartup) {
-        // Preload is disabled: don't pre-select the last used model or
+        // Preload is disabled: don't preselect the last used model or
         // auto-pick the first local model. Only reflect a model that is
         // already actively running (e.g. started manually earlier in the
         // session); otherwise leave the selector blank.
