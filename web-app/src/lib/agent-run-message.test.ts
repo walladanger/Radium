@@ -32,7 +32,7 @@ function finishedRun(): AgentRunState {
 }
 
 describe('agent run message projection', () => {
-  it('persists only the compact terminal summary in metadata', () => {
+  it('persists the compact terminal summary and display metadata without approval details', () => {
     const state = finishedRun()
     state.pendingApproval = {
       type: 'approval_requested',
@@ -48,6 +48,8 @@ describe('agent run message projection', () => {
     const message = buildAgentUIMessage(state)
 
     expect(message.metadata).toEqual({
+      contextUsage: undefined,
+      createdAt: 1_000,
       agent_run: buildAgentRunSummary(state),
     })
     expect(buildAgentRunSummary(state).duration_ms).toBe(2_500)
