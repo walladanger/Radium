@@ -1,4 +1,5 @@
 //! Durable single-authority local controller. HTTP workers cannot validate evidence.
+pub mod dispatch;
 pub mod execution;
 pub mod http;
 pub mod worker;
