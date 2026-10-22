@@ -106,8 +106,8 @@ if (Test-Cmd 'uv') {
     $uvVer = (uv --version 2>&1) | Out-String
     Write-OK $uvVer.Trim()
 } else {
-    Write-Host '  Installing uv via official installer...'
-    irm https://astral.sh/uv/install.ps1 | iex
+    Write-Host '  Installing uv via winget...'
+    winget install --id astral-sh.uv -e --accept-source-agreements --accept-package-agreements
     Refresh-Path
     # Also add the default uv bin path
     $uvBinPath = Join-Path $env:USERPROFILE '.local\bin'

@@ -34,7 +34,7 @@ async def run_single_test_with_timeout(computer, test_data, rp_client, launch_id
             "loop": "uitars",
             "model_provider": "oaicompat",
             "model_name": "ByteDance-Seed/UI-TARS-1.5-7B",
-            "model_base_url": "http://10.200.108.58:1234/v1"
+            "model_base_url": "http://localhost:1234/v1"
         }
     
     # Create trajectory_dir from path (remove .txt extension)
