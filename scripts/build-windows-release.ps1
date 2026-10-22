@@ -15,8 +15,8 @@ Set-Location $projectRoot
 
 function Write-Step {
     param([string]$msg)
-    Write-Host ''
-    Write-Host ">>> $msg" -ForegroundColor Cyan
+    Write-Output ''
+    Write-Output ">>> $msg"
 }
 
 function Test-Cmd {
@@ -24,7 +24,7 @@ function Test-Cmd {
     return ($null -ne (Get-Command $cmd -ErrorAction SilentlyContinue))
 }
 
-function Refresh-SessionPath {
+function Update-SessionPath {
     $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
     $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
     $env:Path = $machinePath + ';' + $userPath
@@ -33,15 +33,15 @@ function Refresh-SessionPath {
 function Assert-Cmd {
     param([string]$cmd, [string]$hint)
     if (-not (Test-Cmd $cmd)) {
-        Write-Host "[FATAL] $cmd not found. $hint" -ForegroundColor Red
-        Write-Host 'Run: make setup-windows' -ForegroundColor Yellow
+        Write-Output "[FATAL] $cmd not found. $hint"
+        Write-Output 'Run: make setup-windows'
         exit 1
     }
 }
 
 # ── Ensure nvm + Node.js are available ────────────────────────
 Write-Step 'Ensuring nvm + Node.js are available'
-Refresh-SessionPath
+Update-SessionPath
 
 if (-not $env:NVM_HOME) {
     $nvmHome = [System.Environment]::GetEnvironmentVariable('NVM_HOME', 'User')
@@ -74,10 +74,10 @@ if ($env:Path -notlike "*$($env:NVM_SYMLINK)*") {
 
 if (-not (Test-Cmd 'node')) {
     if (Test-Cmd 'nvm') {
-        Write-Host '  Node.js not found. Installing Node.js 20 via nvm...'
+        Write-Output '  Node.js not found. Installing Node.js 20 via nvm...'
         nvm install 20
         nvm use 20
-        Refresh-SessionPath
+        Update-SessionPath
         if ($env:Path -notlike "*$($env:NVM_SYMLINK)*") {
             $env:Path = $env:NVM_SYMLINK + ';' + $env:Path
         }
@@ -94,11 +94,11 @@ if (Test-Cmd 'node') {
     $npmPrefix = ((npm prefix -g 2>&1) | Out-String).Trim()
     $npmYarn = Join-Path $npmPrefix 'yarn.cmd'
     if (Test-Path $npmYarn) {
-        Write-Host '  Removing conflicting npm-global yarn v1...'
+        Write-Output '  Removing conflicting npm-global yarn v1...'
         npm uninstall -g yarn 2>&1 | Out-Null
     }
 
-    Write-Host "  Enabling corepack (shim dir: $corepackBin)..."
+    Write-Output "  Enabling corepack (shim dir: $corepackBin)..."
     corepack enable --install-directory $corepackBin
     corepack prepare yarn@4.5.3 --activate
 
@@ -127,7 +127,7 @@ if (-not (Test-Cmd 'yarn')) {
     $yarnFound = $false
     foreach ($dir in $searchDirs) {
         if (Test-Path (Join-Path $dir 'yarn.cmd')) {
-            Write-Host "  yarn.cmd found in $dir"
+            Write-Output "  yarn.cmd found in $dir"
             $env:Path = $dir + ';' + $env:Path
             $yarnFound = $true
             break
@@ -140,35 +140,35 @@ if (-not (Test-Cmd 'yarn')) {
 
 $nodeVer = (node --version 2>&1) | Out-String
 $cargoVer = (cargo --version 2>&1) | Out-String
-Write-Host "  node  $($nodeVer.Trim())"
-Write-Host "  cargo $($cargoVer.Trim())"
-Write-Host '  yarn  OK'
+Write-Output "  node  $($nodeVer.Trim())"
+Write-Output "  cargo $($cargoVer.Trim())"
+Write-Output '  yarn  OK'
 
 # ── Yarn install ──────────────────────────────────────────────
 Write-Step 'yarn install'
 yarn config set -H enableImmutableInstalls false 2>&1 | Out-Null
 yarn install
-if ($LASTEXITCODE -ne 0) { Write-Host 'yarn install failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'yarn install failed'; exit 1 }
 
 # ── Build tauri plugin API ────────────────────────────────────
 Write-Step 'yarn build:tauri:plugin:api'
 yarn build:tauri:plugin:api
-if ($LASTEXITCODE -ne 0) { Write-Host 'build:tauri:plugin:api failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'build:tauri:plugin:api failed'; exit 1 }
 
 # ── Build core ────────────────────────────────────────────────
 Write-Step 'yarn build:core'
 yarn build:core
-if ($LASTEXITCODE -ne 0) { Write-Host 'build:core failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'build:core failed'; exit 1 }
 
 # ── Build extensions ──────────────────────────────────────────
 Write-Step 'yarn build:extensions'
 yarn build:extensions
-if ($LASTEXITCODE -ne 0) { Write-Host 'build:extensions failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'build:extensions failed'; exit 1 }
 
 # ── Download binaries (bun, uv) ──────────────────────────────
 Write-Step 'yarn download:bin'
 yarn download:bin
-if ($LASTEXITCODE -ne 0) { Write-Host 'download:bin failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'download:bin failed'; exit 1 }
 
 # ── Download CPU-only upstream llamacpp backend (matches CI) ──
 # Per ADR 2026-05-22, Windows release artifacts ship only the
@@ -186,7 +186,7 @@ New-Item -ItemType Directory -Path $llamacppDir -Force | Out-Null
 $resolved = @{}
 $resolverOut = & node scripts/resolve-upstream-backend.mjs --backend $backend
 if ($LASTEXITCODE -ne 0) {
-    Write-Host '[FATAL] scripts/resolve-upstream-backend.mjs failed' -ForegroundColor Red
+    Write-Output '[FATAL] scripts/resolve-upstream-backend.mjs failed'
     exit 1
 }
 foreach ($line in $resolverOut) {
@@ -196,7 +196,7 @@ foreach ($line in $resolverOut) {
 $tag = $resolved['TAG']
 $backend = $resolved['BACKEND']
 if (-not $tag -or -not $resolved['URL']) {
-    Write-Host '[FATAL] resolver returned no TAG/URL' -ForegroundColor Red
+    Write-Output '[FATAL] resolver returned no TAG/URL'
     exit 1
 }
 
@@ -204,8 +204,8 @@ if (-not $tag -or -not $resolved['URL']) {
 $archiveUrl = $resolved['URL']
 $archivePath = Join-Path $env:TEMP 'llamacpp-upstream-backend.zip'
 
-Write-Host "  Release: $tag  Backend: $backend"
-Write-Host "  Downloading: $archiveUrl"
+Write-Output "  Release: $tag  Backend: $backend"
+Write-Output "  Downloading: $archiveUrl"
 
 $downloaded = $false
 for ($i = 1; $i -le 5; $i++) {
@@ -214,12 +214,12 @@ for ($i = 1; $i -le 5; $i++) {
         $downloaded = $true
         break
     } catch {
-        Write-Host "  Download attempt $i/5 failed: $($_.Exception.Message); retrying..." -ForegroundColor Yellow
+        Write-Output "  Download attempt $i/5 failed: $($_.Exception.Message); retrying..."
         Start-Sleep -Seconds 3
     }
 }
 if (-not $downloaded) {
-    Write-Host "[FATAL] Failed to download $archiveUrl after 5 attempts" -ForegroundColor Red
+    Write-Output "[FATAL] Failed to download $archiveUrl after 5 attempts"
     exit 1
 }
 
@@ -227,24 +227,24 @@ if ($resolved['SHA256']) {
     $actual = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash.ToLower()
     if ($actual -ne $resolved['SHA256']) {
         Remove-Item $archivePath -Force -ErrorAction SilentlyContinue
-        Write-Host "[FATAL] sha256 mismatch for $($resolved['ASSET']): expected $($resolved['SHA256']), got $actual" -ForegroundColor Red
+        Write-Output "[FATAL] sha256 mismatch for $($resolved['ASSET']): expected $($resolved['SHA256']), got $actual"
         exit 1
     }
-    Write-Host "  sha256 verified: $($resolved['ASSET'])"
+    Write-Output "  sha256 verified: $($resolved['ASSET'])"
 } else {
-    Write-Host "  No sha256 published for $($resolved['ASSET']); skipping integrity check" -ForegroundColor Yellow
+    Write-Output "  No sha256 published for $($resolved['ASSET']); skipping integrity check"
 }
 
 Set-Content -Path "$llamacppDir/version.txt" -Value $tag -NoNewline
 Set-Content -Path "$llamacppDir/backend.txt" -Value $backend -NoNewline
 
-Write-Host '  Extracting...'
+Write-Output '  Extracting...'
 Expand-Archive -Path $archivePath -DestinationPath $llamacppDir -Force
 Remove-Item $archivePath -Force -ErrorAction SilentlyContinue
 
 if (-not (Test-Path "$llamacppDir/build/bin/llama-server.exe")) {
     if (Test-Path "$llamacppDir/llama-server.exe") {
-        Write-Host '  Relocating flat-extracted binaries into build/bin/...'
+        Write-Output '  Relocating flat-extracted binaries into build/bin/...'
         New-Item -ItemType Directory -Path "$llamacppDir/build/bin" -Force | Out-Null
         Get-ChildItem -Path $llamacppDir -Filter '*.exe' -File |
             Move-Item -Destination "$llamacppDir/build/bin/" -Force
@@ -253,17 +253,17 @@ if (-not (Test-Path "$llamacppDir/build/bin/llama-server.exe")) {
     }
 }
 
-Write-Host "  CPU backend ($backend) downloaded successfully" -ForegroundColor Green
+Write-Output "  CPU backend ($backend) downloaded successfully"
 
 # ── Build web app ─────────────────────────────────────────────
 Write-Step 'yarn build:web'
 yarn build:web
-if ($LASTEXITCODE -ne 0) { Write-Host 'build:web failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'build:web failed'; exit 1 }
 
 # ── Generate icons (tauri icon, skip macOS-only Python padding) ─
 Write-Step 'Generating icons'
 yarn tauri icon ./src-tauri/icons/icon.png
-if ($LASTEXITCODE -ne 0) { Write-Host 'tauri icon failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'tauri icon failed'; exit 1 }
 
 # Rebuild icon.ico full-bleed from logo-app.png so the taskbar icon isn't shrunk
 # by the macOS-style padding tauri icon bakes in. Cosmetic: warn, don't fail.
@@ -272,15 +272,15 @@ $pyExe = Get-Command py -ErrorAction SilentlyContinue
 if (-not $pyExe) { $pyExe = Get-Command python -ErrorAction SilentlyContinue }
 if ($pyExe) {
   & $pyExe.Source scripts/build-windows-app-icon.py
-  if ($LASTEXITCODE -ne 0) { Write-Host 'build-windows-app-icon.py failed (taskbar icon may look small)' -ForegroundColor Yellow }
+  if ($LASTEXITCODE -ne 0) { Write-Output 'build-windows-app-icon.py failed (taskbar icon may look small)' }
 } else {
-  Write-Host 'python not found; skipping Windows icon.ico rebuild' -ForegroundColor Yellow
+  Write-Output 'python not found; skipping Windows icon.ico rebuild'
 }
 
 # ── Copy assets for Tauri ─────────────────────────────────────
 Write-Step 'Copying assets for Tauri'
 yarn copy:assets:tauri
-if ($LASTEXITCODE -ne 0) { Write-Host 'copy:assets:tauri failed' -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Output 'copy:assets:tauri failed'; exit 1 }
 
 # ── Build CLI (release) ───────────────────────────────────────
 Write-Step 'Build jan-cli (release)'
@@ -292,13 +292,13 @@ Push-Location src-tauri
 cargo build --release --features cli --bin jan-cli
 if ($LASTEXITCODE -ne 0) {
     Pop-Location
-    Write-Host 'cargo build jan-cli failed' -ForegroundColor Red
+    Write-Output 'cargo build jan-cli failed'
     exit 1
 }
 Pop-Location
 
 Copy-Item -Path 'src-tauri/target/release/jan-cli.exe' -Destination 'src-tauri/resources/bin/jan-cli.exe' -Force
-Write-Host '  CLI built: src-tauri/resources/bin/jan-cli.exe'
+Write-Output '  CLI built: src-tauri/resources/bin/jan-cli.exe'
 
 # ── Patch light.exe to skip MSI ICE validation ─────────────────
 # tauri-bundler runs light.exe in a context where ICE01..ICE09 fail with
@@ -319,17 +319,17 @@ if (-not (Test-Path $wixToolsDir)) {
     # Extract WixTools now so the shim is in place before tauri's first link.
     New-Item -ItemType Directory -Path $wixToolsDir -Force | Out-Null
     $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
-    Write-Host "  Downloading $wixZipUrl"
+    Write-Output "  Downloading $wixZipUrl"
     try {
         Invoke-WebRequest -Uri $wixZipUrl -OutFile $wixZip -UseBasicParsing
     } catch {
-        Write-Host "WixTools download failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "WixTools download failed: $($_.Exception.Message)"
         exit 1
     }
     $actual = (Get-FileHash -Path $wixZip -Algorithm SHA256).Hash.ToLower()
     if ($actual -ne $wixZipSha) {
         Remove-Item $wixZip -Force -ErrorAction SilentlyContinue
-        Write-Host "WixTools sha256 mismatch: expected $wixZipSha, got $actual" -ForegroundColor Red
+        Write-Output "WixTools sha256 mismatch: expected $wixZipSha, got $actual"
         exit 1
     }
     Expand-Archive -Path $wixZip -DestinationPath $wixToolsDir -Force
@@ -338,45 +338,45 @@ if (-not (Test-Path $wixToolsDir)) {
 
 if (-not (Test-Path $realLight)) {
     if (-not (Test-Path $shimLight)) {
-        Write-Host '  WixTools314 has neither light.exe nor light.real.exe; cannot patch' -ForegroundColor Red
+        Write-Output '  WixTools314 has neither light.exe nor light.real.exe; cannot patch'
         exit 1
     }
     Move-Item -Path $shimLight -Destination $realLight
 }
 & $rustcExe -O $shimSrc -o $shimLight
-if ($LASTEXITCODE -ne 0) { Write-Host 'light.exe shim build failed' -ForegroundColor Red; exit 1 }
-Write-Host '  light.exe shim installed'
+if ($LASTEXITCODE -ne 0) { Write-Output 'light.exe shim build failed'; exit 1 }
+Write-Output '  light.exe shim installed'
 
 # ── Build Tauri app (NSIS + MSI, no code signing) ─────────────
 Write-Step 'Building Tauri app (release, unsigned)'
 $env:NODE_OPTIONS = '--max-old-space-size=4196'
 yarn tauri build --config src-tauri/tauri.windows.conf.json
 if ($LASTEXITCODE -ne 0) {
-    Write-Host 'tauri build failed' -ForegroundColor Red
+    Write-Output 'tauri build failed'
     exit 1
 }
 
 # ── Done ──────────────────────────────────────────────────────
-Write-Host ''
-Write-Host '================================================================' -ForegroundColor Green
-Write-Host '  BUILD COMPLETE!' -ForegroundColor Green
-Write-Host '================================================================' -ForegroundColor Green
-Write-Host ''
+Write-Output ''
+Write-Output '================================================================'
+Write-Output '  BUILD COMPLETE!'
+Write-Output '================================================================'
+Write-Output ''
 
 $nsisDir = 'src-tauri/target/release/bundle/nsis'
 if (Test-Path $nsisDir) {
-    Write-Host '  NSIS Installer(s):' -ForegroundColor Cyan
+    Write-Output '  NSIS Installer(s):'
     Get-ChildItem -Path $nsisDir -Filter '*.exe' | ForEach-Object {
-        Write-Host "    $($_.FullName)" -ForegroundColor White
+        Write-Output "    $($_.FullName)"
     }
 }
 
 $msiDir = 'src-tauri/target/release/bundle/msi'
 if (Test-Path $msiDir) {
-    Write-Host '  MSI Installer(s):' -ForegroundColor Cyan
+    Write-Output '  MSI Installer(s):'
     Get-ChildItem -Path $msiDir -Filter '*.msi' | ForEach-Object {
-        Write-Host "    $($_.FullName)" -ForegroundColor White
+        Write-Output "    $($_.FullName)"
     }
 }
 
-Write-Host ''
+Write-Output ''
