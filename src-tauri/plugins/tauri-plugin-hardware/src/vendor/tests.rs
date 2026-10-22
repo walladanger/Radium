@@ -34,7 +34,6 @@ fn test_get_vulkan_gpus_on_desktop() {
         println!("    Name: {}", gpu.name);
         println!("    Vendor: {:?}", gpu.vendor);
         println!("    Total Memory: {} MB", gpu.total_memory);
-        println!("    UUID: {}", gpu.uuid);
         println!("    Driver Version: {}", gpu.driver_version);
 
         // Verify that GPU properties are not empty/default values
@@ -71,7 +70,6 @@ fn test_get_vulkan_gpus_on_android() {
         println!("    Name: {}", gpu.name);
         println!("    Vendor: {:?}", gpu.vendor);
         println!("    Total Memory: {} MB", gpu.total_memory);
-        println!("    UUID: {}", gpu.uuid);
         println!("    Driver Version: {}", gpu.driver_version);
 
         // Verify C string parsing works correctly with i8 on Android
@@ -120,7 +118,6 @@ fn test_get_vulkan_gpus_on_ios() {
         println!("    Name: {}", gpu.name);
         println!("    Vendor: {:?}", gpu.vendor);
         println!("    Total Memory: {} MB", gpu.total_memory);
-        println!("    UUID: {}", gpu.uuid);
         println!("    Driver Version: {}", gpu.driver_version);
 
         // Verify C string parsing works correctly with i8 on iOS
