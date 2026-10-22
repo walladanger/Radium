@@ -5,6 +5,16 @@ import { useLocation } from '@tanstack/react-router'
 import { useLeftPanel } from '@/hooks/useLeftPanel'
 import { NavMain } from '../NavMain'
 
+const { openSystemMonitorWindow } = vi.hoisted(() => ({
+  openSystemMonitorWindow: vi.fn(),
+}))
+
+vi.mock('@/hooks/useServiceHub', () => ({
+  useServiceHub: () => ({
+    window: () => ({ openSystemMonitorWindow }),
+  }),
+}))
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
@@ -89,6 +99,7 @@ describe('NavMain', () => {
   beforeEach(() => {
     vi.mocked(useLocation).mockReturnValue({ pathname: '/' } as never)
     useLeftPanel.setState({ pluginsExpanded: false })
+    openSystemMonitorWindow.mockClear()
   })
 
   it('shows every section on the unified sidebar', () => {
@@ -170,5 +181,16 @@ describe('NavMain', () => {
     expect(
       screen.getByText('common:launch').closest('[data-active]')
     ).toHaveAttribute('data-active', 'true')
+  })
+
+  it('opens the performance monitor in its own window', async () => {
+    const user = userEvent.setup()
+    render(<NavMain />)
+
+    const entry = screen.getByText('system-monitor:performance')
+    expect(entry).toBeInTheDocument()
+
+    await user.click(entry)
+    expect(openSystemMonitorWindow).toHaveBeenCalledTimes(1)
   })
 })

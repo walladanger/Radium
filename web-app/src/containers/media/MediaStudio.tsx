@@ -26,12 +26,11 @@ import { ContinuousStudio } from './continuous/ContinuousStudio'
 import { MediaOutputSettings } from './MediaOutputSettings'
 import { extractLastFrameDataUrl } from './videoLastFrame'
 import { useMediaGeneration } from '@/hooks/useMediaGeneration'
-import { useMediaJobAsset } from '@/hooks/useMediaJobAsset'
+import { useMediaJobAssets } from '@/hooks/useMediaJobAssets'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { cn } from '@/lib/utils'
 import { BUILTIN_ENGINE_PROVIDER_ID } from '@/constants/mediaProviders'
 import { useMediaProviderStore } from '@/stores/media-provider-store'
-import { isTerminalMediaJobState } from '@/services/media/jobManager'
 import { createMediaAdapter } from '@/services/media/providerFactory'
 import {
   setPendingMediaReRun,
@@ -59,7 +58,7 @@ export function MediaStudio() {
   )
   const refresh = useMediaProviderStore((state) => state.refresh)
 
-  const { latest, submit, cancel } = useMediaGeneration()
+  const { jobs, submit, cancel } = useMediaGeneration()
   const [task, setTask] = useState<MediaTaskId | null>(null)
   const [view, setView] = useState<'create' | 'library' | 'continuous'>('create')
 
@@ -164,8 +163,6 @@ export function MediaStudio() {
     [selectedProvider, capabilities]
   )
 
-  const busy = latest ? !isTerminalMediaJobState(latest.state) : false
-
   // Download a model in place (the built-in engine), then ask its provider
   // again so the model reads as installed and Generate appears.
   const installModel = async (
@@ -181,27 +178,19 @@ export function MediaStudio() {
     await adapter.install(model.id, onProgress)
     await refresh({ providerId: provider.id })
   }
-  const asset = useMediaJobAsset(latest, selectedModel?.label ?? '')
+  const asset = useMediaJobAssets(jobs, selectedModel?.label ?? '')
 
   /**
    * Re-run a finished asset in the Create view with its original settings.
-   * In-flight jobs are not re-runnable: the form is already driving one.
+   * A running job no longer blocks this: the re-run is queued behind it.
    */
   const handleReRun = useCallback(
     (request: MediaReRunRequest) => {
-      if (busy) {
-        toast.warning(
-          t('media:studio.rerun.busy', {
-            defaultValue: 'Wait for the current job to finish first.',
-          })
-        )
-        return
-      }
       setPendingMediaReRun(request)
       const pending = takePendingMediaReRun()
       if (pending) applyReRun(pending)
     },
-    [busy, applyReRun, t]
+    [applyReRun]
   )
 
   /**
@@ -220,15 +209,6 @@ export function MediaStudio() {
         )
         return
       }
-      if (busy) {
-        toast.warning(
-          t('media:studio.rerun.busy', {
-            defaultValue: 'Wait for the current job to finish first.',
-          })
-        )
-        return
-      }
-
       const params: Record<string, unknown> = {
         ...source.provenance.params,
       }
@@ -259,7 +239,7 @@ export function MediaStudio() {
       const pending = takePendingMediaReRun()
       if (pending) applyReRun(pending)
     },
-    [busy, applyReRun, t]
+    [applyReRun, t]
   )
 
   const headerLabel = selectedProvider
@@ -383,7 +363,6 @@ export function MediaStudio() {
                 devices={devices}
                 selectedModelId={selectedModel?.id ?? null}
                 onSelectModel={setSelectedModel}
-                disabled={busy}
                 onSubmit={submit}
                 onInstallModel={installModel}
               />
@@ -392,8 +371,7 @@ export function MediaStudio() {
             <div className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto">
               <MediaPreview asset={asset} />
               <MediaJobStatus
-                job={latest ?? null}
-                cancellable={latest?.cancellable ?? false}
+                jobs={jobs}
                 onCancel={cancel}
                 providers={enabledProviders}
                 health={health}

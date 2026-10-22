@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   IconLoader2,
   IconPhoto,
@@ -93,15 +93,15 @@ const MediaChatSettingsDialog = ({
   const [resolution, setResolution] = useState<string>('')
   const [lengthSeconds, setLengthSeconds] = useState<number | undefined>(undefined)
   const [continueLastVideo, setContinueLastVideo] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const submittedRef = useRef(false)
 
   useEffect(() => {
     if (!pending) return
     let cancelled = false
     setSettings(null)
     setError(null)
-    setSubmitting(false)
     setContinueLastVideo(false)
+    submittedRef.current = false
     ;(async () => {
       try {
         const deps = await defaultChatGenerationDeps()
@@ -142,8 +142,9 @@ const MediaChatSettingsDialog = ({
   const hasResolution = (settings?.resolutionOptions.length ?? 0) > 0
   const hasLength = isVideo && (settings?.lengthOptions.length ?? 0) > 0
 
-  const submit = async () => {
-    setSubmitting(true)
+  const submit = () => {
+    if (submittedRef.current) return
+    submittedRef.current = true
     const overrides: ChatMediaOverrides = { useLastUsed }
     if (isVideo && continueLastVideo) {
       overrides.continueLastVideo = true
@@ -153,19 +154,18 @@ const MediaChatSettingsDialog = ({
         overrides.length_seconds = lengthSeconds
       }
     }
-    try {
-      await onConfirm(pending.task, pending.text, overrides)
-      close()
-    } finally {
-      setSubmitting(false)
-    }
+    // Queue the job and close immediately. The generation reports its own
+    // progress and result through the job manager; this dialog must never
+    // stay open waiting for it (the app has to stay usable during renders).
+    void onConfirm(pending.task, pending.text, overrides)
+    close()
   }
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !submitting) dismiss()
+        if (!open) dismiss()
       }}
     >
       <DialogContent className="sm:max-w-md">
@@ -314,20 +314,17 @@ const MediaChatSettingsDialog = ({
           <Button
             type="button"
             variant="outline"
-            disabled={submitting}
             onClick={dismiss}
           >
             {t('common:cancel', { defaultValue: 'Cancel' })}
           </Button>
           <Button
             type="button"
-            disabled={submitting || Boolean(error) || !settings}
+            disabled={Boolean(error) || !settings}
             data-testid="media-chat-generate"
             onClick={submit}
           >
-            {submitting ? (
-              <IconLoader2 className="animate-spin" size={16} />
-            ) : continueLastVideo ? (
+            {continueLastVideo ? (
               <IconPlayerPlayFilled size={16} />
             ) : (
               <meta.Icon size={16} />

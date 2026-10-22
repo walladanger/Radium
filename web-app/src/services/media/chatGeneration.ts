@@ -390,7 +390,7 @@ export async function defaultChatGenerationDeps(): Promise<ChatGenerationDeps> {
     import('@/stores/media-provider-store'),
     import('@/stores/media-last-used-store'),
     import('@/stores/media-library-store'),
-    import('@/hooks/useMediaJobAsset'),
+    import('@/hooks/useMediaJobAssets'),
     import('@/containers/media/videoLastFrame'),
   ])
   return {
