@@ -48,6 +48,8 @@ describe('agent run message projection', () => {
     const message = buildAgentUIMessage(state)
 
     expect(message.metadata).toEqual({
+      contextUsage: undefined,
+      createdAt: 1_000,
       agent_run: buildAgentRunSummary(state),
     })
     expect(buildAgentRunSummary(state).duration_ms).toBe(2_500)
