@@ -15,17 +15,16 @@
  */
 import { cn } from '@/lib/utils'
 import { isTerminalMediaJobState } from '@/services/media/jobManager'
+import type { MediaJobEntry } from '@/services/media/jobManager'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import type {
-  MediaJobSnapshot,
   MediaProviderDescriptor,
   MediaProviderHealth,
 } from '@/services/media/contract'
 
 type MediaJobStatusProps = {
-  job: MediaJobSnapshot | null
-  /** The provider reports it can cancel this job, and implements it. */
-  cancellable: boolean
+  /** Every tracked job, newest first. */
+  jobs: MediaJobEntry[]
   onCancel: (clientJobId: string) => void | Promise<unknown>
   providers: MediaProviderDescriptor[]
   health: Record<string, MediaProviderHealth>
@@ -67,9 +66,58 @@ function healthText(
     : t('media:status.offline', { defaultValue: 'Offline' })
 }
 
-export function MediaJobStatus({
+function JobStatusRow({
   job,
-  cancellable,
+  onCancel,
+}: {
+  job: MediaJobEntry
+  onCancel: (clientJobId: string) => void | Promise<unknown>
+}) {
+  const progress = Math.max(0, Math.min(100, Number(job.progress ?? 0)))
+  const running = !isTerminalMediaJobState(job.state)
+
+  return (
+    <div className="rounded-lg border border-border/60 p-3">
+      <div className="flex items-center justify-between gap-3 text-xs">
+        <span className="font-medium capitalize text-foreground">
+          {job.state}
+        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-muted-foreground">{progress}%</span>
+          {job.cancellable && running && (
+            <button
+              type="button"
+              onClick={() => void onCancel(job.client_job_id)}
+              className="rounded-lg border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:bg-muted"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-foreground/70 transition-[width]"
+          style={{
+            width: `${job.state === 'succeeded' ? 100 : progress}%`,
+          }}
+        />
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <span>Job {job.client_job_id}</span>
+        {job.queue_position != null && (
+          <span>Queue position {job.queue_position}</span>
+        )}
+        {job.error && <span className="text-red-500">{job.error.message}</span>}
+      </div>
+    </div>
+  )
+}
+
+export function MediaJobStatus({
+  jobs,
   onCancel,
   providers,
   health,
@@ -77,8 +125,6 @@ export function MediaJobStatus({
   onRetryProvider,
 }: MediaJobStatusProps) {
   const { t } = useTranslation()
-  const progress = Math.max(0, Math.min(100, Number(job?.progress ?? 0)))
-  const running = job ? !isTerminalMediaJobState(job.state) : false
 
   return (
     <div className="rounded-xl border border-border/60 bg-background p-4 shadow-sm">
@@ -120,41 +166,20 @@ export function MediaJobStatus({
         })}
       </ul>
 
-      {job && (
+      {jobs.length > 0 && (
         <div className="mt-4 border-t border-border/50 pt-3">
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <span className="font-medium capitalize text-foreground">
-              {job.state}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">{progress}%</span>
-              {cancellable && running && (
-                <button
-                  type="button"
-                  onClick={() => void onCancel(job.client_job_id)}
-                  className="rounded-lg border border-border/70 px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:bg-muted"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </div>
+          <p className="text-xs font-semibold text-foreground">
+            {t('media:status.jobs', { defaultValue: 'Jobs' })}
+          </p>
 
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-foreground/70 transition-[width]"
-              style={{
-                width: `${job.state === 'succeeded' ? 100 : progress}%`,
-              }}
-            />
-          </div>
-
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-            <span>Job {job.client_job_id}</span>
-            {job.queue_position != null && (
-              <span>Queue position {job.queue_position}</span>
-            )}
-            {job.error && <span className="text-red-500">{job.error.message}</span>}
+          <div className="mt-2 flex flex-col gap-2">
+            {jobs.map((job) => (
+              <JobStatusRow
+                key={job.client_job_id}
+                job={job}
+                onCancel={onCancel}
+              />
+            ))}
           </div>
         </div>
       )}

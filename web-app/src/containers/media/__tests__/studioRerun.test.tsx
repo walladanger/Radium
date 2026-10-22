@@ -60,8 +60,8 @@ vi.mock('@/hooks/useMediaGeneration', () => ({
   }),
 }))
 
-vi.mock('@/hooks/useMediaJobAsset', () => ({
-  useMediaJobAsset: () => null,
+vi.mock('@/hooks/useMediaJobAssets', () => ({
+  useMediaJobAssets: () => null,
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({

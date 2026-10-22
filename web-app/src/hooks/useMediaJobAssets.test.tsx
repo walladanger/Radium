@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Task 11 - the join between the job manager and the media library.
  *
  * Task 8 built `materialize()` and the library store and left them unwired:
@@ -8,21 +8,25 @@
  * The behaviour that matters is not "it materialises" but WHEN and HOW OFTEN.
  * A generation can cost real money on a cloud provider and a video can be
  * hundreds of megabytes, so materialising twice is not a cosmetic bug.
+ *
+ * Now that the studio can queue jobs during a render, the hook takes the whole
+ * queue: every succeeded job's output must reach the library, not just the
+ * newest one's.
  */
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useMediaJobAsset } from './useMediaJobAsset'
+import { useMediaJobAssets } from './useMediaJobAssets'
 import type { MediaJobEntry } from '@/services/media/jobManager'
 import type { MediaAsset, MaterializeDeps } from '@/services/media/assets'
 import { __setMediaLibrary, useMediaLibraryStore } from '@/stores/media-library-store'
 
 const added: MediaAsset[][] = []
 
-function fakeAsset(id: string): MediaAsset {
+function fakeAsset(id: string, clientJobId = 'job-1'): MediaAsset {
   return {
     asset_id: id,
-    client_job_id: 'job-1',
+    client_job_id: clientJobId,
     media_type: 'image',
     path: `D:/media/outputs/${id}.png`,
     mime: 'image/png',
@@ -79,12 +83,12 @@ function deps(materialize: MaterializeDeps['fetchBytes'] | undefined = undefined
   return {} as MaterializeDeps
 }
 
-describe('useMediaJobAsset', () => {
+describe('useMediaJobAssets', () => {
   it('materialises a succeeded job and returns its first asset', async () => {
     const run = vi.fn(async () => [fakeAsset('a1')])
 
     const { result } = renderHook(() =>
-      useMediaJobAsset(entry(), 'SDXL', deps(), run)
+      useMediaJobAssets([entry()], 'SDXL', deps(), run)
     )
 
     await waitFor(() => expect(result.current?.asset_id).toBe('a1'))
@@ -95,7 +99,7 @@ describe('useMediaJobAsset', () => {
     const run = vi.fn(async () => [fakeAsset('a1')])
 
     const { result } = renderHook(() =>
-      useMediaJobAsset(entry({ state: 'running' }), 'SDXL', deps(), run)
+      useMediaJobAssets([entry({ state: 'running' })], 'SDXL', deps(), run)
     )
 
     await Promise.resolve()
@@ -108,7 +112,7 @@ describe('useMediaJobAsset', () => {
     const job = entry()
 
     const { result, rerender } = renderHook(() =>
-      useMediaJobAsset(job, 'SDXL', deps(), run)
+      useMediaJobAssets([job], 'SDXL', deps(), run)
     )
     await waitFor(() => expect(result.current).not.toBeNull())
 
@@ -124,7 +128,7 @@ describe('useMediaJobAsset', () => {
     const run = vi.fn(async () => [fakeAsset('a1'), fakeAsset('a2')])
 
     const { result } = renderHook(() =>
-      useMediaJobAsset(entry(), 'SDXL', deps(), run)
+      useMediaJobAssets([entry()], 'SDXL', deps(), run)
     )
 
     await waitFor(() => expect(result.current).not.toBeNull())
@@ -134,7 +138,7 @@ describe('useMediaJobAsset', () => {
   it('carries the provenance context materialisation needs', async () => {
     const run = vi.fn(async () => [fakeAsset('a1')])
 
-    renderHook(() => useMediaJobAsset(entry(), 'SDXL', deps(), run))
+    renderHook(() => useMediaJobAssets([entry()], 'SDXL', deps(), run))
 
     await waitFor(() => expect(run).toHaveBeenCalled())
     const context = run.mock.calls[0]?.[1]
@@ -152,7 +156,7 @@ describe('useMediaJobAsset', () => {
     })
 
     const { result } = renderHook(() =>
-      useMediaJobAsset(entry(), 'SDXL', deps(), run)
+      useMediaJobAssets([entry()], 'SDXL', deps(), run)
     )
 
     await waitFor(() => expect(warn).toHaveBeenCalled())
@@ -161,21 +165,25 @@ describe('useMediaJobAsset', () => {
     warn.mockRestore()
   })
 
-  it('materialises the next job too, rather than latching on the first', async () => {
+  it('materialises every succeeded job in the queue, not just the newest', async () => {
+    // The queue is newest-first, so job-2 materialises before job-1.
     const run = vi
       .fn()
+      .mockResolvedValueOnce([fakeAsset('a2', 'job-2')])
       .mockResolvedValueOnce([fakeAsset('a1')])
-      .mockResolvedValueOnce([fakeAsset('a2')])
 
-    const { result, rerender } = renderHook(
-      ({ job }) => useMediaJobAsset(job, 'SDXL', deps(), run),
-      { initialProps: { job: entry() } }
+    const { result } = renderHook(() =>
+      useMediaJobAssets(
+        [entry({ client_job_id: 'job-2' }), entry()],
+        'SDXL',
+        deps(),
+        run
+      )
     )
-    await waitFor(() => expect(result.current?.asset_id).toBe('a1'))
 
-    rerender({ job: entry({ client_job_id: 'job-2' }) })
-
+    // The preview shows the newest job's asset.
     await waitFor(() => expect(result.current?.asset_id).toBe('a2'))
     expect(run).toHaveBeenCalledTimes(2)
+    expect(added).toHaveLength(2)
   })
 })
