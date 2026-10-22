@@ -52,7 +52,7 @@ function Test-Cmd {
     return ($null -ne $result)
 }
 
-function Update-SessionPath {
+function Sync-SessionPath {
     $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
     $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
     $env:Path = $machinePath + ';' + $userPath
@@ -68,7 +68,7 @@ if (Test-Cmd 'git') {
 } else {
     Write-ConsoleLine '  Installing Git...'
     winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
-    Update-SessionPath
+    Sync-SessionPath
     $restartRequired = $true
 }
 
@@ -108,7 +108,7 @@ if (Test-Cmd 'rustup') {
     Remove-Item $rustupInit -Force -ErrorAction SilentlyContinue
     $cargoPath = Join-Path $env:USERPROFILE '.cargo\bin'
     $env:Path = $cargoPath + ';' + $env:Path
-    Update-SessionPath
+    Sync-SessionPath
     $restartRequired = $true
     Write-OK 'Rust installed'
 }
@@ -121,7 +121,7 @@ if (Test-Cmd 'uv') {
 } else {
     Write-ConsoleLine '  Installing uv via winget...'
     winget install --id astral-sh.uv -e --accept-source-agreements --accept-package-agreements
-    Update-SessionPath
+    Sync-SessionPath
     # Also add the default uv bin path
     $uvBinPath = Join-Path $env:USERPROFILE '.local\bin'
     if (Test-Path $uvBinPath) {
@@ -172,7 +172,7 @@ if (Test-Cmd 'jq') {
 } else {
     Write-ConsoleLine '  Installing jq via winget...'
     winget install --id jqlang.jq -e --accept-source-agreements --accept-package-agreements
-    Update-SessionPath
+    Sync-SessionPath
     $restartRequired = $true
 }
 
@@ -184,7 +184,7 @@ if (Test-Cmd 'nvm') {
     Write-ConsoleLine '  Installing nvm-windows via winget...'
     winget install --id CoreyButler.NVMforWindows -e `
         --accept-source-agreements --accept-package-agreements
-    Update-SessionPath
+    Sync-SessionPath
     $restartRequired = $true
 }
 
@@ -239,7 +239,7 @@ if (Test-Cmd 'nvm') {
     }
     Write-ConsoleLine '  Activating Node.js 20...'
     nvm use 20
-    Update-SessionPath
+    Sync-SessionPath
 } elseif (Test-Cmd 'node') {
     $ver = (node --version 2>&1) | Out-String
     Write-OK "Node.js available (not via nvm): $($ver.Trim())"
