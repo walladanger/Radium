@@ -130,10 +130,15 @@
       // No stored theme, or storage is unavailable: follow the OS.
     }
     if (dark === undefined) {
-      dark = Boolean(
-        window.matchMedia &&
-          window.matchMedia('(prefers-color-scheme: dark)').matches
-      )
+      dark = false
+      try {
+        if (window.matchMedia) {
+          var mql = window.matchMedia('(prefers-color-scheme: dark)')
+          if (mql && typeof mql.matches === 'boolean') dark = mql.matches
+        }
+      } catch {
+        dark = false
+      }
     }
     loader.setAttribute('data-theme', dark ? 'dark' : 'light')
   }

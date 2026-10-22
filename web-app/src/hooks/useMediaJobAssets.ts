@@ -14,8 +14,13 @@
  * that can be hundreds of megabytes and, on a metered provider, could be
  * charged for a second time - so the guard is keyed on the job id and survives
  * re-renders, rather than living in a dependency array.
+ *
+ * It takes the whole queue, not one job: now that the studio can queue jobs
+ * during a render, the newest job is no longer the only one whose output must
+ * reach the library. The preview still shows the newest job's asset; every
+ * other succeeded job is materialised into the library in the background.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ulid } from 'ulidx'
 
 import {
@@ -31,7 +36,6 @@ import {
   useMediaLibraryStore,
 } from '@/stores/media-library-store'
 import { chosenMediaOutputFolder } from '@/stores/media-output-store'
-import { isTerminalMediaJobState } from '@/services/media/jobManager'
 import type { MediaJobEntry } from '@/services/media/jobManager'
 import type { MediaJobSnapshot } from '@/services/media/contract'
 
@@ -65,62 +69,58 @@ type MaterializeFn = (
   deps: MaterializeDeps
 ) => Promise<MediaAsset[]>
 
-export function useMediaJobAsset(
-  entry: MediaJobEntry | undefined,
+export function useMediaJobAssets(
+  jobs: MediaJobEntry[],
   modelLabel: string,
   deps: MaterializeDeps = browserMaterializeDeps,
   run: MaterializeFn = materialize
 ): MediaAsset | null {
-  const [asset, setAsset] = useState<MediaAsset | null>(null)
-  const handled = useRef<string | null>(null)
+  const [assets, setAssets] = useState<Record<string, MediaAsset>>({})
+  const handled = useRef<Set<string>>(new Set())
   const add = useMediaLibraryStore((state) => state.add)
 
-  const jobId = entry?.client_job_id
-  const state = entry?.state
+  const succeeded = useMemo(
+    () => jobs.filter((entry) => entry.state === 'succeeded'),
+    [jobs]
+  )
 
   useEffect(() => {
-    if (!entry || state !== 'succeeded') return
-    if (handled.current === jobId) return
-    handled.current = jobId ?? null
+    for (const entry of succeeded) {
+      if (handled.current.has(entry.client_job_id)) continue
+      handled.current.add(entry.client_job_id)
 
-    let cancelled = false
+      void (async () => {
+        try {
+          const materialized = await run(
+            entry,
+            {
+              request: entry.request,
+              model_label: modelLabel,
+              app_version: VERSION,
+            },
+            deps
+          )
+          if (materialized.length === 0) return
 
-    void (async () => {
-      try {
-        const assets = await run(
-          entry,
-          {
-            request: entry.request,
-            model_label: modelLabel,
-            app_version: VERSION,
-          },
-          deps
-        )
-        if (cancelled || assets.length === 0) return
-
-        await add(assets)
-        setAsset(assets[0] ?? null)
-      } catch (error) {
-        // A failed save must not take the screen down: the generation itself
-        // succeeded, and the job status still says so.
-        console.warn('[media] materialising the job outputs failed', error)
-      }
-    })()
-
-    return () => {
-      cancelled = true
+          await add(materialized)
+          setAssets((prev) => ({
+            ...prev,
+            [entry.client_job_id]: materialized[0],
+          }))
+        } catch (error) {
+          // A failed save must not take the screen down: the generation itself
+          // succeeded, and the job status still says so.
+          console.warn('[media] materialising the job outputs failed', error)
+        }
+      })()
     }
-    // `entry` is intentionally not a dependency: the manager replaces the
-    // object on every poll, and the job id plus its state are what actually
-    // decide whether there is new work to do.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId, state, modelLabel, add, deps, run])
+    // `succeeded` depends on the manager's entry objects, which it replaces on
+    // every poll; the job id set is what actually decides whether there is new
+    // work to do, and `handled` makes a re-run a no-op.
+  }, [succeeded, modelLabel, add, deps, run])
 
-  // A new job clears the previous preview, so a finished image never sits over
-  // a generation that is still running.
-  useEffect(() => {
-    if (jobId && handled.current !== jobId) setAsset(null)
-  }, [jobId])
-
-  return isTerminalMediaJobState(state ?? 'queued') || asset ? asset : null
+  const latest = jobs[0]
+  // A running or queued job has no asset yet, so a finished image never sits
+  // over a generation that is still running.
+  return latest ? (assets[latest.client_job_id] ?? null) : null
 }
