@@ -64,7 +64,7 @@
     "ai": "^5.0.121",
     "class-variance-authority": "^0.7.1",
     "culori": "4.0.1",
-    "dompurify": "^3.4.16",
+    "dompurify": "^3.4.17",
     "emoji-picker-react": "4.12.2",
     "framer-motion": "12.23.12",
     "fzf": "0.5.2",
