@@ -112,6 +112,10 @@ pub fn run() {
     // Desktop: the full command surface.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let app_builder = app_builder.invoke_handler(tauri::generate_handler![
+        core::production_log::get_production_log,
+        core::production_log::choose_production_log_folder,
+        core::production_log::save_production_annotation,
+        core::production_log::production_annotation_image,
         // FS commands - Deprecate soon
         core::filesystem::commands::join_path,
         core::filesystem::commands::mkdir,
@@ -474,10 +478,12 @@ pub fn run() {
         core::tray_status::update_tray_status,
     ]);
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    let app_builder = app_builder.manage(core::runtimes::ollama::OllamaState::default());
+
     let app = app_builder
         .manage(core::media::runtime::MediaEngineState::default())
         .manage(core::filesystem::commands::DialogGrants::default())
-        .manage(core::runtimes::ollama::OllamaState::default())
         .manage(AppState {
             app_token: Some(generate_app_token()),
             mcp_servers: Arc::new(Mutex::new(HashMap::new())),

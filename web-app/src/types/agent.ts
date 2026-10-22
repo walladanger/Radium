@@ -82,12 +82,12 @@ export type AgentTurnRequest = {
    * (or sending none) keeps delegation off for the turn.
    */
   specialists?: AgentSpecialist[]
-  /** Tool families enabled for the thread's assistant (e.g. `network`). */
+  /** Tool families enabled for the thread's assistant (e.g. `network`, `computer`). */
   tool_packs?: AgentToolPack[]
 }
 
 /** Optional tool families an assistant can switch on. */
-export type AgentToolPack = 'network'
+export type AgentToolPack = 'network' | 'computer'
 
 /** An assistant offered to the agent as a specialist it can delegate to. */
 export type AgentSpecialist = {
@@ -210,6 +210,7 @@ export type AgentToolExecution = {
 }
 
 export type AgentEvent =
+  | { type: 'context_usage'; categories: Record<string, number>; context_window?: number | null }
   | { type: 'turn_started'; run_id: string; session_id: string }
   | { type: 'step_started'; step_index: number }
   | { type: 'reasoning_delta'; step_index: number; text: string }
@@ -326,6 +327,7 @@ export type AgentRunTrace = {
 }
 
 export type AgentRunState = {
+  contextUsage?: { categories: Record<string, number>; contextWindow?: number; updatedAt: number; estimated: true }
   runId?: string
   startedAtMs?: number
   finishedAtMs?: number

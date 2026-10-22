@@ -1,6 +1,7 @@
 //! OS core tools invoked directly by the agent loop.
 
 mod archive;
+pub(crate) mod blast;
 mod clipboard;
 mod code;
 pub mod docs;
@@ -12,9 +13,11 @@ mod media;
 pub mod net;
 mod notify;
 mod proc;
+pub(crate) mod review;
 mod shell;
 mod skill_run_script;
 mod skill_view;
+pub mod sys;
 pub(super) mod tool_view;
 mod vision;
 mod web;
@@ -39,41 +42,23 @@ use super::mcp_tools::{McpBridge, MCP_TOOL_PREFIX};
 use super::path_policy::{prepare_call_paths, EditableRoots};
 use super::pty::PtyRegistry;
 use super::rag_bridge::DocsBridge;
-use super::resource_class::{
-    mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass,
-};
+use super::resource_class::{mcp_opt_in_waives_approval, resource_class_for_call, ResourceClass};
 use super::shell_guard::{evaluate_shell_command, join_command_stream, ShellGuardVerdict};
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::types::{
-    ApprovalDecision, ApprovalRequest, ApprovalResource, FolderAccessRequest, ToolCallPayload,
-    ToolOutcome,
+    ApprovalDecision, ApprovalRequest, ApprovalResource, ToolCallPayload, ToolOutcome,
 };
 
 pub const MAX_TOOL_OUTPUT_CHARS: usize = 16_000;
 
-#[async_trait]
-pub trait ApprovalHook: Send + Sync {
-    async fn is_allowed(&self, fingerprint: &str) -> bool;
-    async fn request(&self, request: ApprovalRequest) -> Result<ApprovalDecision, String>;
-}
-
-#[async_trait]
-pub trait FolderAccessHook: Send + Sync {
-    async fn request(&self, request: FolderAccessRequest) -> Result<bool, String>;
-}
+pub use atomic_agent_core::tools::{ApprovalHook, DesktopServices, FolderAccessHook};
 
 /// Runs a specialist's turn for `agent.delegate`. Present only on turns that
 /// carry specialists; a specialist's own turn never gets one, so delegation
-/// is one level deep.
+/// is one level deep. A desktop capability: the shared loop never sees it.
 #[async_trait]
 pub trait DelegateHook: Send + Sync {
     async fn delegate(&self, specialist: &str, task: &str) -> ToolOutcome;
-}
-
-#[async_trait]
-pub trait DesktopServices: Send + Sync {
-    async fn write_clipboard(&self, text: String) -> Result<(), String>;
-    async fn notify(&self, title: String, body: String) -> Result<(), String>;
 }
 
 pub struct ToolContext<'a> {
@@ -177,6 +162,7 @@ pub async fn execute(call: &ToolCallPayload, context: &ToolContext<'_>) -> ToolO
         "skill.view" => skill_view::execute(&call.args, context).await,
         "tool.view" => tool_view::execute(&call.args, context.loaded_tools, context.mcp).await,
         tool if tool.starts_with("net.") => net::execute(tool, &call.args, context).await,
+        tool if tool.starts_with("sys.") => sys::execute(tool, &call.args, context).await,
         "agent.delegate" => delegate(&call.args, context).await,
         "reply" => required_string(&call.args, "text")
             .map(ToolOutcome::ok)
@@ -293,7 +279,8 @@ async fn authorize_call(
         return Ok(prepared.call);
     }
     let fingerprint = fingerprint_prepared_action(&prepared.call.tool, &prepared.call.args);
-    let can_remember = is_approval_gated && !prepared.escaped_root;
+    let never_remember = prepared.call.tool == "sys.empty_recycle_bin";
+    let can_remember = is_approval_gated && !prepared.escaped_root && !never_remember;
     if can_remember && context.approval.is_allowed(&fingerprint).await {
         return Ok(prepared.call);
     }
@@ -316,7 +303,7 @@ async fn authorize_call(
     // A network fix gets a second opinion from a separate reviewer call,
     // shown on the card next to its blast radius; the user still decides.
     if let Some(review) =
-        net::review_for_approval(&prepared.call.tool, &prepared.call.args, context).await
+        review::review_for_approval(&prepared.call.tool, &prepared.call.args, context).await
     {
         if let Some(object) = preview.as_object_mut() {
             object.insert(
@@ -387,7 +374,7 @@ fn safe_preview(call: &ToolCallPayload) -> Value {
     }
     // A network fix shows its blast radius — what changes, what drops, how
     // to undo it — before the user decides.
-    if let Some(radius) = net::blast_radius(&call.tool, &call.args) {
+    if let Some(radius) = blast::for_call(&call.tool, &call.args) {
         preview.insert("action".into(), Value::String(radius.action.clone()));
         preview.insert(
             "blastRadius".into(),
@@ -662,13 +649,14 @@ pub(super) fn command_outcome(output: std::process::Output) -> Result<ToolOutcom
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
     use std::collections::BTreeSet;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex as StdMutex;
 
     use super::*;
-    use crate::core::agent::types::ToolStatus;
+    use crate::core::agent::types::{FolderAccessRequest, ToolStatus};
 
     #[test]
     fn optional_usize_uses_default_for_zero_and_caps_large_values() {
@@ -802,7 +790,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
 
         for (approved, expected) in [(false, ToolStatus::Denied), (true, ToolStatus::Ok)] {
             let approval = TestApproval {
@@ -873,7 +863,9 @@ mod tests {
             allowed: true,
             calls: AtomicUsize::new(0),
         };
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let loaded_tools = tool_view::LoadedTools::default();
         let loaded_skills = LoadedSkills::default();
         let skill_registry = test_skill_registry(&root);
@@ -936,7 +928,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -988,7 +982,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1053,7 +1049,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1107,6 +1105,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn empty_recycle_bin_never_uses_or_offers_remembered_approval() {
+        let root = tempfile::TempDir::new().unwrap();
+        let root = root.path();
+        let approval = RememberingApproval::default();
+        let call = ToolCallPayload {
+            tool: "sys.empty_recycle_bin".into(),
+            args: serde_json::json!({}),
+        };
+        // Even an existing fingerprint must not bypass a fresh decision.
+        approval
+            .allowed
+            .lock()
+            .unwrap()
+            .insert(fingerprint_prepared_action(&call.tool, &call.args));
+        let loaded_tools = tool_view::LoadedTools::default();
+        let loaded_skills = LoadedSkills::default();
+        let skill_registry = test_skill_registry(root);
+        let desktop = TestDesktop::default();
+        let cancellation = CancellationToken::new();
+        let editable_roots = EditableRoots::new(root, &[]).await.unwrap();
+        let folder_access = TestFolderAccess {
+            allowed: false,
+            calls: AtomicUsize::new(0),
+        };
+        let context = ToolContext {
+            session_id: "test-session",
+            working_dir: root,
+            editable_roots: &editable_roots,
+            trusted_read_roots: &[],
+            client: None,
+            approval: &approval,
+            folder_access: &folder_access,
+            cancellation: &cancellation,
+            loaded_tools: &loaded_tools,
+            loaded_skills: &loaded_skills,
+            skill_registry: &skill_registry,
+            bundled_script_runtime: None,
+            desktop: &desktop,
+            pty: &PtyRegistry::new(),
+            cache_dir: &std::env::temp_dir(),
+            mcp: None,
+            docs: None,
+            disabled_tools: &std::collections::BTreeSet::new(),
+            auto_approve_mcp: true,
+            delegate: None,
+        };
+
+        // Authorize only: the test never executes the destructive tool.
+        assert!(authorize_call(&call, &context).await.is_ok());
+        assert!(authorize_call(&call, &context).await.is_ok());
+        let requests = approval.requests.lock().unwrap();
+        assert_eq!(requests.len(), 2);
+        assert!(requests.iter().all(|request| !request.can_remember));
+    }
+
+    #[tokio::test]
     async fn exact_remembered_action_skips_approval_but_changed_args_ask_again() {
         let root = test_dir();
         let approval = RememberingApproval::default();
@@ -1115,7 +1169,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1175,7 +1231,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: true,
             calls: AtomicUsize::new(0),
@@ -1233,7 +1291,9 @@ mod tests {
         let skill_registry = test_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),
@@ -1288,7 +1348,9 @@ mod tests {
         let skill_registry = test_script_skill_registry(&root);
         let desktop = TestDesktop::default();
         let cancellation = CancellationToken::new();
-        let editable_roots = EditableRoots::for_test(&root);
+        let editable_roots = EditableRoots::new(&root, &[])
+            .await
+            .expect("test workspace roots");
         let folder_access = TestFolderAccess {
             allowed: false,
             calls: AtomicUsize::new(0),

@@ -244,6 +244,7 @@ fn event_kind(event: &AgentEvent) -> &'static str {
     match event {
         AgentEvent::TurnStarted { .. } => "turn_started",
         AgentEvent::StepStarted { .. } => "step_started",
+        AgentEvent::ContextUsage { .. } => "context_usage",
         AgentEvent::ReasoningDelta { .. } => "reasoning_delta",
         AgentEvent::AssistantDelta { .. } => "assistant_delta",
         AgentEvent::ToolCallParsed { .. } => "tool_call_parsed",
@@ -837,7 +838,9 @@ async fn immediate_reply_preserves_event_order_and_completion_contract() {
         [
             "turn_started",
             "step_started",
+            "context_usage",
             "assistant_delta",
+            "context_usage",
             "tool_call_parsed",
             "tool_call_executed",
             "assistant_reply",
@@ -882,7 +885,9 @@ async fn gemma4_turn_uses_native_framing_and_parses_channel_reasoning() {
     let mut events = Vec::new();
     let mut session = AgentSessionState::new("gemma-session");
     let skill_registry = workspace.skill_registry();
-    let editable_roots = EditableRoots::for_test(workspace.path());
+    let editable_roots = EditableRoots::new(workspace.path(), &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
 
     let result = run_turn(
@@ -1059,7 +1064,9 @@ async fn sequential_runs_share_the_session_transcript() {
     let cancellation = CancellationToken::new();
     let mut session = AgentSessionState::new("shared-session");
     let skill_registry = workspace.skill_registry();
-    let editable_roots = EditableRoots::for_test(workspace.path());
+    let editable_roots = EditableRoots::new(workspace.path(), &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
 
     for (run_id, user_message) in [("run-1", "first user"), ("run-2", "second user")] {
@@ -1539,7 +1546,9 @@ async fn cancellation_interrupts_an_in_flight_completion() {
     let mut events = Vec::new();
     let mut session = AgentSessionState::new("cancel-session");
     let skill_registry = workspace.skill_registry();
-    let editable_roots = EditableRoots::for_test(workspace.path());
+    let editable_roots = EditableRoots::new(workspace.path(), &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
     let cancel = cancellation.clone();
     // Bound outside the call: this future is held across statements, so the
@@ -1816,7 +1825,9 @@ async fn skill_view_loads_the_body_and_restores_it_on_the_next_turn() {
     let mut restored_session: AgentSessionState =
         serde_json::from_slice(&serde_json::to_vec(&first.session).unwrap()).unwrap();
     let mut events = Vec::new();
-    let editable_roots = EditableRoots::for_test(workspace.path());
+    let editable_roots = EditableRoots::new(workspace.path(), &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
     run_turn(
         RunTurnInput {
@@ -1883,7 +1894,9 @@ async fn selected_skill_is_loaded_into_the_first_prompt_without_skill_view() {
     let registry = workspace.skill_registry();
     let mut session = AgentSessionState::new("selected-skill-session");
     let mut events = Vec::new();
-    let editable_roots = EditableRoots::for_test(workspace.path());
+    let editable_roots = EditableRoots::new(workspace.path(), &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
 
     run_turn(
@@ -1952,7 +1965,9 @@ async fn unknown_selected_skill_fails_before_completion() {
     let registry = workspace.skill_registry();
     let mut session = AgentSessionState::new("missing-skill-session");
     let mut events = Vec::new();
-    let editable_roots = EditableRoots::for_test(workspace.path());
+    let editable_roots = EditableRoots::new(workspace.path(), &[])
+        .await
+        .expect("test workspace roots");
     let folder_access = RecordingFolderAccess::deny();
 
     let error = run_turn(
@@ -2510,7 +2525,9 @@ async fn chat_transport_reply_preserves_event_order() {
         [
             "turn_started",
             "step_started",
+            "context_usage",
             "assistant_delta",
+            "context_usage",
             "tool_call_parsed",
             "tool_call_executed",
             "assistant_reply",

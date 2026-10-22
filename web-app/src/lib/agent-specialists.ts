@@ -22,7 +22,7 @@ export type SpecialistModelResolver = (
   modelId: string
 ) => Model | undefined
 
-const KNOWN_TOOL_PACKS: readonly AgentToolPack[] = ['network']
+const KNOWN_TOOL_PACKS: readonly AgentToolPack[] = ['network', 'computer']
 
 /** The assistant's tool packs the backend knows; anything else is dropped. */
 export function agentToolPacks(

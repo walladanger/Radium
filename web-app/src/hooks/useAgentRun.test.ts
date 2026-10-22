@@ -23,6 +23,14 @@ const parsed: AgentEvent = {
 }
 
 describe('useAgentRun', () => {
+  it('keeps context composition snapshots isolated by thread and replaces them on the next request', () => {
+    useAgentRun.getState().clearAll()
+    useAgentRun.getState().applyEvent('context-a', { type: 'context_usage', categories: { messages: 40, skills: 12 }, context_window: 8192 })
+    expect(useAgentRun.getState().getRun('context-a').contextUsage?.categories.skills).toBe(12)
+    expect(useAgentRun.getState().getRun('context-b').contextUsage).toBeUndefined()
+    useAgentRun.getState().applyEvent('context-a', { type: 'context_usage', categories: { messages: 20 }, context_window: 4096 })
+    expect(useAgentRun.getState().getRun('context-a').contextUsage?.categories).toEqual({ messages: 20 })
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     useAgentRun.getState().clearAll()

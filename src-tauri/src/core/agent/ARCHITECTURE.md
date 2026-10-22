@@ -246,6 +246,20 @@ model contradicted itself rather than repeating itself.
   `net.dhcp_renew`, `net.adapter_restart`, `net.set_dns`,
   `net.wifi_reconnect`, `net.stack_reset`. Commands are fixed per OS in
   `tools/net/platform.rs`; fixes retry behind the OS admin prompt when needed.
+- Computer care (the `computer` tool pack; present only when the turn's
+  assistant or specialist enables it): diagnose `sys.overview`,
+  `sys.disk_usage`, `sys.large_items`, `sys.top_processes`,
+  `sys.startup_items`, `sys.pending_updates`, `sys.recent_errors`; fix
+  (approval-gated, with a `blastRadius`) `sys.clean_temp`,
+  `sys.empty_recycle_bin`, `sys.disable_startup_item`,
+  `sys.enable_startup_item`. Startup changes flip the OS's own enabled flag
+  and never remove the entry.
+- Approval support shared by both packs: `tools/blast.rs` (`blast::for_call`)
+  builds the blast radius. When `context.client` is available,
+  `tools/review.rs` makes a separate reviewer call for a second opinion
+  (against the network map for `net.*`, the computer overview for `sys.*`)
+  before the approval card appears; otherwise, `review_for_approval` returns
+  `None` and the preview has no second opinion.
 - Terminals: `reply` and `finish`.
 
 ### Specialist delegation

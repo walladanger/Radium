@@ -21,12 +21,16 @@ export const PERMISSION_IDS = [
   'changeFiles',
   'trashFiles',
   'changeNetwork',
+  'emptyRecycleBin',
+  'cleanUpFiles',
+  'changeStartup',
   'changeClipboard',
   'showNotifications',
   'readFiles',
   'readGit',
   'seePrograms',
   'inspectNetwork',
+  'inspectComputer',
   'browseWeb',
   'searchDocuments',
   'transcribeMedia',
@@ -61,12 +65,16 @@ export type PermissionId =
   | 'changeFiles'
   | 'trashFiles'
   | 'changeNetwork'
+  | 'emptyRecycleBin'
+  | 'cleanUpFiles'
+  | 'changeStartup'
   | 'changeClipboard'
   | 'showNotifications'
   | 'readFiles'
   | 'readGit'
   | 'seePrograms'
   | 'inspectNetwork'
+  | 'inspectComputer'
   | 'browseWeb'
   | 'searchDocuments'
   | 'transcribeMedia'
@@ -172,6 +180,17 @@ const TOOL_PERMISSIONS: Record<string, [PermissionId, PermissionLevel] | null> =
     'net.traceroute': ['inspectNetwork', 'reads'],
     'net.neighbors': ['inspectNetwork', 'reads'],
     'net.port_check': ['inspectNetwork', 'reads'],
+    'sys.clean_temp': ['cleanUpFiles', 'changes'],
+    'sys.empty_recycle_bin': ['emptyRecycleBin', 'risky'],
+    'sys.disable_startup_item': ['changeStartup', 'changes'],
+    'sys.enable_startup_item': ['changeStartup', 'changes'],
+    'sys.overview': ['inspectComputer', 'reads'],
+    'sys.disk_usage': ['inspectComputer', 'reads'],
+    'sys.large_items': ['inspectComputer', 'reads'],
+    'sys.top_processes': ['inspectComputer', 'reads'],
+    'sys.startup_items': ['inspectComputer', 'reads'],
+    'sys.pending_updates': ['inspectComputer', 'reads'],
+    'sys.recent_errors': ['inspectComputer', 'reads'],
     'reply': null,
     'finish': null,
   }

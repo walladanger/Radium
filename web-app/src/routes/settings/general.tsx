@@ -35,6 +35,7 @@ import { useHardware } from '@/hooks/useHardware'
 import LanguageSwitcher from '@/containers/LanguageSwitcher'
 import { isRootDir } from '@/utils/path'
 import { setLaunchAtStartup } from '@/lib/launchAtStartup'
+import { ProductionLogFolder } from '@/containers/ProductionLog'
 const TOKEN_VALIDATION_TIMEOUT_MS = 10_000
 const ATOMIC_CLI_COMMAND = 'atomic-chat-cli'
 
@@ -540,6 +541,10 @@ function General() {
                   </div>
                 }
               />
+            </Card>
+
+            <Card title={t('atomic-tasks:annotationLog', { defaultValue: 'Annotating log' })}>
+              <ProductionLogFolder />
             </Card>
 
             {/* Detected model locations moved to Models -> Model settings. */}

@@ -75,6 +75,7 @@ import {
   PREFLIGHT_CTX_THRESHOLD,
   estimatePromptTokensHeuristic,
   estimateToolsTokens,
+  estimateTokens,
   toOpenAiMessages,
   toOpenAiTools,
 } from '@/lib/prompt-size'
@@ -1112,11 +1113,30 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
     })
 
     let tokensPerSecond = 0
+    const mcpNames = useAppState.getState().mcpToolNames
+    const mcpTools = Object.fromEntries(Object.entries(activeTools ?? {}).filter(([name]) => mcpNames.has(name)))
+    const systemTools = Object.fromEntries(Object.entries(activeTools ?? {}).filter(([name]) => !mcpNames.has(name)))
+    const foldedInstructions = dropSystemForTools ? estimateTokens(systemWithSkills ?? '') : 0
+    const contextUsage = {
+      estimated: true,
+      updatedAt: requestStartedAt,
+      categories: {
+        messages: Math.max(0, estimatePromptTokensHeuristic({ messages: outboundModelMessages }) - foldedInstructions),
+        mcpTools: estimateToolsTokens(mcpTools),
+        systemTools: estimateToolsTokens(systemTools),
+        // Remote privacy transformations may rewrite the combined system text;
+        // keep that as one category instead of guessing a skill split.
+        systemPrompt: dropSystemForTools ? estimateTokens(this.systemMessage ?? '') : estimateTokens(outboundSystemMessage ?? ''),
+        ...(isLocalProvider ? { skills: estimateTokens(skillsBlock ?? '') } : {}),
+      },
+    }
+    if (isLocalProvider && !dropSystemForTools) contextUsage.categories.systemPrompt = Math.max(0, contextUsage.categories.systemPrompt - estimateTokens(skillsBlock ?? ''))
     let draftTokensTotal: number | null = null
     let draftTokensAccepted: number | null = null
 
     const providerUiStream = result.toUIMessageStream({
       messageMetadata: ({ part }) => {
+        if (part.type === 'start') return { createdAt: requestStartedAt, contextUsage }
         // Start the wall-clock timer on the first generated delta (text or
         // reasoning), NOT on `start` — the latter fires before prefill, so
         // including it would tank the fallback TPS on long prompts.
@@ -1165,6 +1185,7 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
           return {
             finishReason: finishPart.finishReason,
+            contextUsage: { ...contextUsage, updatedAt: Date.now(), categories: { ...contextUsage.categories, completion: outputTokens } },
             activityDurationMs: Math.max(0, Date.now() - requestStartedAt),
             // Provider-agnostic time to first token: `streamStartTime` is the
             // first generated delta, set above. The α→θ stage breakdown in

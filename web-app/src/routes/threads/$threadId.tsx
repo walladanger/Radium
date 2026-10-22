@@ -10,7 +10,6 @@ import { buildAgentReasoningRequest } from '@/lib/reasoning-effort'
 import { ensureRemoteProviderReady } from '@/utils/ensureRemoteProviderReady'
 
 import HeaderPage from '@/containers/HeaderPage'
-import HeaderContextSize from '@/containers/HeaderContextSize'
 import MediaChatSettingsDialog from '@/containers/MediaChatSettingsDialog'
 import { useThreads } from '@/hooks/useThreads'
 import ChatInput from '@/containers/ChatInput'
@@ -1350,7 +1349,7 @@ function ThreadDetail() {
       sendMessage({
         parts,
         id: messageId,
-        metadata: userMessage.metadata,
+        metadata: { ...userMessage.metadata, createdAt: userMessage.created_at },
       })
       console.log('[processAndSendMessage] sendMessage called successfully')
 
@@ -1843,7 +1842,6 @@ function ThreadDetail() {
           <div className="flex items-center justify-end w-full pr-2">
             {/* The model is picked from the composer; the header keeps the
                 context gauge, which appears once the conversation has begun. */}
-            {chatMessages.length > 0 && <HeaderContextSize />}
           </div>
         </HeaderPage>
         <div className="flex flex-1 overflow-hidden">

@@ -79,7 +79,7 @@ type Assistant = {
    * shares the coordinator's model.
    */
   specialist_model?: { provider: string; id: string }
-  /** Optional agent tool families this assistant switches on (e.g. `network`). */
+  /** Optional agent tool families this assistant switches on (e.g. `network`, `computer`). */
   tool_packs?: string[]
   // tool_steps?: number
 }

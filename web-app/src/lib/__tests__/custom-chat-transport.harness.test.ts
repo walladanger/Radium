@@ -579,7 +579,7 @@ describe('CustomChatTransport per-turn state', () => {
     transport.setOnTokenUsage(onTokenUsage)
     transport.updateSystemMessage('be brief')
 
-    await readChunks(
+    const chunks = await readChunks(
       (await transport.sendMessages({
         chatId: 'chat-1',
         messages: [userMessage],
@@ -593,6 +593,13 @@ describe('CustomChatTransport per-turn state', () => {
     expect(onTokenUsage.mock.calls[0][0]).toEqual(
       expect.objectContaining({ inputTokens: 11, outputTokens: 7 })
     )
+    const finish = chunks.find(chunk => chunk.type === 'finish')
+    const metadata = finish?.messageMetadata as { contextUsage: { categories: Record<string, number>; estimated: boolean } }
+    expect(metadata.contextUsage.estimated).toBe(true)
+    expect(metadata.contextUsage.categories.completion).toBe(7)
+    expect(metadata.contextUsage.categories.messages).toBeGreaterThan(0)
+    expect(metadata.contextUsage.categories.systemPrompt).toBeGreaterThan(0)
+    expect(JSON.stringify(metadata.contextUsage)).not.toContain('be brief')
   })
 })
 

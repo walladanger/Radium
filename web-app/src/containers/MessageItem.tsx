@@ -26,6 +26,7 @@ import { inlineMediaOf } from '@/lib/inlineMedia'
 import { InlineMessageEditor } from '@/containers/InlineMessageEditor'
 import { DeleteMessageDialog } from '@/containers/dialogs/DeleteMessageDialog'
 import TokenSpeedIndicator from '@/containers/TokenSpeedIndicator'
+import { MessageTimestamp } from '@/components/ComposerClock'
 import { extractFilesFromPrompt, FileMetadata } from '@/lib/fileMetadata'
 import { AttachmentChip } from '@/containers/AttachmentChip'
 import { useMemo } from 'react'
@@ -145,6 +146,7 @@ export const MessageItem = memo(
     )
 
     const isStreaming = isLastMessage && status === CHAT_STATUS.STREAMING
+    const messageCreatedAt = (message.metadata as { createdAt?: number } | undefined)?.createdAt ?? (message as UIMessage & { createdAt?: Date }).createdAt
     const isRequestActive =
       isLastMessage &&
       message.role === 'assistant' &&
@@ -536,6 +538,7 @@ export const MessageItem = memo(
         {/* Message actions for user messages */}
         {message.role === 'user' && !hideActions && !isEditing && (
           <div className="flex items-center justify-end gap-1 text-muted-foreground text-xs mt-4">
+            <MessageTimestamp value={messageCreatedAt} />
             <CopyButton text={getFullTextContent()} />
 
             {onEdit && status !== CHAT_STATUS.STREAMING && (
@@ -568,6 +571,7 @@ export const MessageItem = memo(
         {/* Message actions for assistant messages (non-tool) */}
         {message.role === 'assistant' && (
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs mt-1">
+            <MessageTimestamp value={messageCreatedAt} />
             <div
               className={cn(
                 'flex items-center gap-1',
@@ -615,14 +619,14 @@ export const MessageItem = memo(
                 )}
             </div>
 
-            {!isRequestActive && (
               <TokenSpeedIndicator
-                streaming={false}
+                streaming={isRequestActive}
+                messageId={message.id}
+                streamingText={message.parts.filter(part => part.type === 'text' || part.type === 'reasoning').map(part => 'text' in part ? part.text : '').join('')}
                 metadata={
                   message.metadata as Record<string, unknown> | undefined
                 }
               />
-            )}
           </div>
         )}
 

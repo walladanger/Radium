@@ -191,6 +191,16 @@ fn walk(
 /// registry's call, so a symlinked or unreadable manifest is still reported
 /// against the skill rather than turning its folder into a category.
 fn holds_skill_manifest(directory: &Path) -> bool {
+    // A lookup alone accepts `skill.MD` on case-insensitive filesystems.
+    // Inspect the stored spelling without following a manifest symlink.
+    if let Ok(mut listing) = fs::read_dir(directory) {
+        return listing.any(|entry| match entry {
+            Ok(entry) => entry.file_name() == "SKILL.md",
+            // Let the registry report an unreadable entry instead of silently
+            // interpreting a possible skill folder as a category.
+            Err(_) => true,
+        });
+    }
     match fs::symlink_metadata(directory.join("SKILL.md")) {
         Ok(_) => true,
         Err(error) => error.kind() != ErrorKind::NotFound,
