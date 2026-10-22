@@ -4,15 +4,8 @@ import llamacpp_extension from '../index'
 describe('migrateLegacyModels', () => {
   let extension: llamacpp_extension
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks()
-    // clearAllMocks keeps queued mock*Once values (Vitest >= 3), so a value
-    // a previous test queued but never consumed would leak into this one.
-    // Reset the shared @janhq/core mocks each test configures itself.
-    const { getJanDataFolderPath, joinPath, fs } = await import('@janhq/core')
-    for (const mock of [getJanDataFolderPath, joinPath, ...Object.values(fs)]) {
-      if (vi.isMockFunction(mock)) mock.mockReset()
-    }
     extension = new llamacpp_extension({
       name: 'llamacpp-extension',
       productName: 'LlamaC++ Extension',
