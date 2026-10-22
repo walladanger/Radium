@@ -28,7 +28,9 @@ use super::prompt::{build_prompt_dynamic, build_prompt_parts_dynamic, format_wor
 use super::pty::PtyRegistry;
 use super::rag_bridge::DocsBridge;
 use super::reply_stream::ReplyStreamScanner;
-use super::resource_class::{is_batchable, resource_class_for_call, runs_solo, ResourceClass};
+use super::resource_class::{
+    is_batchable, is_delegation_batch, resource_class_for_call, runs_solo, ResourceClass,
+};
 use super::session::AgentSessionState;
 use super::skills::{loaded::LoadedSkills, SkillRegistry};
 use super::token_budget::{
@@ -44,7 +46,11 @@ use super::types::{
 
 pub const MAX_STEPS: u32 = 25;
 pub const MAX_PARALLEL_TOOL_CALLS: usize = 8;
-const AGENT_SLOT_ID: i32 = 0;
+/// The llama.cpp slot a coordinator turn pins for KV-prefix reuse.
+pub const AGENT_SLOT_ID: i32 = 0;
+/// Lets llama.cpp pick any idle slot. Specialist turns use it so parallel
+/// specialists never queue behind, or evict, the coordinator's pinned slot.
+pub const ANY_SLOT: i32 = -1;
 const REPAIR_MAX_TOKENS: u32 = 1024;
 #[cfg(not(test))]
 const TOOL_STEP_COMPLETION_DEADLINE: Duration = Duration::from_secs(600);
@@ -94,6 +100,9 @@ pub struct RunTurnInput<'a> {
     pub pty: &'a PtyRegistry,
     /// Cache directory for the code index.
     pub cache_dir: &'a Path,
+    /// llama.cpp slot for this turn's completions ([`AGENT_SLOT_ID`] or
+    /// [`ANY_SLOT`]). Chat transports ignore it.
+    pub slot_id: i32,
 }
 
 pub async fn run_turn(
@@ -244,7 +253,7 @@ pub async fn run_turn(
                 AgentPrompt::parts(prompt.system, prompt.tail),
                 tool_grammar.clone(),
                 response_schema.clone(),
-                AGENT_SLOT_ID,
+                input.slot_id,
             )
         };
         input.sampling.apply(&mut request);
@@ -738,20 +747,29 @@ fn validate_batch(
         });
     }
     let mut terminal_count = 0;
+    let classes = calls
+        .iter()
+        .map(|call| resource_class_for_call(&call.tool, mcp))
+        .collect::<Vec<_>>();
+    let delegation_batch = is_delegation_batch(&classes);
     for (index, call) in calls.iter().enumerate() {
-        let class = resource_class_for_call(&call.tool, mcp);
+        let class = classes[index];
         if class == ResourceClass::Unknown {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::Unknown,
                 message: format!("Unknown tool in batch: {}", call.tool),
             });
         }
-        if calls.len() > 1 && runs_solo(class) {
+        if calls.len() > 1 && runs_solo(class) && !delegation_batch {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::ApprovalGatedSolo,
                 message: format!("Tool must run solo: {}", call.tool),
             });
-        } else if calls.len() > 1 && class != ResourceClass::Terminal && !is_batchable(class) {
+        } else if calls.len() > 1
+            && class != ResourceClass::Terminal
+            && !is_batchable(class)
+            && !delegation_batch
+        {
             issues.push(BatchValidationIssue {
                 kind: BatchValidationKind::Unknown,
                 message: format!("Tool cannot run in a batch: {}", call.tool),

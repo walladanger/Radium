@@ -31,7 +31,7 @@ import { useBoard } from './useBoard'
  * title row from `HeaderPage` like every other route — that is also where the
  * macOS drag region and traffic-light padding come from, in one place.
  */
-export function WorkspaceShell() {
+export function WorkspaceShell({ standalone = false, statusReady = true }: { standalone?: boolean; statusReady?: boolean }) {
   const serviceHub = useServiceHub()
   const open = useBoard((state) => state.open)
   const locked = useBoard((state) => state.locked)
@@ -42,6 +42,7 @@ export function WorkspaceShell() {
   const [available, setAvailable] = useState<{ id: string; name: string }[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
+  const [installSource, setInstallSource] = useState('panels')
 
   const openSet = useMemo(() => new Set(open), [open])
 
@@ -64,6 +65,7 @@ export function WorkspaceShell() {
     try {
       const manifest = await invoke<{ id: string; name: string }>('panels_install', {
         sourcePath: source,
+        ...(installSource === 'cordis' ? { source: 'cordis' } : {}),
       })
       addPanel(`panel:${manifest.id}`)
       setRefreshKey((key) => key + 1)
@@ -75,7 +77,7 @@ export function WorkspaceShell() {
 
   return (
     <div className="flex h-full flex-col">
-      <HeaderPage>
+      <HeaderPage hideControls={standalone}>
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="font-studio text-base font-medium">Workspace</span>
@@ -112,6 +114,15 @@ export function WorkspaceShell() {
               </PopoverContent>
             </Popover>
 
+            <select
+              aria-label="Install location"
+              className="rounded border border-border bg-background px-2 py-1 text-xs"
+              value={installSource}
+              onChange={(event) => setInstallSource(event.target.value)}
+            >
+              <option value="panels">Panels</option>
+              <option value="cordis">Cordis plugins</option>
+            </select>
             <Button variant="ghost" size="sm" onClick={() => void install()}>
               <IconPackageImport className="size-3.5" /> Install
             </Button>
@@ -151,7 +162,7 @@ export function WorkspaceShell() {
           page — the whole point of a dockable layout is that the tiles own
           their scrolling. */}
       <div data-region="Panel board" className="min-h-0 flex-1 overflow-hidden p-2">
-        <PanelBoard refreshKey={refreshKey} />
+        <PanelBoard refreshKey={refreshKey} statusReady={statusReady} />
       </div>
     </div>
   )

@@ -168,10 +168,11 @@ pub struct AgentTurnRequest {
     /// Expose the user's connected MCP servers as dynamic `mcp.*` tools.
     #[serde(default = "default_true")]
     pub mcp_enabled: bool,
-    /// Auto-approve MCP-origin tools regardless of their annotations. Carries
-    /// the legacy chat `allowAllMCPPermissions` setting; never widens approval
-    /// for built-in tools.
-    #[serde(default = "default_true")]
+    /// The user's explicit opt-in to run MCP-origin tools without asking
+    /// (chat's `allowAllMCPPermissions`, or the composer's per-thread "skip").
+    /// Absent means ask: MCP tools are third-party code. Never widens approval
+    /// for built-in tools or skill scripts.
+    #[serde(default)]
     pub auto_approve_mcp: bool,
     /// Per-thread disabled MCP tools as `server::tool` keys (the frontend's
     /// `useToolAvailable` format). Filtered out of the turn's catalog.
@@ -206,6 +207,19 @@ pub struct AgentSpecialist {
     /// Tool families this specialist gets on top of the shared tools.
     #[serde(default)]
     pub tool_packs: Vec<String>,
+    /// Model this specialist runs on. `None` shares the coordinator's model.
+    #[serde(default)]
+    pub model_id: Option<String>,
+    /// Provider of `model_id`. Ignored without `model_id`; `None` with a
+    /// `model_id` uses the same provider scan as a regular turn.
+    #[serde(default)]
+    pub provider: Option<String>,
+    /// Capabilities of `model_id` (`"tools"`, `"vision"`, …).
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    /// Context window of `model_id`, as known to the frontend.
+    #[serde(default)]
+    pub context_window: Option<usize>,
 }
 
 /// Per-turn RAG context. Collection names are computed frontend-side
@@ -458,6 +472,25 @@ pub enum AgentEvent {
         message: String,
         category: String,
     },
+    /// A specialist lane opened: `agent.delegate` handed `task` to `specialist`.
+    SpecialistStarted {
+        lane_id: String,
+        specialist: String,
+        model_id: String,
+        task: String,
+    },
+    /// One event of a specialist's nested turn, tagged with its lane.
+    SpecialistEvent {
+        lane_id: String,
+        event: Box<AgentEvent>,
+    },
+    /// A specialist lane closed. `ok` is false when it failed, was cancelled
+    /// or ended without an answer; `summary` is its answer or the reason.
+    SpecialistFinished {
+        lane_id: String,
+        ok: bool,
+        summary: String,
+    },
     TurnFinished {
         /// `"reply"` | `"finish"` | `"max_steps"` | `"cancelled"` | `"failed"`.
         reason: String,
@@ -481,4 +514,34 @@ pub struct AgentTurnUsage {
     /// Milliseconds from turn start to the first streamed or completed output.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ttft_ms: Option<f64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AgentTurnRequest;
+
+    fn minimal_request() -> serde_json::Value {
+        serde_json::json!({
+            "run_id": "run",
+            "session_id": "session",
+            "model_id": "model",
+            "user_message": "hello",
+        })
+    }
+
+    /// Wire contract with the frontend: a caller that does not state the MCP
+    /// opt-in gets the approval gate, never a silent bypass.
+    #[test]
+    fn mcp_tools_ask_unless_the_request_opts_in() {
+        let request: AgentTurnRequest =
+            serde_json::from_value(minimal_request()).expect("minimal request");
+        assert!(!request.auto_approve_mcp);
+        assert!(!request.auto_approve);
+        assert!(request.mcp_enabled);
+
+        let mut opted_in = minimal_request();
+        opted_in["auto_approve_mcp"] = serde_json::Value::Bool(true);
+        let request: AgentTurnRequest = serde_json::from_value(opted_in).expect("opted-in request");
+        assert!(request.auto_approve_mcp);
+    }
 }

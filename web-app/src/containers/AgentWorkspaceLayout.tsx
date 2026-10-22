@@ -26,6 +26,7 @@ import { useArtifactStore } from '@/stores/artifact-store'
 import { useWorkspacePreviewStore } from '@/stores/workspace-preview-store'
 import { useHeaderOverlay } from '@/stores/header-overlay-store'
 import type { AgentWorkspace } from '@/hooks/useAgentMode'
+import { ExtendWorkspaceButton } from '@/panels/ExtendWorkspaceButton'
 
 type AgentWorkspaceLayoutProps = {
   children: ReactNode
@@ -172,9 +173,9 @@ export function AgentWorkspaceLayout({
     rightPanel === null &&
     !hasPreview
   const cornerButtonCount = cornerButtonsOverHeader
-    ? filesAvailable
+    ? (IS_TAURI && !IS_IOS && !IS_ANDROID ? 1 : 0) + (filesAvailable
       ? 2
-      : 1
+        : 1)
     : 0
   const setRightOverlayButtons = useHeaderOverlay(
     (state) => state.setRightOverlayButtons
@@ -228,6 +229,7 @@ export function AgentWorkspaceLayout({
         // so they line up with the header's own controls — the context gauge
         // sits right beside them.
         <div className="absolute top-3.5 right-3 z-30 flex items-center gap-2">
+          <ExtendWorkspaceButton className={CORNER_BUTTON_CLASS} />
           <button
             type="button"
             className={CORNER_BUTTON_CLASS}

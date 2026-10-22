@@ -9,7 +9,7 @@ decision is reversed, add a new one that says which record it supersedes.
 2. Add one line to the right section of this index.
 3. Do **not** paste the record body into `AGENTS.md`.
 
-277 records, 2026-05-19 → 2026-10-16.
+285 records, 2026-05-19 -> 2026-10-16.
 
 <!-- Counted from the files on disk, not by arithmetic. Verified by counting *.md excluding INDEX and _TEMPLATE. -->
 
@@ -17,6 +17,8 @@ decision is reversed, add a new one that says which record it supersedes.
 
 ## Load-bearing — read before touching platform / provider / agent code
 
+- **2026-10-16** — [Media sizes come from the Rust catalog; images upscale after rendering](2026-10-16-media-sizes-come-from-the-rust-catalog-and-upscale-after-render.md)
+- **2026-10-16** — [Only the inference runtimes sync from upstream; registries are bundled, PostHog and the Atomic Agent integration are removed, crash reporting becomes Radium's own and opt-in](2026-10-16-only-runtimes-sync-from-upstream.md) — supersedes the Atomic Agent, atomic-chat-conf media, curated-catalog source, Atomic DFlash, PostHog and upstream-Sentry records
 - **2026-10-09** — [Media saves through real fs commands; chat reuses the Media page's settings](2026-10-09-media-saves-through-real-fs-commands-and-chat-reuses-media-settings.md)
 - **2026-10-07** — [Port privacy, GPU telemetry, and benchmarking through Radium-native boundaries](2026-10-07-port-privacy-gpu-telemetry-and-benchmarking-through-radium-native-boundaries.md)
 - **2026-09-13** — [Gate every upstream sync on a Fork features impact report](2026-09-13-gate-every-upstream-sync-on-a-fork-features-impact-report.md)
@@ -79,8 +81,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-02** — [Add a `/v1/responses` translation shim to the local proxy so Codex CLI works on llama.cpp models](2026-06-02-add-a-v1-responses-translation-shim-to-the-local-proxy-so-codex.md)
 - **2026-06-01** — [Add a "Launch" page to install + configure external coding agents / assistants against the local OpenAI-compatible API](2026-06-01-add-a-launch-page-to-install-configure-external-coding-agents.md)
 
-## Agent mode — autonomous loop, tools, skills, workspace (47)
+## Agent mode — autonomous loop, tools, skills, workspace (48)
 
+- **2026-10-16** — [Ask before every MCP and third-party tool call](2026-10-16-ask-before-every-mcp-and-third-party-tool-call.md)
 - **2026-10-10** — [Give the agent network tools behind a tool pack, with blast-radius approvals](2026-10-10-give-the-agent-network-tools-behind-a-tool-pack-with-blast-radius-approvals.md)
 - **2026-10-10** — [Let the agent delegate tasks to specialist assistants](2026-10-10-let-the-agent-delegate-tasks-to-specialist-assistants.md)
 - **2026-10-09** — [Organize skills by creator and category, with nested folders](2026-10-09-organize-skills-by-creator-and-category.md)
@@ -160,8 +163,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-02** — [Surface MLX KV-cache quantization (TurboQuant / uniform) as a provider setting](2026-06-02-surface-mlx-kv-cache-quantization-turboquant-uniform-as-a.md)
 - **2026-05-19** — [Use `AtomicBot-ai/mlx-vlm` as the MLX backend](2026-05-19-use-atomicbot-ai-mlx-vlm-as-the-mlx-backend.md)
 
-## llama.cpp providers & backend selection (51)
+## llama.cpp providers & backend selection (52)
 
+- **2026-10-15** — [Start unrequested engine downloads after onboarding, and show downloads as a plain list](2026-10-15-start-unrequested-engine-downloads-after-onboarding.md)
 - **2026-08-21** — [Gate CUDA 13 on NVIDIA compute capability, not the driver version alone](2026-08-21-gate-cuda-13-on-nvidia-compute-capability-not-driver-alone.md)
 - **2026-08-19** — [Disable the TurboQuant `llamacpp` provider by default on fresh installs](2026-08-19-disable-the-turboquant-provider-by-default-on-fresh-installs.md)
 - **2026-08-14** — [Keep the engine version out of the `latest/` sentinel trap](2026-08-14-keep-the-engine-version-out-of-the-latest-sentinel-trap.md)
@@ -264,10 +268,11 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-06-10** — [Throttle crashloop `model_load` failure spam client-side; confirm `model_load.status` / api 404-noise are already-fixed-pending-rollout, not code bugs (ATO-130: ATO-133 + ATO-131 + ATO-132)](2026-06-10-throttle-crashloop-model-load-failure-spam-client-side-confirm.md)
 - **2026-06-09** — [Add zero-PII Sentry crash/error tracking to both the React frontend and the Rust/Tauri desktop, gated behind `productAnalytic` (ATO-113)](2026-06-09-add-zero-pii-sentry-crash-error-tracking-to-both-the-react.md)
 
-## Packaging, installers, autostart & platform policy (18)
+## Packaging, installers, autostart & platform policy (19)
 
-- **2026-10-14** — [Expand the agent-skills resource glob to exclude tests/ from the Windows bundle](2026-10-14-exclude-agent-skills-tests-from-windows-bundle-for-max-path.md)
-- **2026-10-16** — [Skip MSI ICE validation in the Windows release build](2026-10-16-skip-msi-ice-validation-in-windows-release.md)
+- **2026-10-16** � [Skip MSI ICE validation in the Windows release build](2026-10-16-skip-msi-ice-validation-in-windows-release.md)
+- **2026-10-15** � [Repair an unreadable settings.json instead of falling back to a relative data folder](2026-10-15-repair-an-unreadable-settings-file-instead-of-using-a-relative-data-folder.md)
+- **2026-10-14** � [Expand the agent-skills resource glob to exclude tests/ from the Windows bundle](2026-10-14-exclude-agent-skills-tests-from-windows-bundle-for-max-path.md)
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
 - **2026-09-12** — [Radium never auto-updates: remove the updater rather than repoint it](2026-09-12-radium-never-auto-updates.md)
 - **2026-09-04** — [Sanitize the AppImage environment before launching host processes](2026-09-04-sanitize-appimage-environment-before-launching-host-processes.md)
@@ -285,8 +290,11 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-05-22** — [Pin static WiX `upgradeCode` to legacy Jan UUID for in-place MSI upgrades](2026-05-22-pin-static-wix-upgradecode-to-legacy-jan-uuid-for-in-place-msi.md)
 - **2026-05-19** — [Product identity is "Radium Chat"; new code stops carrying Jan branding](2026-05-19-product-identity-is-atomic-chat-new-code-stops-carrying-jan.md)
 
-## UI / UX (40)
+## UI / UX (42)
 
+- **2026-10-16** — [Extend existing panels with window and canvas layouts](2026-10-16-extend-existing-panels-with-window-and-canvas-layouts.md)
+
+- **2026-10-15** — [Keep the boot screen up until the app has drawn, and let no extension hold startup](2026-10-15-boot-screen-stays-until-the-app-has-drawn.md)
 - **2026-10-03** — [Port the panel mechanism from ClaudeDesktopClient, not its built-in panels; freeze the manifest + SDK as a shared contract](2026-10-03-port-the-panel-mechanism-from-claudedesktopclient-not-its.md)
 - **2026-09-11** — [List the Hub picks under the onboarding offer](2026-09-11-list-the-hub-picks-under-the-onboarding-offer.md)
 - **2026-09-11** — [Pick the model and its reasoning effort from one composer pill](2026-09-11-pick-the-model-and-its-effort-from-one-composer-pill.md)

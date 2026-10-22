@@ -44,11 +44,11 @@ function PanelsOverview() {
     }
   }
 
-  const openFolder = async () => {
+  const openFolder = async (source: 'panels' | 'cordis' = 'panels') => {
     try {
       // The command returns the path and creates it if missing, so there is
       // somewhere to drop a folder even on a fresh install.
-      const path = await invoke<string>('panels_open_folder')
+      const path = await invoke<string>('panels_open_folder', source === 'cordis' ? { source } : undefined)
       await invoke('open_file_explorer', { path }).catch(() => {
         // Not every platform build exposes a reveal command; showing the path
         // is still useful, so this is not an error worth surfacing.
@@ -67,6 +67,9 @@ function PanelsOverview() {
         </Button>
         <Button variant="ghost" size="sm" onClick={() => void openFolder()}>
           <IconFolderOpen className="size-3.5" /> Panels folder
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => void openFolder('cordis')}>
+          <IconFolderOpen className="size-3.5" /> Cordis plugins folder
         </Button>
       </div>
 

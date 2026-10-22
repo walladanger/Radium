@@ -816,7 +816,8 @@
       "resources/agent-skills/wttr-weather",
       "resources/agent-skills/xlsx",
       "resources/bin/jan-cli.exe",
-      "resources/backend-packages/**/*"
+      "resources/backend-packages/**/*",
+      "resources/panel-contract/**/*"
     ],
     "externalBin": ["resources/bin/bun", "resources/bin/uv"],
     "windows": {

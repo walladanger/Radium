@@ -14,7 +14,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::approval::ApprovalGate;
 use super::attachments::stage_attachments;
-use super::delegation::{PreparedSpecialist, SpecialistDelegator, DELEGATE_TOOL};
+use super::delegation::{PreparedSpecialist, SpecialistDelegator, SpecialistModel, DELEGATE_TOOL};
 use super::folder_access::FolderAccessGate;
 use super::llm_client::{
     find_session_by_model_and_backend, AgentLlmClient, ContextExpansionHook, LlamaServerClient,
@@ -37,8 +37,8 @@ use super::target::{resolve_agent_target, resolve_mlx_target, AgentTarget};
 use super::tools::net::{net_tool_names, NETWORK_PACK};
 use super::tools::{DelegateHook, DesktopServices};
 use super::types::{
-    AgentApprovalDecision, AgentEvent, AgentFolderAccessDecision, AgentReasoning, AgentTurnRequest,
-    ApprovalDecision,
+    AgentApprovalDecision, AgentEvent, AgentFolderAccessDecision, AgentReasoning, AgentSpecialist,
+    AgentTurnRequest, ApprovalDecision,
 };
 use super::workspace::default_agent_workspace;
 use crate::core::app::commands::get_jan_data_folder_path;
@@ -446,6 +446,45 @@ async fn read_workspace_text(path: &Path, limit: usize) -> Result<(String, bool)
 /// folder. Pure derivative of the working tree: safe to delete at any time.
 const CODE_INDEX_CACHE_DIR: &str = "agent-code-index";
 
+/// Resolves the transport for a specialist that names its own model. The
+/// specialist's model, provider, capabilities and context window replace the
+/// coordinator's in an otherwise identical request, so it goes through the
+/// same target rules (llama.cpp session, MLX, or cloud via the Local API
+/// Server) as a regular turn. `None` when it shares the coordinator's model.
+async fn resolve_specialist_model<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    state: &AppState,
+    request: &AgentTurnRequest,
+    specialist: &AgentSpecialist,
+    cancellation: &CancellationToken,
+) -> Result<Option<SpecialistModel>, String> {
+    let Some(model_id) = specialist
+        .model_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+    else {
+        return Ok(None);
+    };
+    if model_id == request.model_id && specialist.provider == request.provider {
+        return Ok(None);
+    }
+    let mut specialist_request = request.clone();
+    specialist_request.model_id = model_id.to_owned();
+    specialist_request.provider = specialist.provider.clone();
+    specialist_request.capabilities = specialist.capabilities.clone();
+    specialist_request.context_window = specialist.context_window;
+    let target = resolve_agent_target(app_handle, state, &specialist_request)
+        .await
+        .map_err(|error| format!("Specialist '{}': {error}", specialist.name.trim()))?;
+    let client = build_agent_client(target, app_handle, state, &specialist_request)?;
+    let model_profile = client.probe_model_profile(cancellation).await;
+    Ok(Some(SpecialistModel {
+        client,
+        model_profile,
+    }))
+}
+
 #[tauri::command]
 pub async fn agent_run_turn<R: Runtime>(
     app_handle: AppHandle<R>,
@@ -487,6 +526,15 @@ pub async fn agent_run_turn<R: Runtime>(
     }
     let cancellation = CancellationToken::new();
     let client = build_agent_client(target, &app_handle, &state, &request)?;
+    // Resolved before the run registers, so a bad specialist model fails the
+    // turn cleanly instead of leaving a cancellation entry behind.
+    let mut specialist_models = Vec::with_capacity(request.specialists.len());
+    for specialist in &request.specialists {
+        specialist_models.push(
+            resolve_specialist_model(&app_handle, &state, &request, specialist, &cancellation)
+                .await?,
+        );
+    }
     let (cancel_tx, cancel_rx) = oneshot::channel();
     {
         let mut cancellations = state.tool_call_cancellations.lock().await;
@@ -637,7 +685,11 @@ pub async fn agent_run_turn<R: Runtime>(
     let prepared_specialists = request
         .specialists
         .iter()
-        .map(|specialist| {
+        .zip(specialist_models)
+        .map(|(specialist, own_model)| {
+            let specialist_profile = own_model
+                .as_ref()
+                .map_or(model_profile, |own| own.model_profile);
             let mut specialist_disabled = base_disabled_tools.clone();
             specialist_disabled.extend(disabled_by_tool_packs(&specialist.tool_packs));
             specialist_disabled.insert(DELEGATE_TOOL.to_owned());
@@ -660,11 +712,12 @@ pub async fn agent_run_turn<R: Runtime>(
                         .as_ref()
                         .map(|bridge| bridge.omitted())
                         .unwrap_or(0),
-                    profile: model_profile,
+                    profile: specialist_profile,
                     thinking: reasoning.is_on(),
                     specialists: &[],
                 }),
                 disabled_tools: specialist_disabled,
+                own_model,
             }
         })
         .collect::<Vec<_>>();
@@ -722,6 +775,11 @@ pub async fn agent_run_turn<R: Runtime>(
         bundled_script_runtime: bundled_script_runtime.as_deref(),
         pty: &state.agent_pty_sessions,
         cache_dir: &code_index_cache,
+        emit: Some({
+            let lane_events = on_event.clone();
+            Arc::new(move |event| lane_events.send(event).map_err(|error| error.to_string()))
+        }),
+        lanes: Default::default(),
     });
     let delegate_hook: Option<&dyn DelegateHook> = delegator
         .as_ref()
@@ -762,6 +820,7 @@ pub async fn agent_run_turn<R: Runtime>(
                         bundled_script_runtime: bundled_script_runtime.as_deref(),
                         pty: &state.agent_pty_sessions,
                         cache_dir: &code_index_cache,
+                        slot_id: crate::core::agent::runner::AGENT_SLOT_ID,
                     },
                     |event| on_event.send(event).map_err(|error| error.to_string()),
                 )

@@ -15,13 +15,10 @@ pub enum ResourceClass {
     Vision,
     ApprovalGated,
     Terminal,
-    /// An MCP tool whose server advertises `readOnlyHint`. Batchable but
-    /// serialized within its group: the hint comes from an external server, so
-    /// it never earns `PureRead`'s parallelism.
-    McpRead,
     /// `agent.delegate`: runs a whole specialist turn that may read, write and
-    /// request approvals of its own. Needs no approval itself, but must run
-    /// solo — other class groups in a batch execute concurrently with it.
+    /// request approvals of its own. Needs no approval itself. It never shares
+    /// a batch with other tools, but a batch made only of delegations runs its
+    /// specialists concurrently (see [`is_delegation_batch`]).
     Delegation,
     Unknown,
 }
@@ -92,18 +89,29 @@ pub fn resource_class_for(tool_name: &str) -> ResourceClass {
     }
 }
 
-/// Class lookup for a concrete call, MCP-aware. `mcp.*` names resolve through
-/// the turn's bridge: read-only → [`ResourceClass::McpRead`], anything else →
-/// [`ResourceClass::ApprovalGated`], unresolved → fail-closed `Unknown`.
+/// Class lookup for a concrete call, MCP-aware. Every `mcp.*` name the turn's
+/// bridge resolves is [`ResourceClass::ApprovalGated`]; an unresolved one is
+/// fail-closed `Unknown`.
+///
+/// MCP tools are third-party code acting on the user's behalf, so they ask
+/// first regardless of their annotations: `readOnlyHint` is a claim made by
+/// the server itself and earns neither a skipped approval nor batching.
 pub fn resource_class_for_call(tool_name: &str, mcp: Option<&dyn McpBridge>) -> ResourceClass {
     if tool_name.starts_with(MCP_TOOL_PREFIX) {
         return match mcp.and_then(|bridge| bridge.resolve(tool_name)) {
-            Some(descriptor) if descriptor.read_only => ResourceClass::McpRead,
             Some(_) => ResourceClass::ApprovalGated,
             None => ResourceClass::Unknown,
         };
     }
     resource_class_for(tool_name)
+}
+
+/// Whether the user's explicit "auto-approve MCP tools" opt-in waives the
+/// approval gate for this call. It covers MCP-origin tools only: built-in
+/// shell/fs/network fixes and skill scripts keep asking (or follow the
+/// run-scoped `auto_approve`), whatever this setting says.
+pub fn mcp_opt_in_waives_approval(tool_name: &str, auto_approve_mcp: bool) -> bool {
+    auto_approve_mcp && tool_name.starts_with(MCP_TOOL_PREFIX)
 }
 
 pub fn is_batchable(class: ResourceClass) -> bool {
@@ -126,7 +134,21 @@ pub fn runs_solo(class: ResourceClass) -> bool {
 }
 
 pub fn is_parallel_within_group(class: ResourceClass) -> bool {
-    class == ResourceClass::PureRead
+    matches!(class, ResourceClass::PureRead | ResourceClass::Delegation)
+}
+
+/// Most specialists one batch may run at once. Matches the four lanes of the
+/// agents view and keeps local runtimes within a sane number of slots.
+pub const MAX_PARALLEL_DELEGATIONS: usize = 4;
+
+/// A batch of 2..=[`MAX_PARALLEL_DELEGATIONS`] calls that are all
+/// `agent.delegate`: the one shape in which a solo-only class may share a
+/// batch, because each specialist runs in its own fresh session.
+pub fn is_delegation_batch(classes: &[ResourceClass]) -> bool {
+    (2..=MAX_PARALLEL_DELEGATIONS).contains(&classes.len())
+        && classes
+            .iter()
+            .all(|class| *class == ResourceClass::Delegation)
 }
 
 #[cfg(test)]
@@ -178,6 +200,19 @@ mod tests {
     }
 
     #[test]
+    fn delegation_batches_run_in_parallel_only_on_their_own() {
+        use ResourceClass::{Delegation, PureRead};
+        assert!(is_parallel_within_group(Delegation));
+        assert!(!is_delegation_batch(&[Delegation]));
+        assert!(is_delegation_batch(&[Delegation, Delegation]));
+        assert!(is_delegation_batch(&[Delegation; MAX_PARALLEL_DELEGATIONS]));
+        assert!(!is_delegation_batch(
+            &[Delegation; MAX_PARALLEL_DELEGATIONS + 1]
+        ));
+        assert!(!is_delegation_batch(&[Delegation, PureRead]));
+    }
+
+    #[test]
     fn delegation_runs_solo_without_being_approval_gated() {
         let class = resource_class_for("agent.delegate");
         assert_eq!(class, ResourceClass::Delegation);
@@ -185,6 +220,23 @@ mod tests {
         assert!(runs_solo(class));
         assert!(runs_solo(ResourceClass::ApprovalGated));
         assert!(!runs_solo(ResourceClass::FsWrite));
+    }
+
+    #[test]
+    fn mcp_opt_in_never_reaches_built_in_or_skill_tools() {
+        assert!(mcp_opt_in_waives_approval("mcp.github.create_issue", true));
+        assert!(!mcp_opt_in_waives_approval(
+            "mcp.github.create_issue",
+            false
+        ));
+        for tool in [
+            "os.shell.run",
+            "os.proc.spawn",
+            "skill.run_script",
+            "net.set_dns",
+        ] {
+            assert!(!mcp_opt_in_waives_approval(tool, true), "{tool}");
+        }
     }
 
     #[test]

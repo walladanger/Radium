@@ -96,4 +96,49 @@ describe('buildAgentSpecialists', () => {
     ])
     expect(agentToolPacks(undefined)).toEqual([])
   })
+
+  it('sends a specialist model with its capabilities and context window', () => {
+    const local = assistant({
+      ...network,
+      specialist_model: { provider: 'llamacpp', id: 'qwen3-8b' },
+    })
+    const resolve = (provider: string, id: string) =>
+      provider === 'llamacpp' && id === 'qwen3-8b'
+        ? ({
+            id,
+            capabilities: ['tools'],
+            settings: {
+              ctx_len: { controller_props: { value: 32768 } },
+            },
+          } as unknown as Model)
+        : undefined
+    expect(buildAgentSpecialists([local], undefined, resolve)[0]).toMatchObject(
+      {
+        model_id: 'qwen3-8b',
+        provider: 'llamacpp',
+        capabilities: ['tools'],
+        context_window: 32768,
+      }
+    )
+  })
+
+  it('still names an unknown specialist model so the backend can say so', () => {
+    const missing = assistant({
+      ...network,
+      specialist_model: { provider: 'anthropic', id: 'gone' },
+    })
+    expect(
+      buildAgentSpecialists([missing], undefined, () => undefined)[0]
+    ).toMatchObject({
+      model_id: 'gone',
+      provider: 'anthropic',
+      capabilities: [],
+    })
+  })
+
+  it('shares the coordinator model when no specialist model is set', () => {
+    const [specialist] = buildAgentSpecialists([network], undefined)
+    expect(specialist.model_id).toBeUndefined()
+    expect(specialist.provider).toBeUndefined()
+  })
 })
