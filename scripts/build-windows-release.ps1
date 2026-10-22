@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 # scripts/build-windows-release.ps1
 # Radium - Windows release builder (local, no code signing)
 # Mirrors CI pipeline from release.yml: CPU-only backend, NSIS + MSI installers.
@@ -25,9 +25,14 @@ function Test-Cmd {
 }
 
 function Update-SessionPath {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
     $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
     $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
-    $env:Path = $machinePath + ';' + $userPath
+    if ($PSCmdlet.ShouldProcess('session PATH', 'refresh')) {
+        $env:Path = $machinePath + ';' + $userPath
+    }
 }
 
 function Assert-Cmd {
