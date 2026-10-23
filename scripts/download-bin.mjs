@@ -5,7 +5,7 @@ import os from 'os'
 import path from 'path'
 import unzipper from 'unzipper'
 import * as tar from 'tar'
-import { copySync } from 'cpx'
+import { copySync } from 'cpx2'
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
