@@ -261,7 +261,7 @@ Examples:
     )
     model_group.add_argument(
         '--model-base-url',
-        default=os.getenv('MODEL_BASE_URL', 'http://10.200.108.58:1234/v1'),
+        default=os.getenv('MODEL_BASE_URL', 'http://localhost:1234/v1'),
         help='Model base URL (env: MODEL_BASE_URL, default: %(default)s)'
     )
     

@@ -92,7 +92,7 @@ python main.py \
 | `--jan-process-name`    | `JAN_PROCESS_NAME`    | `Jan.exe`                       | Jan process name for monitoring                   |
 | **Model Configuration** |
 | `--model-name`          | `MODEL_NAME`          | `ByteDance-Seed/UI-TARS-1.5-7B` | AI model name                                     |
-| `--model-base-url`      | `MODEL_BASE_URL`      | `http://10.200.108.58:1234/v1`  | Model API endpoint                                |
+| `--model-base-url`      | `MODEL_BASE_URL`      | `http://localhost:1234/v1`  | Model API endpoint                                |
 | `--model-provider`      | `MODEL_PROVIDER`      | `oaicompat`                     | Model provider type                               |
 | `--model-loop`          | `MODEL_LOOP`          | `uitars`                        | Agent loop type                                   |
 | **Test Execution**      |
