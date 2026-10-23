@@ -10,27 +10,40 @@
 
 $ErrorActionPreference = 'Continue'
 
+function Write-ConsoleLine {
+    # Interactive setup output; writes straight to the host UI with optional colour.
+    param(
+        [Parameter(Position = 0)][string]$Message = '',
+        [Nullable[System.ConsoleColor]]$ForegroundColor = $null
+    )
+    if ($null -eq $ForegroundColor) {
+        $Host.UI.WriteLine($Message)
+    } else {
+        $Host.UI.WriteLine($ForegroundColor, $Host.UI.RawUI.BackgroundColor, $Message)
+    }
+}
+
 function Write-Step {
     param([string]$msg)
-    Write-Host ''
-    Write-Host '========================================' -ForegroundColor Cyan
-    Write-Host "  $msg" -ForegroundColor Cyan
-    Write-Host '========================================' -ForegroundColor Cyan
+    Write-ConsoleLine ''
+    Write-ConsoleLine '========================================' -ForegroundColor Cyan
+    Write-ConsoleLine "  $msg" -ForegroundColor Cyan
+    Write-ConsoleLine '========================================' -ForegroundColor Cyan
 }
 
 function Write-OK {
     param([string]$msg)
-    Write-Host "  [OK] $msg" -ForegroundColor Green
+    Write-ConsoleLine "  [OK] $msg" -ForegroundColor Green
 }
 
 function Write-Warn {
     param([string]$msg)
-    Write-Host "  [!!] $msg" -ForegroundColor Yellow
+    Write-ConsoleLine "  [!!] $msg" -ForegroundColor Yellow
 }
 
 function Write-Fail {
     param([string]$msg)
-    Write-Host "  [FAIL] $msg" -ForegroundColor Red
+    Write-ConsoleLine "  [FAIL] $msg" -ForegroundColor Red
 }
 
 function Test-Cmd {
@@ -39,7 +52,7 @@ function Test-Cmd {
     return ($null -ne $result)
 }
 
-function Refresh-Path {
+function Sync-SessionPath {
     $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
     $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
     $env:Path = $machinePath + ';' + $userPath
@@ -53,9 +66,9 @@ if (Test-Cmd 'git') {
     $gitVer = (git --version 2>&1) | Out-String
     Write-OK $gitVer.Trim()
 } else {
-    Write-Host '  Installing Git...'
+    Write-ConsoleLine '  Installing Git...'
     winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
-    Refresh-Path
+    Sync-SessionPath
     $restartRequired = $true
 }
 
@@ -71,8 +84,8 @@ if (Test-Path $vsWherePath) {
 if ($hasCpp) {
     Write-OK "C++ build tools found at $vsPath"
 } else {
-    Write-Host '  Installing Visual Studio 2022 Build Tools with C++ workload...'
-    Write-Host '  (this can take 5-15 minutes on first install)' -ForegroundColor DarkGray
+    Write-ConsoleLine '  Installing Visual Studio 2022 Build Tools with C++ workload...'
+    Write-ConsoleLine '  (this can take 5-15 minutes on first install)' -ForegroundColor DarkGray
     winget install --id Microsoft.VisualStudio.2022.BuildTools -e `
         --accept-source-agreements --accept-package-agreements `
         --override '--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'
@@ -87,15 +100,15 @@ if (Test-Cmd 'rustup') {
     $rustcVer = (rustc --version 2>&1) | Out-String
     Write-OK $rustcVer.Trim()
 } else {
-    Write-Host '  Downloading rustup-init.exe...'
+    Write-ConsoleLine '  Downloading rustup-init.exe...'
     $rustupInit = Join-Path $env:TEMP 'rustup-init.exe'
     Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile $rustupInit -UseBasicParsing
-    Write-Host '  Running rustup-init (default stable toolchain)...'
+    Write-ConsoleLine '  Running rustup-init (default stable toolchain)...'
     & $rustupInit -y --default-toolchain stable
     Remove-Item $rustupInit -Force -ErrorAction SilentlyContinue
     $cargoPath = Join-Path $env:USERPROFILE '.cargo\bin'
     $env:Path = $cargoPath + ';' + $env:Path
-    Refresh-Path
+    Sync-SessionPath
     $restartRequired = $true
     Write-OK 'Rust installed'
 }
@@ -106,9 +119,9 @@ if (Test-Cmd 'uv') {
     $uvVer = (uv --version 2>&1) | Out-String
     Write-OK $uvVer.Trim()
 } else {
-    Write-Host '  Installing uv via official installer...'
-    irm https://astral.sh/uv/install.ps1 | iex
-    Refresh-Path
+    Write-ConsoleLine '  Installing uv via winget...'
+    winget install --id astral-sh.uv -e --accept-source-agreements --accept-package-agreements
+    Sync-SessionPath
     # Also add the default uv bin path
     $uvBinPath = Join-Path $env:USERPROFILE '.local\bin'
     if (Test-Path $uvBinPath) {
@@ -129,8 +142,8 @@ if (Test-Cmd 'uv') {
 # -- Python 3.12 via uv -------------------------------------------
 Write-Step 'Python 3.12 (via uv)'
 if (Test-Cmd 'uv') {
-    Write-Host '  Installing Python 3.12 via uv...'
-    uv python install 3.12 2>&1 | ForEach-Object { Write-Host "  $_" }
+    Write-ConsoleLine '  Installing Python 3.12 via uv...'
+    uv python install 3.12 2>&1 | ForEach-Object { Write-ConsoleLine "  $_" }
     Write-OK 'Python 3.12 managed by uv'
 } else {
     Write-Warn 'uv not available yet. Python will be installed after terminal restart.'
@@ -140,11 +153,11 @@ if (Test-Cmd 'uv') {
 # -- Pillow (for icon generation) via uv --------------------------
 Write-Step 'Pillow (Python package for icon generation)'
 if (Test-Cmd 'uv') {
-    Write-Host '  Installing Pillow via uv...'
-    uv pip install --system Pillow 2>&1 | ForEach-Object { Write-Host "  $_" }
+    Write-ConsoleLine '  Installing Pillow via uv...'
+    uv pip install --system Pillow 2>&1 | ForEach-Object { Write-ConsoleLine "  $_" }
     if ($LASTEXITCODE -ne 0) {
-        Write-Host '  Trying with uv tool install...'
-        uv pip install Pillow --python 3.12 2>&1 | ForEach-Object { Write-Host "  $_" }
+        Write-ConsoleLine '  Trying with uv tool install...'
+        uv pip install Pillow --python 3.12 2>&1 | ForEach-Object { Write-ConsoleLine "  $_" }
     }
     Write-OK 'Pillow installed'
 } else {
@@ -157,9 +170,9 @@ if (Test-Cmd 'jq') {
     $jqVer = (jq --version 2>&1) | Out-String
     Write-OK $jqVer.Trim()
 } else {
-    Write-Host '  Installing jq via winget...'
+    Write-ConsoleLine '  Installing jq via winget...'
     winget install --id jqlang.jq -e --accept-source-agreements --accept-package-agreements
-    Refresh-Path
+    Sync-SessionPath
     $restartRequired = $true
 }
 
@@ -168,10 +181,10 @@ Write-Step 'nvm-windows (Node Version Manager)'
 if (Test-Cmd 'nvm') {
     Write-OK 'nvm-windows is already installed'
 } else {
-    Write-Host '  Installing nvm-windows via winget...'
+    Write-ConsoleLine '  Installing nvm-windows via winget...'
     winget install --id CoreyButler.NVMforWindows -e `
         --accept-source-agreements --accept-package-agreements
-    Refresh-Path
+    Sync-SessionPath
     $restartRequired = $true
 }
 
@@ -208,7 +221,7 @@ if ($env:Path -notlike "*$nvmSymlink*") {
 if (Test-Path $nvmHome) {
     $settingsFile = Join-Path $nvmHome 'settings.txt'
     if (-not (Test-Path $settingsFile)) {
-        Write-Host "  Creating nvm settings.txt at $settingsFile"
+        Write-ConsoleLine "  Creating nvm settings.txt at $settingsFile"
         $settingsContent = "root: $nvmHome`r`npath: $nvmSymlink"
         [System.IO.File]::WriteAllText($settingsFile, $settingsContent)
     }
@@ -221,12 +234,12 @@ if (Test-Cmd 'nvm') {
     if ($nvmList -match '20\.') {
         Write-OK 'Node.js 20 already installed via nvm'
     } else {
-        Write-Host '  Installing Node.js 20 via nvm...'
+        Write-ConsoleLine '  Installing Node.js 20 via nvm...'
         nvm install 20
     }
-    Write-Host '  Activating Node.js 20...'
+    Write-ConsoleLine '  Activating Node.js 20...'
     nvm use 20
-    Refresh-Path
+    Sync-SessionPath
 } elseif (Test-Cmd 'node') {
     $ver = (node --version 2>&1) | Out-String
     Write-OK "Node.js available (not via nvm): $($ver.Trim())"
@@ -246,7 +259,7 @@ if (Test-Cmd 'corepack') {
         yarn config set -H enableImmutableInstalls false 2>&1 | Out-Null
     }
 } elseif (Test-Cmd 'node') {
-    Write-Host '  Enabling corepack...'
+    Write-ConsoleLine '  Enabling corepack...'
     corepack enable 2>&1 | Out-Null
     corepack prepare yarn@4.5.3 --activate 2>&1 | Out-Null
     Write-OK 'Yarn 4.5.3 activated'
@@ -258,22 +271,22 @@ if (Test-Cmd 'corepack') {
 }
 
 # -- Summary -------------------------------------------------------
-Write-Host ''
-Write-Host '========================================' -ForegroundColor Green
-Write-Host '  SETUP COMPLETE' -ForegroundColor Green
-Write-Host '========================================' -ForegroundColor Green
+Write-ConsoleLine ''
+Write-ConsoleLine '========================================' -ForegroundColor Green
+Write-ConsoleLine '  SETUP COMPLETE' -ForegroundColor Green
+Write-ConsoleLine '========================================' -ForegroundColor Green
 
 if ($restartRequired) {
-    Write-Host ''
+    Write-ConsoleLine ''
     Write-Warn 'Some tools were freshly installed.'
     Write-Warn 'RESTART YOUR TERMINAL, then run this script again to finish Node.js + Yarn setup.'
-    Write-Host ''
-    Write-Host '  After restart:' -ForegroundColor White
-    Write-Host '    1. make setup-windows       (to finish nvm/node/yarn setup)' -ForegroundColor White
-    Write-Host '    2. make dev-windows          (to build and run)' -ForegroundColor White
+    Write-ConsoleLine ''
+    Write-ConsoleLine '  After restart:' -ForegroundColor White
+    Write-ConsoleLine '    1. make setup-windows       (to finish nvm/node/yarn setup)' -ForegroundColor White
+    Write-ConsoleLine '    2. make dev-windows          (to build and run)' -ForegroundColor White
 } else {
-    Write-Host ''
-    Write-Host '  Everything is ready! Run:' -ForegroundColor White
-    Write-Host '    make dev-windows' -ForegroundColor White
+    Write-ConsoleLine ''
+    Write-ConsoleLine '  Everything is ready! Run:' -ForegroundColor White
+    Write-ConsoleLine '    make dev-windows' -ForegroundColor White
 }
-Write-Host ''
+Write-ConsoleLine ''

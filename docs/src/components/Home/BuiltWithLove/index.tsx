@@ -25,6 +25,7 @@ const BuiltWithLove = () => {
           <a
             href="https://github.com/janhq/jan"
             target="_blank"
+            rel="noopener noreferrer"
             className="dark:bg-white bg-black inline-flex w-56 px-4 py-3 rounded-xl cursor-pointer justify-center items-start space-x-4 "
           >
             <span>
@@ -43,6 +44,7 @@ const BuiltWithLove = () => {
           <a
             href="https://discord.gg/FTk2MvZwJH"
             target="_blank"
+            rel="noopener noreferrer"
             className="bg-[#5765F2] inline-flex w-56 px-4 py-3 rounded-xl cursor-pointer justify-center items-start space-x-4 text-white"
           >
             <span>
@@ -61,6 +63,7 @@ const BuiltWithLove = () => {
           <a
             href="https://huggingface.co/janhq"
             target="_blank"
+            rel="noopener noreferrer"
             className="card-wrapper !shadow-none dark:card-wrapper-dark inline-flex w-56 px-4 py-3 rounded-xl cursor-pointer justify-center items-start space-x-4 "
           >
             <span>
