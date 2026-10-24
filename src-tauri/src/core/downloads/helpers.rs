@@ -328,6 +328,23 @@ pub fn create_proxy_from_config(config: &ProxyConfig) -> Result<reqwest::Proxy, 
     // Validate the configuration first
     validate_proxy_config(config)?;
 
+    // reqwest is built without its `socks` feature. reqwest 0.11 rejected
+    // SOCKS URLs here; 0.12 accepts them and only fails at connect time with
+    // an opaque error, so keep the early, explicit rejection.
+    let scheme = config
+        .url
+        .split_once("://")
+        .map(|(scheme, _)| scheme.to_ascii_lowercase());
+    if matches!(
+        scheme.as_deref(),
+        Some("socks4" | "socks4a" | "socks5" | "socks5h")
+    ) {
+        return Err(format!(
+            "SOCKS proxies are not supported for downloads: {}",
+            config.url
+        ));
+    }
+
     let mut proxy = reqwest::Proxy::all(&config.url).map_err(err_to_string)?;
 
     // Add authentication if provided

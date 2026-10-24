@@ -78,6 +78,9 @@
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "rehype-katex/katex": "0.18.4",
+    "mermaid/katex": "^0.18.4",
+    "@streamdown/math/katex": "^0.18.4",
+    "micromark-extension-math/katex": "^0.18.4",
     "workbox-build/@rollup/plugin-terser": "1.0.2",
     "@janhq/interfaces/ai": "^5.0.137"
   },
