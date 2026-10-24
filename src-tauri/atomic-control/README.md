@@ -29,15 +29,73 @@ cannot validate an artifact. These snapshots are not integration-ready commits.
 Expired or cancelled running attempts become `outcome_unknown`. They retain
 worker/model capacity until a trusted executor confirms termination and calls
 `Store::reconcile_stopped`. Old fencing tokens cannot heartbeat or finish.
-The executable reconciles expired leases at startup and every second. Idle
+The executable fences expired leases at startup and every second. Idle
 recovery does not append events; database recovery errors stop serving. An
-eventual executor must actually terminate cancelled processes.
+configured dispatcher cancels live runners, waits for them to stop, and asks
+the sandbox to terminate journaled containers before releasing uncertain capacity.
+
+## Background dispatch
+
+Set `ATOMIC_CONTROL_DISPATCH_CONFIG` to an operator-owned JSON file outside
+repositories and worker mounts. Without it, the daemon serves the existing
+planning API but explicitly logs that execution is disabled. Dispatch requires
+WSL/Linux, rootless Podman, already-running direct local model endpoints, and a
+preinstalled image pinned by digest. It never provisions inference servers or
+falls back to host tools. Protect the file from writes by other users; model
+key files must be private regular files. Do not put credentials in this file.
+
+Example structure (replace paths, base SHA and image digest with verified values):
+
+```json
+{
+  "podman": "/usr/bin/podman",
+  "git": "/usr/bin/git",
+  "workspace_root": "/home/user/.local/share/atomic-control/workspaces",
+  "data_root": "/home/user/.local/share/atomic-control",
+  "image": "localhost/atomic-worker@sha256:<verified-64-hex-digest>",
+  "workers": [{
+    "id": "local-coder", "service_id": "gpu-1-coder",
+    "model_id": "atomic-coder", "port": 17441,
+    "key_file": "/home/user/.local/share/atomic-control/inference/coder.api-key",
+    "context_window": 8192, "roles": ["edit"]
+  }],
+  "projects": [{
+    "id": "radium", "repository": "/home/user/projects/Radium",
+    "base_commit": "<exact-40-hex-commit>", "workers": ["local-coder"],
+    "write_scopes": ["src"],
+    "checks": [["/usr/bin/python3", "-c", "print('replace with trusted acceptance checks')"]]
+  }]
+}
+```
+
+The example check is only a placeholder, not acceptance evidence. Configure
+checks that independently verify the requested result and keep their expected
+values outside worker-writable scopes. Project IDs must match the project field
+in the Tasks/Agents workspace. Creating a plan keeps it in draft; Start activates
+dispatch. Closing the UI does not stop the daemon. Pause prevents new claims;
+Cancel stops an active task. Scheduled starts and completed dependencies are
+evaluated every second without requiring another client command.
+
+Project profiles authorize workers, the exact base commit, maximum writable
+scopes and deterministic checks. Task text cannot supply host paths, commands,
+model credentials or new endpoints. Tasks outside a configured profile remain
+queued. Add another worker/service/port and authorize it in the project to use
+two independently provisioned GPU services; the existing Store admission check
+still enforces at most two global attempts, one per worker and one per configured
+service. Distinct ports are separate admission domains, not proof of GPU pinning;
+verify the inference processes and devices during live acceptance.
+
+On restart, identical registrations are reused and altered bindings fail closed.
+Interrupted attempts stay reserved until their leases are fenced and the sandbox
+confirms termination. Failed or completed tasks are never automatically retried.
+SIGINT/SIGTERM stops scheduling and drains live runners. A reconciliation error
+stops the dispatcher and API rather than freeing unconfirmed capacity.
 
 ## Remaining production work
 
 This crate currently stores a serialized state snapshot and durable command
 receipts/events in SQLite transactions. Normalized schemas and migration
-policy, bounded retention, network worker authentication, daemon dispatch,
+policy, bounded retention, network worker authentication,
 cloud grants, candidate assembly, telemetry, backup, and failure soak
 tests remain release gates. The client API secret authorizes only plan creation/lifecycle, task cancellation/retry,
 and approval resolution. It cannot register workers, claim attempts, heartbeat,
@@ -102,7 +160,9 @@ The isolation probe uses Ubuntu only; it does not prove coding toolchain support
 repository-wide toolchain dependency support. A separate Linux worker fixture
 does prove local coder -> extracted loop -> sandboxed write -> trusted checks ->
 validated scoped artifact -> completed durable task, including a deliberate
-failed-check case. Daemon/UI dispatch and integration approval remain unverified.
+failed-check case. Daemon/UI dispatch is covered by deterministic scheduler
+contracts; live daemon/UI and simultaneous GPU acceptance and integration
+approval remain unverified.
 The live scope tests additionally
 prove assigned writes succeed while protected files, Git metadata, and
 unassigned siblings remain unchanged.
