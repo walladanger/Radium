@@ -8,7 +8,7 @@ import { twMerge } from 'tailwind-merge'
 const features = [
   {
     title: 'Chat with AI',
-    experimantal: false,
+    experimental: false,
     description:
       'Ask your questions, brainstorm, and learn from the AI running on your device to be more productive.',
     image: {
@@ -18,7 +18,7 @@ const features = [
   },
   {
     title: 'Model Hub',
-    experimantal: false,
+    experimental: false,
     description: `Download and Run powerful models like Llama3, Gemma or Mistral on your computer.`,
     image: {
       light: '/assets/images/homepage/features02.png',
@@ -27,7 +27,7 @@ const features = [
   },
   {
     title: 'Connect to Cloud AIs',
-    experimantal: false,
+    experimental: false,
     description: `You can also route to more powerful cloud models, like OpenAI, Groq, Cohere etc., when needed.`,
     image: {
       light: '/assets/images/homepage/features03.png',
@@ -36,7 +36,7 @@ const features = [
   },
   {
     title: 'Local API Server',
-    experimantal: false,
+    experimental: false,
     description: `Set up and run your own OpenAI-compatible API server using local models with just one click.`,
     image: {
       light: '/assets/images/homepage/features04.png',
@@ -45,7 +45,7 @@ const features = [
   },
   {
     title: 'Chat with your files',
-    experimantal: true,
+    experimental: true,
     description: `Talk to PDFs, notes, and other documents directly to get summaries, answers, or insights.`,
     image: {
       light: '/assets/images/homepage/features05.png',
@@ -94,7 +94,7 @@ const Feature = () => {
                       <div>
                         <div className="flex flex-col lg:flex-row lg:items-center gap-x-2">
                           <h6 className="text-xl font-bold">{feature.title}</h6>
-                          {feature.experimantal && (
+                          {feature.experimental && (
                             <div className="flex mt-2 lg:mt-0">
                               <div className="font-medium text-sm bg-blue-100 rounded-lg px-2 py-1 text-blue-700">
                                 Experimental
