@@ -29,7 +29,9 @@ describe('migrateLegacyModels', () => {
   let extension: llamacpp_extension
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    // Reset, not just clear: Vitest 4+ restoreAllMocks no longer drops queued
+    // mock*Once values on module mocks, so they would leak between tests.
+    vi.resetAllMocks()
     extension = new llamacpp_extension({
       name: 'llamacpp-extension',
       productName: 'LlamaC++ Extension',

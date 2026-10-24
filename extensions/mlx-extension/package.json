@@ -20,7 +20,8 @@
     "rimraf": "3.0.2",
     "rolldown": "1.0.0-beta.1",
     "typescript": "5.9.2",
-    "vitest": "3.2.7"
+    "vite": "8.3.3",
+    "vitest": "5.0.5"
   },
   "dependencies": {
     "@janhq/core": "../../core/package.tgz",
