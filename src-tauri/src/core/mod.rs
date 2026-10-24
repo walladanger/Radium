@@ -13,11 +13,11 @@ pub mod media;
 #[cfg(target_os = "windows")]
 pub mod notifications;
 pub mod panels;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod production_log;
 pub(crate) mod process_env;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod process_reaper;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub mod production_log;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod runtimes;
 pub mod server;
