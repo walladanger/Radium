@@ -82,7 +82,7 @@ pub async fn connect(
                 let data = event.data.unwrap_or_default();
                 break resolve_endpoint(&sse_url, data.trim())?;
             }
-            // Comments/keep-alives may precede the endpoint event.
+            // Comments/keep-alive messages may precede the endpoint event.
             Some(Ok(_)) => continue,
             Some(Err(e)) => return Err(format!("SSE stream error: {e}")),
             None => return Err("SSE stream closed before the endpoint event".into()),
