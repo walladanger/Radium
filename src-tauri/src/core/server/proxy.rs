@@ -1990,11 +1990,9 @@ async fn inner_proxy_request<R: Runtime>(
             );
             true
         } else if !host.is_empty() {
-            log::debug!(
-                "CORS preflight: Host is '{host}', trusted hosts: {:?}",
-                config.trusted_hosts
-            );
-            is_valid_host(host, &config.trusted_hosts)
+            let trusted = is_valid_host(host, &config.trusted_hosts);
+            log::debug!("CORS preflight: Host '{host}' trusted: {trusted}");
+            trusted
         } else {
             log::warn!("CORS preflight: No Host header present");
             false
