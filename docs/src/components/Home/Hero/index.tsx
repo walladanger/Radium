@@ -1,8 +1,10 @@
+'use client'
+
 import DropdownDownload from '@/components/DropdownDownload'
 import ThemeImage from '@/components/ThemeImage'
 import { totalDownload } from '@/utils/format'
 import Link from 'next/link'
-import { useData } from 'nextra/data'
+import { useData } from '@/lib/ssg/context'
 
 const QuoteIcon = () => {
   return (
@@ -49,7 +51,7 @@ const Hero = () => {
             className="hidden lg:inline-block"
           >
             <div className="inline-flex my-2 py-2 pl-2 pr-4 rounded-lg bg-indigo-500 text-white">
-              <div className="flex items-center rounded bg-white px-2">
+              <div className="flex items-center rounded-sm bg-white px-2">
                 <span className="font-bold uppercase text-blue-600">new</span>
               </div>
               &nbsp;✨&nbsp; <b>{lastVersion}</b>&nbsp;is now live on
@@ -60,7 +62,7 @@ const Hero = () => {
 
         <div className="relative inline-block mt-20">
           <QuoteIcon />
-          <h1 className="text-6xl lg:text-[80px] !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+          <h1 className="text-6xl lg:text-[80px] font-normal! leading-tight lg:leading-tight mt-2 font-serif">
             Chat with AI <br /> without privacy concerns
           </h1>
 

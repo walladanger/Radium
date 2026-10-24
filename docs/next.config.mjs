@@ -1,29 +1,19 @@
-/** @type {import('next').NextConfig} */
-
 import nextra from 'nextra'
-import { remarkCodeHike } from '@code-hike/mdx'
 
 const withNextra = nextra({
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.tsx',
+  // Pages live in src/content and are served by app/[[...mdxPath]].
+  contentDirBasePath: '/',
   defaultShowCopyCode: true,
   latex: true,
-  mdxOptions: {
-    remarkPlugins: [
-      [
-        remarkCodeHike,
-        {
-          theme: 'dark-plus',
-          showCopyButton: true,
-          skipLanguages: ['mermaid'],
-        },
-      ],
-    ],
-  },
+  search: { codeblocks: false },
 })
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // docs/ is its own package (bun) inside the yarn monorepo; pin the root so
+  // Turbopack and Nextra resolve files relative to docs/, not the repo root.
+  turbopack: { root: import.meta.dirname },
   output: 'export',
   env: {
     GTM_ID: process.env.GTM_ID,

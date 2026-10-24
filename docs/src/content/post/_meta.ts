@@ -1,0 +1,33 @@
+import type { MetaRecord } from 'nextra'
+
+const meta: MetaRecord = {
+  "*": {
+    "display": "hidden",
+    "theme": {
+      "breadcrumb": false,
+      "pagination": false
+    }
+  },
+  "all-categories": {
+    "title": "All Categories",
+    "display": "normal",
+    "href": "/blog"
+  },
+  "building-jan": {
+    "title": "Building Jan",
+    "display": "normal",
+    "href": "/blog?category=building-jan"
+  },
+  "research-cat": {
+    "title": "Research",
+    "display": "normal",
+    "href": "/blog?category=research"
+  },
+  "guides-cat": {
+    "title": "Guides",
+    "display": "normal",
+    "href": "/blog?category=guides"
+  }
+}
+
+export default meta

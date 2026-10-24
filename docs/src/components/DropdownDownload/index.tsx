@@ -1,3 +1,5 @@
+'use client'
+
 import { useCallback, useEffect, useState } from 'react'
 import { FaWindows, FaApple, FaLinux } from 'react-icons/fa'
 import { IconType } from 'react-icons/lib'
@@ -164,10 +166,10 @@ const DropdownDownload = ({ lastRelease }: Props) => {
   useClickOutside(() => setOpen(false), null, [menu, refDropdownContent])
 
   return (
-    <div className="inline-flex flex-shrink-0 justify-center relative">
+    <div className="inline-flex shrink-0 justify-center relative">
       <a
         href={defaultSystem.href}
-        className="min-w-[300px] dark:border-r-0 dark:nx-bg-neutral-900 dark:text-white bg-black text-white hover:text-white dark:border dark:border-neutral-800 flex-shrink-0 pl-4 pr-6 py-4 rounded-l-xl inline-flex items-center !rounded-r-none"
+        className="min-w-[300px] dark:border-r-0 dark:nx-bg-neutral-900 dark:text-white bg-black text-white hover:text-white dark:border dark:border-neutral-800 shrink-0 pl-4 pr-6 py-4 rounded-l-xl inline-flex items-center rounded-r-none!"
       >
         <defaultSystem.logo className="h-4 mr-2" />
         <span>{defaultSystem.name}</span>
@@ -178,7 +180,7 @@ const DropdownDownload = ({ lastRelease }: Props) => {
         )}
       </a>
       <button
-        className="dark:nx-bg-neutral-900 dark:text-white bg-black text-white hover:text-white justify-center dark:border border-l border-gray-500 dark:border-neutral-800 flex-shrink-0 p-4 px-3 rounded-r-xl"
+        className="dark:nx-bg-neutral-900 dark:text-white bg-black text-white hover:text-white justify-center dark:border border-l border-gray-500 dark:border-neutral-800 shrink-0 p-4 px-3 rounded-r-xl"
         onClick={() => setOpen(!open)}
         ref={setMenu}
       >
@@ -199,7 +201,7 @@ const DropdownDownload = ({ lastRelease }: Props) => {
                 onClick={() => setOpen(false)}
               >
                 <div className="flex items-center">
-                  <system.logo className="w-3 mr-3 -mt-1 flex-shrink-0" />
+                  <system.logo className="w-3 mr-3 -mt-1 shrink-0" />
                   <span className="text-white font-medium flex-1">
                     {system.name}
                   </span>

@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { Button } from './button'
 import { cn } from '@/lib/utils'
@@ -165,8 +167,8 @@ export function DropdownButton({
       <div
         className={cn(
           'flex w-full group hover:shadow-[0px_0px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[2px] hover:bg-[#6BD689] shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] rounded-2xl transition-all border-2 border-black bg-[#7EF19D]',
-          classNameButton?.includes('!shadow-none') &&
-            '!shadow-none hover:!shadow-none !translate-y-0 hover:!translate-y-0',
+          classNameButton?.includes('shadow-none!') &&
+            'shadow-none! hover:shadow-none! translate-y-0! hover:translate-y-0!',
           className
         )}
       >
@@ -175,7 +177,7 @@ export function DropdownButton({
           size={size}
           variant="ghost"
           className={cn(
-            '!rounded-r-none !border-0 flex-1 !shadow-none group-hover:!shadow-none !transform-none group-hover:!transform-none !bg-transparent hover:!bg-transparent text-black',
+            'rounded-r-none! border-0! flex-1 shadow-none! group-hover:shadow-none! transform-none! group-hover:transform-none! bg-transparent! hover:bg-transparent! text-black',
             classNameButton
           )}
           asChild
@@ -197,7 +199,7 @@ export function DropdownButton({
           size={size}
           variant="ghost"
           className={cn(
-            '!rounded-l-none px-3 !border-0 flex-shrink-0 !shadow-none group-hover:!shadow-none !transform-none group-hover:!transform-none !bg-transparent hover:!bg-transparent text-black border-l border-black',
+            'rounded-l-none! px-3 border-0! shrink-0 shadow-none! group-hover:shadow-none! transform-none! group-hover:transform-none! bg-transparent! hover:bg-transparent! text-black border-l border-black',
             classNameButton
           )}
           onClick={toggleDropdown}

@@ -1,6 +1,8 @@
+'use client'
+
 import { format } from 'date-fns'
 
-import { useData } from 'nextra/data'
+import { useData } from '@/lib/ssg/context'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -112,7 +114,7 @@ const Changelog = () => {
                     className="border-l dark:nx-border-neutral-800 w-full cursor-pointer"
                   >
                     <div className="flex gap-8 items-start w-full">
-                      <div className="w-2 h-2 relative -left-1 bg-blue-500 rounded-full flex-shrink-0" />
+                      <div className="w-2 h-2 relative -left-1 bg-blue-500 rounded-full shrink-0" />
                       <div className="pb-14 w-full -mt-2">
                         <div className="w-full pb-4 px-8 rounded-lg flex flex-col lg:flex-row justify-between">
                           <div>
@@ -152,7 +154,7 @@ const Changelog = () => {
         <Link
           href="https://github.com/janhq/jan/releases"
           target="_blank"
-          className="dark:nx-bg-neutral-900 dark:text-white bg-black text-white hover:text-white justify-center dark:border dark:border-neutral-800 flex-shrink-0 px-4 py-3 rounded-xl inline-flex items-center"
+          className="dark:nx-bg-neutral-900 dark:text-white bg-black text-white hover:text-white justify-center dark:border dark:border-neutral-800 shrink-0 px-4 py-3 rounded-xl inline-flex items-center"
         >
           View Prior Updates
         </Link>

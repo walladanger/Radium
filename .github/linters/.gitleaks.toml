@@ -1,0 +1,13 @@
+# Super-linter's gitleaks config. Keeps every default rule and only allows
+# the placeholder API keys used in the docs' curl examples
+# (docs/src/content/docs/desktop/api-*.mdx). Real keys are still flagged.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documentation placeholder API keys"
+regexTarget = "line"
+regexes = [
+  '''Bearer (YOUR_API_KEY|secret-key-123)\b''',
+  '''x-api-key: YOUR_API_KEY\b''',
+]

@@ -1,5 +1,7 @@
+'use client'
+
 import ThemeImage from '@/components/ThemeImage'
-import { useData } from 'nextra/data'
+import { useData } from '@/lib/ssg/context'
 import { totalDownload } from '@/utils/format'
 
 const Statistic = () => {

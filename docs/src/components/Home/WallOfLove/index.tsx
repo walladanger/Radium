@@ -1,3 +1,5 @@
+'use client'
+
 import useEmblaCarousel from 'embla-carousel-react'
 import { Tweet } from 'react-tweet'
 import AutoScroll from 'embla-carousel-auto-scroll'
@@ -116,7 +118,7 @@ const WallOfLove = ({ transparent }: Props) => {
             />
           </div>
           <div>
-            <h1 className="text-5xl !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+            <h1 className="text-5xl font-normal! leading-tight lg:leading-tight mt-2 font-serif">
               People Say Nice Things
             </h1>
             <p className="leading-relaxed mt-2 text-black/60 dark:text-white/60 flex gap-x-2 justify-center">
@@ -305,7 +307,7 @@ const WallOfLove = ({ transparent }: Props) => {
       </div>
       <div className="w-full mx-auto relative text-center overflow-hidden mt-10 px-4">
         <div className="embla tweet-wrapper" ref={emblaRef}>
-          <div className="embla__container !hidden md:!flex">
+          <div className="embla__container hidden! md:flex!">
             <div className="embla__slide px-4 cursor-move">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8 text-left">
                 <div className="space-y-4 lg:space-y-8">

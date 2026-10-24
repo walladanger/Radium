@@ -52,7 +52,7 @@ const APIStructure = () => {
   return (
     <div className="pt-24 pb-20 nextra-wrap-container">
       <div className="w-full text-center">
-        <h1 className="text-5xl lg:text-7xl !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+        <h1 className="text-5xl lg:text-7xl font-normal! leading-tight lg:leading-tight mt-2 font-serif">
           Fully OpenAI-Equivalent API
         </h1>
         <div className="lg:w-1/2 mx-auto">
@@ -77,7 +77,7 @@ const APIStructure = () => {
           </a>
         </div>
       </div>
-      <div className="bg-[#fff] shadow-xl dark:shadow-none dark:bg-[#242424] lg:w-2/5 px-4 py-2 mx-auto rounded-xl mt-4">
+      <div className="bg-white shadow-xl dark:shadow-none dark:bg-[#242424] lg:w-2/5 px-4 py-2 mx-auto rounded-xl mt-4">
         {endpoints.map((item, i) => {
           return (
             <div

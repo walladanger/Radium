@@ -1,0 +1,13 @@
+import type { MetaRecord } from 'nextra'
+
+const meta: MetaRecord = {
+  "jan-code-4b": "Jan-Code-4B",
+  "jan-v3-4b-base-instruct": "Jan-v3-4B",
+  "jan-v2-vl-med": "Jan-v2-VL",
+  "jan-v1": "Jan-v1",
+  "jan-nano-128": "Jan Nano 128k",
+  "jan-nano-32": "Jan Nano 32k",
+  "lucy": "Lucy"
+}
+
+export default meta

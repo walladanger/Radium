@@ -1,3 +1,5 @@
+'use client'
+
 import Autoplay from 'embla-carousel-autoplay'
 import AutoScroll from 'embla-carousel-auto-scroll'
 import AutoHeight from 'embla-carousel-auto-height'
@@ -73,14 +75,14 @@ const SliderMobile = () => {
 
   return (
     <>
-      <div className="embla__controls lg:!hidden mb-4">
+      <div className="embla__controls lg:hidden! mb-4">
         <div className="embla__buttons space-x-2">
           <PrevButton onClick={onPrevButtonClick} disabled={prevBtnDisabled} />
           <NextButton onClick={onNextButtonClick} disabled={nextBtnDisabled} />
         </div>
       </div>
       <div className="embla tweet-wrapper" ref={emblaRefMobile}>
-        <div className="embla__container flex lg:!hidden">
+        <div className="embla__container flex lg:hidden!">
           {slideForMobile.map((item, i) => {
             return (
               <div className="embla__slide px-4 cursor-move" key={i}>

@@ -12,7 +12,7 @@ import TweetSection from '@/components/TweetSection'
 import FavoriteModels from '@/components/FavoriteModels'
 import { DropdownButton } from '@/components/ui/dropdown-button'
 
-import { useData } from 'nextra/data'
+import { useData } from '@/lib/ssg/context'
 import { useDiscordWidget } from '@/hooks/useDiscordWidget'
 import { formatCompactNumber, totalDownload } from '@/utils/format'
 
@@ -114,11 +114,11 @@ const Home = () => {
                       className="size-20 animate-wave"
                     />
                   </span>
-                  <h1 className="text-[40px] lg:text-[80px] font-semibold -tracking-[2px] text-white">
+                  <h1 className="text-[40px] lg:text-[80px] font-semibold tracking-[-2px] text-white">
                     Meet Jan
                   </h1>
                 </div>
-                <p className="px-4 lg:px-0 mt-2 text-lg lg:text-2xl font-medium leading-relaxed text-white animate-fade-in-up delay-500 -tracking-[0.6px]">
+                <p className="px-4 lg:px-0 mt-2 text-lg lg:text-2xl font-medium leading-relaxed text-white animate-fade-in-up delay-500 tracking-[-0.6px]">
                   Personal Intelligence that answers only to you
                 </p>
               </div>
@@ -126,7 +126,7 @@ const Home = () => {
                 <div className="w-full lg:w-auto">
                   <DropdownButton
                     size="xxl"
-                    className="w-full !rounded-[20px] lg:w-auto"
+                    className="w-full rounded-[20px]! lg:w-auto"
                     lastRelease={lastRelease}
                   />
                   <div className="font-medium text-center mt-2 text-white">
@@ -142,7 +142,7 @@ const Home = () => {
                   <Button
                     variant="playful-white"
                     size="xxl"
-                    className="!w-full lg:w-auto !items-center border-2"
+                    className="w-full! lg:w-auto items-center! border-2"
                   >
                     <FaDiscord className="size-5 text-[#5765F2]" />
                     Join community
@@ -232,7 +232,7 @@ const Home = () => {
       {/* Statistic and social */}
       <section className="pt-20">
         <div className="container mx-auto">
-          <h2 className="text-[24px] lg:text-[52px] font-semibold text-center mb-16 -tracking-[1.3px]">
+          <h2 className="text-[24px] lg:text-[52px] font-semibold text-center mb-16 tracking-[-1.3px]">
             Over 4 million downloads
           </h2>
         </div>
@@ -247,13 +247,13 @@ const Home = () => {
               <div className="lg:w-3/5 mx-auto">
                 <div className="relative text-center">
                   <h1
-                    className="text-4xl lg:text-[50px] font-semibold -tracking-[1.3px] animate-on-scroll leading-tight"
+                    className="text-4xl lg:text-[50px] font-semibold tracking-[-1.3px] animate-on-scroll leading-tight"
                     data-delay="200"
                   >
                     Jan is built in public
                   </h1>
                   <p
-                    className="-tracking-[0.6px] mt-4 text-xl text-neutral-700 animate-on-scroll lg:max-w-[512px] mx-auto"
+                    className="tracking-[-0.6px] mt-4 text-xl text-neutral-700 animate-on-scroll lg:max-w-[512px] mx-auto"
                     data-delay="400"
                   >
                     We believe AI should be open, and grow <br/> through the people who build and use it
@@ -353,13 +353,13 @@ const Home = () => {
           <div className="container mx-auto relative z-10">
             <div className="text-center text-black my-12 mt-10">
               <h2
-                className="-tracking-[1.3px] text-4xl lg:text-[52px] font-bold mb-4 leading-normal animate-on-scroll"
+                className="tracking-[-1.3px] text-4xl lg:text-[52px] font-bold mb-4 leading-normal animate-on-scroll"
                 data-delay="200"
               >
                 Built in Public
               </h2>
               <p
-                className="text-[24px] -tracking-[0.6px] max-w-2xl mx-auto animate-on-scroll text-black/70 font-medium"
+                className="text-[24px] tracking-[-0.6px] max-w-2xl mx-auto animate-on-scroll text-black/70 font-medium"
                 data-delay="400"
               >
                 Our core team believes that AI should be open,{' '}
@@ -374,7 +374,7 @@ const Home = () => {
                 <div className="p-6 space-y-6">
                   <div className="flex flex-col items-start gap-4 border-b border-neutral-400 pb-4">
                     <div className="flex justify-between w-full">
-                      <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0">
                         <span className="text-white text-sm">
                           <img src={CodeSVG.src} alt="" />
                         </span>
@@ -387,7 +387,7 @@ const Home = () => {
                       >
                         <Button
                           variant="playful"
-                          className="!rounded-lg border-2 h-[40px]"
+                          className="rounded-lg! border-2 h-[40px]"
                         >
                           <span>
                             <FaGithub className="size-4" />
@@ -398,11 +398,11 @@ const Home = () => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-gray-900 text-[28px] -tracking-[0.7px]">
+                        <h3 className="font-semibold text-gray-900 text-[28px] tracking-[-0.7px]">
                           Develop
                         </h3>
                       </div>
-                      <p className="text-gray-500 font-medium text-lg -tracking-[0.6px]">
+                      <p className="text-gray-500 font-medium text-lg tracking-[-0.6px]">
                         Submit PRs for UI, tooling, or edge optimizations.
                       </p>
                       <a
@@ -413,7 +413,7 @@ const Home = () => {
                       >
                         <Button
                           variant="playful"
-                          className="!rounded-lg border-2 h-[40px] w-full"
+                          className="rounded-lg! border-2 h-[40px] w-full"
                         >
                           <span>
                             <FaGithub className="size-6" />
@@ -426,7 +426,7 @@ const Home = () => {
 
                   <div className="flex flex-col items-start gap-4 border-b border-neutral-400 pb-4">
                     <div className="flex justify-between w-full">
-                      <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0">
                         <span className="text-white text-sm">
                           <img src={ShareSVG.src} alt="" />
                         </span>
@@ -439,7 +439,7 @@ const Home = () => {
                       >
                         <Button
                           variant="playful"
-                          className="!rounded-lg border-2 h-[40px]"
+                          className="rounded-lg! border-2 h-[40px]"
                         >
                           <span>
                             <FaDiscord className="size-4 text-[#5765F2]" />
@@ -459,11 +459,11 @@ const Home = () => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-gray-900 text-[28px] -tracking-[0.7px]">
+                        <h3 className="font-semibold text-gray-900 text-[28px] tracking-[-0.7px]">
                           Share
                         </h3>
                       </div>
-                      <p className="text-gray-500 font-medium text-lg -tracking-[0.6px]">
+                      <p className="text-gray-500 font-medium text-lg tracking-[-0.6px]">
                         Spread the word, write tutorials, host meet-ups, post
                         videos.
                       </p>
@@ -475,7 +475,7 @@ const Home = () => {
                       >
                         <Button
                           variant="playful"
-                          className="!rounded-lg w-full border-2 h-[40px]"
+                          className="rounded-lg! w-full border-2 h-[40px]"
                         >
                           <span>
                             <FaDiscord className="size-6 text-[#5765F2]" />
@@ -497,7 +497,7 @@ const Home = () => {
 
                   <div className="flex flex-col items-start gap-4  pb-4">
                     <div className="flex justify-between w-full">
-                      <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0">
                         <span className="text-white text-sm">
                           <img src={RobotSVG.src} alt="" />
                         </span>
@@ -510,7 +510,7 @@ const Home = () => {
                       >
                         <Button
                           variant="playful"
-                          className="!rounded-lg border-2 h-[40px]"
+                          className="rounded-lg! border-2 h-[40px]"
                         >
                           <span>
                             <img
@@ -525,11 +525,11 @@ const Home = () => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-gray-900 text-[28px] -tracking-[0.7px]">
+                        <h3 className="font-semibold text-gray-900 text-[28px] tracking-[-0.7px]">
                           Train
                         </h3>
                       </div>
-                      <p className="text-gray-500 font-medium text-lg -tracking-[0.6px]">
+                      <p className="text-gray-500 font-medium text-lg tracking-[-0.6px]">
                         Add evals, safety tests, or training recipes.
                       </p>
                       <a
@@ -540,7 +540,7 @@ const Home = () => {
                       >
                         <Button
                           variant="playful"
-                          className="!rounded-lg border-2 h-[40px] w-full"
+                          className="rounded-lg! border-2 h-[40px] w-full"
                         >
                           <span>
                             <img
@@ -577,7 +577,7 @@ const Home = () => {
             <div className="container relative z-10">
               <div className="mt-10 flex flex-col lg:flex-row justify-between items-center gap-8">
                 <div className="relative animate-on-scroll" data-delay="200">
-                  <h1 className="text-4xl text-center lg:text-left lg:text-5xl mx-auto font-semibold -tracking-[1.6px] text-white">
+                  <h1 className="text-4xl text-center lg:text-left lg:text-5xl mx-auto font-semibold tracking-[-1.6px] text-white">
                     Ask Jan anything
                   </h1>
                 </div>
@@ -588,7 +588,7 @@ const Home = () => {
                   <DropdownButton
                     size="xl"
                     className="w-full lg:w-auto"
-                    classNameButton="!shadow-none border-2"
+                    classNameButton="shadow-none! border-2"
                   />
                   <span className="text-xs font-medium text-center mt-2">
                     +{totalDownload(release)} downloads, Free & Open source

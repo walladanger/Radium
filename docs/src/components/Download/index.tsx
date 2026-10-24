@@ -1,4 +1,6 @@
-import { useData } from 'nextra/data'
+'use client'
+
+import { useData } from '@/lib/ssg/context'
 import CardDownload from './CardDownload'
 
 const Download = () => {
@@ -6,7 +8,7 @@ const Download = () => {
   return (
     <div className="nextra-wrap-container py-20">
       <div className="text-center">
-        <h1 className="text-6xl !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+        <h1 className="text-6xl font-normal! leading-tight lg:leading-tight mt-2 font-serif">
           Download Jan for your desktop
         </h1>
         <p className="text-xl mt-2 leading-relaxed text-black/60 dark:text-white/60">

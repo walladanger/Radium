@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect } from 'react'
 import { IconType } from 'react-icons/lib'
 import { FaWindows, FaApple, FaLinux } from 'react-icons/fa'

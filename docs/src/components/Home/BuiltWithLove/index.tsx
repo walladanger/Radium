@@ -1,8 +1,10 @@
+'use client'
+
 import { IoMapOutline } from 'react-icons/io5'
 import { FaGithub, FaDiscord } from 'react-icons/fa'
 import { RiStarSFill } from 'react-icons/ri'
 import { useDiscordWidget } from '@/hooks/useDiscordWidget'
-import { useData } from 'nextra/data'
+import { useData } from '@/lib/ssg/context'
 import { formatCompactNumber } from '@/utils/format'
 
 const BuiltWithLove = () => {
@@ -13,7 +15,7 @@ const BuiltWithLove = () => {
     <div className="nextra-wrap-container mt-10">
       <div className="w-full px-4 xl:w-3/4 mx-auto relative py-8">
         <div className="text-center">
-          <h1 className="text-5xl !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+          <h1 className="text-5xl font-normal! leading-tight lg:leading-tight mt-2 font-serif">
             100% Open Source
           </h1>
           <p className="leading-relaxed text-black/60 dark:text-white/60 mt-2">
@@ -64,7 +66,7 @@ const BuiltWithLove = () => {
             href="https://huggingface.co/janhq"
             target="_blank"
             rel="noopener noreferrer"
-            className="card-wrapper !shadow-none dark:card-wrapper-dark inline-flex w-56 px-4 py-3 rounded-xl cursor-pointer justify-center items-start space-x-4 "
+            className="card-wrapper shadow-none! dark:card-wrapper-dark inline-flex w-56 px-4 py-3 rounded-xl cursor-pointer justify-center items-start space-x-4 "
           >
             <span>
               <svg
@@ -120,16 +122,16 @@ const BuiltWithLove = () => {
                   <path
                     opacity="0.25"
                     d="M13.487 4.81718L8.00034 7.99052L2.51367 4.81718C2.62631 4.62218 2.78695 4.45924 2.98034 4.34385L7.33367 1.83052C7.747 1.59718 8.25367 1.59718 8.667 1.83052L13.0203 4.34385C13.2137 4.45918 13.3743 4.62252 13.487 4.81718Z"
-                    className="dark:fill-[#fff] fill-[#333]"
+                    className="dark:fill-white fill-[#333]"
                   />
                   <path
                     opacity="0.5"
                     d="M7.99967 7.99047V14.3238C7.78948 14.3235 7.58208 14.2756 7.39301 14.1838L2.99967 11.6438C2.79732 11.5267 2.62924 11.3586 2.51225 11.1562C2.39526 10.9538 2.33345 10.7242 2.33301 10.4905V5.49047C2.33411 5.25428 2.3961 5.02237 2.51301 4.81714L7.99967 7.99047Z"
-                    className="dark:fill-[#fff] fill-[#333]"
+                    className="dark:fill-white fill-[#333]"
                   />
                   <path
                     d="M13.6667 5.49047V10.4905C13.6662 10.7242 13.6044 10.9538 13.4874 11.1562C13.3704 11.3586 13.2024 11.5267 13 11.6438L8.58667 14.1905C8.40333 14.2771 8.20267 14.3225 8 14.3238V7.99047L13.4867 4.81714C13.6033 5.02247 13.6653 5.25447 13.6667 5.49047Z"
-                    className="dark:fill-[#fff] fill-[#333]"
+                    className="dark:fill-white fill-[#333]"
                   />
                 </svg>
                 <span className="font-semibold">71 models</span>

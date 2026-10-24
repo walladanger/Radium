@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
@@ -122,7 +124,7 @@ export default function Footer() {
                     type="email"
                     placeholder="Enter your email"
                     {...register('email', { required: true })}
-                    className="flex-1 px-3 py-2 h-[56px] border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full rounded-xl text-base"
+                    className="flex-1 px-3 py-2 h-[56px] border border-gray-600 focus:outline-hidden focus:ring-2 focus:ring-blue-500 w-full rounded-xl text-base"
                   />
                   <div className="absolute top-1 right-1 h-full">
                     <button

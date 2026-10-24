@@ -1,6 +1,8 @@
+'use client'
+
 import DropdownDownload from '@/components/DropdownDownload'
 import { totalDownload } from '@/utils/format'
-import { useData } from 'nextra/data'
+import { useData } from '@/lib/ssg/context'
 
 const CTADownload = () => {
   const { lastRelease, release } = useData()
@@ -10,7 +12,7 @@ const CTADownload = () => {
       <div className="nextra-wrap-container">
         <div className="flex p-4 lg:justify-between flex-col lg:flex-row">
           <div className="w-full">
-            <h1 className="text-5xl lg:text-7xl !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+            <h1 className="text-5xl lg:text-7xl font-normal! leading-tight lg:leading-tight mt-2 font-serif">
               Turn your computer <br className="hidden lg:block" /> into an AI
               computer
             </h1>

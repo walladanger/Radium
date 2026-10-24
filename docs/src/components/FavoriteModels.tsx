@@ -1,3 +1,5 @@
+'use client'
+
 /* eslint-disable @next/next/no-img-element */
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
@@ -63,7 +65,7 @@ export default function FavoriteModels() {
     <section className="container mx-auto pt-20 pb-0 md:pb-20">
       <div className="max-w-6xl mx-auto px-4">
         <motion.h2
-          className="text-4xl max-w-sm font-bold mb-20 -tracking-[1.2px]"
+          className="text-4xl max-w-sm font-bold mb-20 tracking-[-1.2px]"
           initial={{ opacity: 0, y: 60 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
@@ -85,15 +87,15 @@ export default function FavoriteModels() {
               <div className="text-[28px] mb-8 size-12 bg-white text-black rounded-full flex items-center justify-center font-semibold shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black">
                 1
               </div>
-              <h3 className="text-[28px] font-bold mb-2 max-w-sm -tracking-[0.7px]">
+              <h3 className="text-[28px] font-bold mb-2 max-w-sm tracking-[-0.7px]">
                 Models
               </h3>
-              <p className="text-gray-700 mb-4 max-w-sm text-base -tracking-[0.4px]">
+              <p className="text-gray-700 mb-4 max-w-sm text-base tracking-[-0.4px]">
                 Choose from open models or plug in your favorite online models.
               </p>
               {/* <Button
                 variant="playful-white"
-                className="!rounded-[12px] border-2 shadow-[0px_2px_0px_0px_rgba(0,0,0,1)] text-base h-[40px]"
+                className="rounded-[12px]! border-2 shadow-[0px_2px_0px_0px_rgba(0,0,0,1)] text-base h-[40px]"
               >
                 Explore models
               </Button> */}
@@ -108,11 +110,11 @@ export default function FavoriteModels() {
                     <div className="size-11 mb-2 flex items-center justify-center">
                       <img src={model.icon.src} alt={model.name} />
                     </div>
-                    <span className="text-lg font-medium -tracking-[0.4px]">
+                    <span className="text-lg font-medium tracking-[-0.4px]">
                       {model.name}
                     </span>
                     {model.company && (
-                      <span className="text-sm text-gray-500 -tracking-[0.4px]">
+                      <span className="text-sm text-gray-500 tracking-[-0.4px]">
                         {model.company}
                       </span>
                     )}
@@ -136,16 +138,16 @@ export default function FavoriteModels() {
               <div className="text-[28px] mb-8 size-12 bg-white text-black rounded-full flex items-center justify-center font-semibold shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black">
                 2
               </div>
-              <h3 className="text-[28px] font-bold mb-2 max-w-sm -tracking-[0.7px]">
+              <h3 className="text-[28px] font-bold mb-2 max-w-sm tracking-[-0.7px]">
                 Connectors
               </h3>
-              <p className="text-gray-700 mb-4 max-w-sm text-base -tracking-[0.4px]">
+              <p className="text-gray-700 mb-4 max-w-sm text-base tracking-[-0.4px]">
                 Connect your email, files, notes and calendar. Jan works where
                 you work.
               </p>
               {/* <Button
                 variant="playful-white"
-                className="!rounded-[12px] border-2 shadow-[0px_2px_0px_0px_rgba(0,0,0,1)] text-base h-[40px]"
+                className="rounded-[12px]! border-2 shadow-[0px_2px_0px_0px_rgba(0,0,0,1)] text-base h-[40px]"
               >
                 Explore tools
               </Button> */}
@@ -160,10 +162,10 @@ export default function FavoriteModels() {
                     <div className="size-11 mb-2 flex items-center justify-center">
                       <img src={app.icon.src} alt={app.name} />
                     </div>
-                    <span className="text-lg font-medium -tracking-[0.4px]">
+                    <span className="text-lg font-medium tracking-[-0.4px]">
                       {app.name}
                     </span>
-                    <span className="text-sm text-gray-500 -tracking-[0.4px]">
+                    <span className="text-sm text-gray-500 tracking-[-0.4px]">
                       {app.description}
                     </span>
                   </div>
@@ -186,19 +188,19 @@ export default function FavoriteModels() {
               <div className="text-[28px] mb-8 size-12 bg-white text-black rounded-full flex items-center justify-center font-semibold shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black">
                 3
               </div>
-              <h3 className="text-[28px] font-bold mb-2 max-w-sm -tracking-[0.7px] inline-flex items-center gap-2">
+              <h3 className="text-[28px] font-bold mb-2 max-w-sm tracking-[-0.7px] inline-flex items-center gap-2">
                 Memory{' '}
                 <span className="text-sm bg-gray-200 border border-gray-300 px-2 py-1 rounded-3xl">
                   Coming Soon
                 </span>
               </h3>
-              <p className="text-gray-700 mb-4 max-w-sm text-base -tracking-[0.4px]">
+              <p className="text-gray-700 mb-4 max-w-sm text-base tracking-[-0.4px]">
                 Your context carries over, so you don’t repeat yourself. Jan
                 remembers your context and preferences.
               </p>
               {/* <Button
                 variant="playful-white"
-                className="!rounded-[12px] border-2 shadow-[0px_2px_0px_0px_rgba(0,0,0,1)] text-base h-[40px]"
+                className="rounded-[12px]! border-2 shadow-[0px_2px_0px_0px_rgba(0,0,0,1)] text-base h-[40px]"
               >
                 Learn more
               </Button> */}
@@ -222,7 +224,7 @@ export default function FavoriteModels() {
                     </div>
                     <div>
                       <h4 className="text-[26px] font-bold text-black">Joe</h4>
-                      <p className="text-gray-700 text-xl -tracking-[0.4px]">
+                      <p className="text-gray-700 text-xl tracking-[-0.4px]">
                         Designer, Singapore
                       </p>
                     </div>
