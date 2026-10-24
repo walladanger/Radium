@@ -848,11 +848,26 @@ fn muse_catalog_entry(model_id: &str, owned_by: &str) -> serde_json::Value {
 
 use tauri_plugin_mlx::state::{MlxBackendSession, SessionInfo};
 
+/// Whether an upstream URL points at this machine, in which case requests
+/// skip the user's HTTP proxy. Decided on the parsed host, not a substring:
+/// a substring test also matched look-alike host names (a loopback name
+/// followed by `.example.com`) or a loopback URL inside the path or query,
+/// which sent remote traffic around the configured proxy.
 fn is_local_url(url: &str) -> bool {
-    url.contains("://localhost")
-        || url.contains("://127.0.0.1")
-        || url.contains("://0.0.0.0")
-        || url.contains("://[::1]")
+    use std::net::IpAddr;
+    let Ok(parsed) = url::Url::parse(url) else {
+        return false;
+    };
+    match parsed.host() {
+        Some(url::Host::Domain(domain)) => domain.eq_ignore_ascii_case("localhost"), // DevSkim: ignore DS162092 because this detects loopback hosts, it does not call one.
+        Some(url::Host::Ipv4(ip)) => is_local_ip(IpAddr::V4(ip)),
+        Some(url::Host::Ipv6(ip)) => is_local_ip(IpAddr::V6(ip)),
+        None => false,
+    }
+}
+
+fn is_local_ip(ip: std::net::IpAddr) -> bool {
+    ip.is_loopback() || ip.is_unspecified()
 }
 
 /// The local server runs on hyper 0.14 (`http` 0.2) while upstream calls go
@@ -5108,5 +5123,34 @@ mod muse_catalogue_tests {
             remote["metadata"]["muse-code"]["limit"]["context"],
             MUSE_REMOTE_CONTEXT_LIMIT
         );
+    }
+}
+
+#[cfg(test)]
+mod local_url_tests {
+    use super::is_local_url;
+
+    #[test]
+    fn matches_only_loopback_hosts() {
+        for url in [
+            "http://localhost:1337/v1", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "http://LOCALHOST/v1", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "http://127.0.0.1:8080/v1", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "http://127.1.2.3/v1", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "http://0.0.0.0:11434", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "http://[::1]:8080/v1", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "http://[::]:8080/v1", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+        ] {
+            assert!(is_local_url(url), "{url} should be local");
+        }
+        for url in [
+            "https://localhost.example.com/v1",
+            "https://api.example.com/v1?next=http://localhost", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "https://api.example.com/redirect/http://127.0.0.1/", // DevSkim: ignore DS137138,DS162092 because these are test inputs for loopback detection.
+            "https://127.0.0.1.nip.io/v1",
+            "not a url",
+        ] {
+            assert!(!is_local_url(url), "{url} should not be local");
+        }
     }
 }
