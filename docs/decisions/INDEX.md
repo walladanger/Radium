@@ -271,9 +271,9 @@ library on disk, and how the frozen surface is allowed to change.
 
 ## Packaging, installers, autostart & platform policy (19)
 
-- **2026-10-16** � [Skip MSI ICE validation in the Windows release build](2026-10-16-skip-msi-ice-validation-in-windows-release.md)
-- **2026-10-15** � [Repair an unreadable settings.json instead of falling back to a relative data folder](2026-10-15-repair-an-unreadable-settings-file-instead-of-using-a-relative-data-folder.md)
-- **2026-10-14** � [Expand the agent-skills resource glob to exclude tests/ from the Windows bundle](2026-10-14-exclude-agent-skills-tests-from-windows-bundle-for-max-path.md)
+- **2026-10-16** — [Skip MSI ICE validation in the Windows release build](2026-10-16-skip-msi-ice-validation-in-windows-release.md)
+- **2026-10-15** — [Repair an unreadable settings.json instead of falling back to a relative data folder](2026-10-15-repair-an-unreadable-settings-file-instead-of-using-a-relative-data-folder.md)
+- **2026-10-14** — [Expand the agent-skills resource glob to exclude tests/ from the Windows bundle](2026-10-14-exclude-agent-skills-tests-from-windows-bundle-for-max-path.md)
 - **2026-09-13** — [Rename the product to Radium and move the default data folder](2026-09-13-rename-the-product-to-radium-and-move-the-data-folder.md)
 - **2026-09-12** — [Radium never auto-updates: remove the updater rather than repoint it](2026-09-12-radium-never-auto-updates.md)
 - **2026-09-04** — [Sanitize the AppImage environment before launching host processes](2026-09-04-sanitize-appimage-environment-before-launching-host-processes.md)
@@ -384,9 +384,6 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)
 
 - [Preserve workspace pages under the annotation overlay](2026-10-18-preserve-workspace-pages-under-the-annotation-overlay.md)
-<<<<<<< HEAD
 - [Dispatch ready tasks through trusted local profiles](2026-10-20-dispatch-ready-tasks-through-trusted-local-profiles.md)
-=======
 
 - **2026-10-24** — [Keep plain-HTTP scope for user-configured AI servers](2026-10-24-keep-plain-http-scope-for-user-configured-ai-servers.md)
->>>>>>> origin/main
