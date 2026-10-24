@@ -12,9 +12,9 @@ use std::time::Duration;
 
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
+use mcp_reqwest as reqwest;
 use oauth2::TokenResponse as _;
 use rmcp::transport::auth::{OAuthState, OAuthTokenResponse};
-use tauri_plugin_http::reqwest;
 
 use super::store::McpOAuthEntry;
 use crate::core::auth::chatgpt::{parse_callback_query, CallbackParams};

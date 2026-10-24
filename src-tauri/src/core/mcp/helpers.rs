@@ -1,9 +1,10 @@
+use mcp_reqwest as reqwest;
 use rmcp::{
-    model::{ClientCapabilities, ClientInfo, Implementation, InitializeRequestParam},
+    model::{ClientCapabilities, ClientInfo, Implementation, InitializeRequestParams},
     service::RunningService,
     transport::{
-        streamable_http_client::StreamableHttpClientTransportConfig, SseClientTransport,
-        StreamableHttpClientTransport, TokioChildProcess,
+        streamable_http_client::StreamableHttpClientTransportConfig, StreamableHttpClientTransport,
+        TokioChildProcess,
     },
     RoleClient, ServiceExt,
 };
@@ -16,13 +17,25 @@ use std::{
     time::Duration,
 };
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
-use tauri_plugin_http::reqwest;
+
+use super::legacy_sse::{self, LegacySseClient};
 use tokio::{
     io::AsyncReadExt,
     process::Command,
     sync::Mutex,
     time::{sleep, timeout},
 };
+
+/// rmcp 2 marks its request structs `#[non_exhaustive]`; this keeps the
+/// "name + optional arguments" call sites as short as they were.
+pub(crate) fn call_tool_params(
+    name: impl Into<std::borrow::Cow<'static, str>>,
+    arguments: Option<rmcp::model::JsonObject>,
+) -> rmcp::model::CallToolRequestParams {
+    let mut params = rmcp::model::CallToolRequestParams::new(name);
+    params.arguments = arguments;
+    params
+}
 
 const MCP_STDERR_CONTEXT_MAX_BYTES: usize = 16 * 1024;
 
@@ -269,7 +282,7 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
     config: &McpServerConfig,
     transport_type: &str,
     use_sign_in: bool,
-) -> Result<RunningService<RoleClient, InitializeRequestParam>, String> {
+) -> Result<RunningService<RoleClient, InitializeRequestParams>, String> {
     let url = config
         .url
         .as_deref()
@@ -281,17 +294,11 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
 
     timeout(handshake_timeout, async {
         let client = build_remote_http_client(config, handshake_timeout)?;
-        let client_info = ClientInfo {
-            protocol_version: Default::default(),
-            capabilities: ClientCapabilities::default(),
-            client_info: Implementation {
-                name: "Radium MCP Client".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-                title: Some("Radium".to_string()),
-                website_url: None,
-                icons: None,
-            },
-        };
+        let client_info = ClientInfo::new(
+            ClientCapabilities::default(),
+            Implementation::new("Radium MCP Client", env!("CARGO_PKG_VERSION"))
+                .with_title("Radium"),
+        );
 
         // A server the user signed into gets its session restored (refreshed
         // first when close to expiry) and wrapped around the base client. The
@@ -321,10 +328,7 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
                 // pre-fills the token and AuthClient never runs.
                 let transport = StreamableHttpClientTransport::with_client(
                     auth_client,
-                    StreamableHttpClientTransportConfig {
-                        uri: url.into(),
-                        ..Default::default()
-                    },
+                    StreamableHttpClientTransportConfig::with_uri(url),
                 );
                 client_info
                     .serve(transport)
@@ -334,46 +338,34 @@ pub(crate) async fn connect_remote_mcp<R: Runtime>(
             ("http", None) => {
                 let transport = StreamableHttpClientTransport::with_client(
                     client,
-                    StreamableHttpClientTransportConfig {
-                        uri: url.into(),
-                        ..Default::default()
-                    },
+                    StreamableHttpClientTransportConfig::with_uri(url),
                 );
                 client_info
                     .serve(transport)
                     .await
                     .map_err(|e| format!("Streamable HTTP handshake failed: {e}"))
             }
-            ("sse", Some(manager)) => {
-                let auth_client = rmcp::transport::auth::AuthClient::new(client, manager);
-                app.state::<AppState>()
-                    .mcp_oauth
-                    .register_live(name, auth_client.auth_manager.clone())
-                    .await;
-                let transport = SseClientTransport::start_with_client(
-                    auth_client,
-                    rmcp::transport::sse_client::SseClientConfig {
-                        sse_endpoint: url.into(),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map_err(|e| format!("SSE transport failed: {e}"))?;
-                client_info
-                    .serve(transport)
+            // Deprecated HTTP+SSE transport, kept for servers that have not
+            // moved to Streamable HTTP (see core/mcp/legacy_sse.rs).
+            ("sse", oauth_manager) => {
+                log::warn!(
+                    "MCP server {name} uses the deprecated SSE transport; \
+                     switch it to Streamable HTTP (\"type\": \"http\") if the server supports it"
+                );
+                let client = match oauth_manager {
+                    Some(manager) => {
+                        let auth_client = rmcp::transport::auth::AuthClient::new(client, manager);
+                        app.state::<AppState>()
+                            .mcp_oauth
+                            .register_live(name, auth_client.auth_manager.clone())
+                            .await;
+                        LegacySseClient::Auth(auth_client)
+                    }
+                    None => LegacySseClient::Plain(client),
+                };
+                let transport = legacy_sse::connect(client, url)
                     .await
-                    .map_err(|e| format!("SSE handshake failed: {e}"))
-            }
-            ("sse", None) => {
-                let transport = SseClientTransport::start_with_client(
-                    client,
-                    rmcp::transport::sse_client::SseClientConfig {
-                        sse_endpoint: url.into(),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map_err(|e| format!("SSE transport failed: {e}"))?;
+                    .map_err(|e| format!("SSE transport failed: {e}"))?;
                 client_info
                     .serve(transport)
                     .await

@@ -16,7 +16,7 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use rmcp::model::{CallToolRequestParam, CallToolResult};
+use rmcp::model::CallToolResult;
 use rmcp::{service::Peer, RoleClient};
 use serde_json::Value;
 use tokio::time::timeout;
@@ -150,10 +150,10 @@ impl McpBridge for LiveMcpBridge {
             ));
         };
         let arguments = args.as_object().cloned();
-        let call = peer.call_tool(CallToolRequestParam {
-            name: descriptor.tool.clone().into(),
+        let call = peer.call_tool(crate::core::mcp::helpers::call_tool_params(
+            descriptor.tool.clone(),
             arguments,
-        });
+        ));
         tokio::select! {
             _ = cancellation.cancelled() => Err("Tool call cancelled".into()),
             result = timeout(self.call_timeout, call) => match result {

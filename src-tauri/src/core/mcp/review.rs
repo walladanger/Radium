@@ -460,12 +460,12 @@ mod tests {
             "Delete an issue",
             std::sync::Arc::new(schema.as_object().unwrap().clone()),
         );
-        delete.annotations = Some(rmcp::model::ToolAnnotations {
-            read_only_hint: Some(false),
-            destructive_hint: Some(true),
-            open_world_hint: Some(true),
-            ..Default::default()
-        });
+        delete.annotations = Some(
+            rmcp::model::ToolAnnotations::new()
+                .read_only(false)
+                .destructive(true)
+                .open_world(true),
+        );
         let list = Tool::new(
             "list_issues",
             "List issues",

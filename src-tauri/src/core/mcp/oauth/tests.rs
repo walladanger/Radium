@@ -5,9 +5,7 @@
 use std::time::Duration;
 
 use oauth2::basic::BasicTokenType;
-use oauth2::{
-    AccessToken, EmptyExtraTokenFields, RefreshToken, StandardTokenResponse, TokenResponse as _,
-};
+use oauth2::{AccessToken, RefreshToken, StandardTokenResponse, TokenResponse as _};
 
 use super::flow;
 use super::store::{self, McpOAuthEntry};
@@ -17,7 +15,7 @@ fn token_response(expires_in: Option<u64>) -> rmcp::transport::auth::OAuthTokenR
     let mut tokens = StandardTokenResponse::new(
         AccessToken::new("access-secret".to_string()),
         BasicTokenType::Bearer,
-        EmptyExtraTokenFields {},
+        rmcp::transport::auth::VendorExtraTokenFields::default(),
     );
     tokens.set_refresh_token(Some(RefreshToken::new("refresh-secret".to_string())));
     tokens.set_expires_in(expires_in.map(Duration::from_secs).as_ref());

@@ -386,3 +386,5 @@ library on disk, and how the frozen surface is allowed to change.
 - [Preserve workspace pages under the annotation overlay](2026-10-18-preserve-workspace-pages-under-the-annotation-overlay.md)
 
 - **2026-10-24** — [Keep plain-HTTP scope for user-configured AI servers](2026-10-24-keep-plain-http-scope-for-user-configured-ai-servers.md)
+
+- **2026-10-24** — [Move MCP to rmcp 2 and Streamable HTTP; keep a minimal SSE fallback](2026-10-24-move-mcp-to-rmcp-2-and-streamable-http-keep-a-minimal-sse-fallback.md)

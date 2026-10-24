@@ -388,10 +388,10 @@ export const MCP_CONNECTORS: MCPConnector[] = [
     docsUrl: 'https://developers.webflow.com/data/docs/ai-tools',
     matchUrls: ['mcp.webflow.com'],
     auth: 'oauth',
-    // Webflow only documents the SSE endpoint for its remote server.
+    // Webflow retired /sse in favour of Streamable HTTP at /mcp (Jan 2026).
     config: {
-      type: 'sse',
-      url: 'https://mcp.webflow.com/sse',
+      type: 'http',
+      url: 'https://mcp.webflow.com/mcp',
       command: '',
       args: [],
       env: {},

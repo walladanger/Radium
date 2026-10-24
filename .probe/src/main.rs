@@ -33,7 +33,7 @@ async fn main() {
     let service = ().serve(process).await;
     let service = match service {
         Ok(s) => {
-            println!("[probe] handshake OK, peer_info={:?}", s.peer_info().map(|i| &i.server_info.name));
+            println!("[probe] handshake OK, peer_info={:?}", s.peer_info().map(|i| i.server_info.name.clone()));
             s
         }
         Err(e) => {
