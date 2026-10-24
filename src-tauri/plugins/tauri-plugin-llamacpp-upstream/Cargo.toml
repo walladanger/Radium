@@ -20,7 +20,7 @@ rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.10.9"
 sysinfo = "0.34.2"
-tauri = { version = "2.5.0", default-features = false, features = [] }
+tauri = { version = "2.12.5", default-features = false, features = [] }
 thiserror = "2.0.12"
 tokio = { version = "1", features = ["full"] }
 tauri-plugin-hardware = { path = "../tauri-plugin-hardware" }
@@ -41,4 +41,4 @@ tempfile = "3.0"
 filetime = "0.2"
 
 [build-dependencies]
-tauri-plugin = { version = "2.3.1", features = ["build"] }
+tauri-plugin = { version = "2.7.2", features = ["build"] }

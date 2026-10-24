@@ -31,9 +31,9 @@
     "@janhq/core": "../../core/package.tgz",
     "@janhq/tauri-plugin-hardware-api": "link:../../src-tauri/plugins/tauri-plugin-hardware",
     "@janhq/tauri-plugin-llamacpp-upstream-api": "link:../../src-tauri/plugins/tauri-plugin-llamacpp-upstream",
-    "@tauri-apps/api": "2.8.0",
-    "@tauri-apps/plugin-http": "2.5.0",
-    "@tauri-apps/plugin-log": "^2.6.0",
+    "@tauri-apps/api": "2.12.4",
+    "@tauri-apps/plugin-http": "2.8.3",
+    "@tauri-apps/plugin-log": "^2.10.1",
     "fetch-retry": "^5.0.6",
     "ulidx": "2.4.1"
   },
