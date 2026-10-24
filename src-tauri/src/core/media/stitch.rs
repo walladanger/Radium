@@ -38,7 +38,17 @@ pub(crate) fn concat_list(inputs: &[String]) -> String {
 fn run(ffmpeg: &Path, list: &Path, output: &str, copy: bool) -> Result<(), String> {
     let mut command = Command::new(ffmpeg);
     command
-        .args(["-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i"])
+        .args([
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+        ])
         .arg(list);
     if copy {
         command.args(["-c", "copy"]);
@@ -68,7 +78,8 @@ pub async fn media_stitch_videos(inputs: Vec<String>, output: String) -> Result<
     tauri::async_runtime::spawn_blocking(move || {
         let list = PathBuf::from(format!("{output}.concat.txt"));
         std::fs::write(&list, concat_list(&inputs)).map_err(|e| e.to_string())?;
-        let result = run(&ffmpeg, &list, &output, true).or_else(|_| run(&ffmpeg, &list, &output, false));
+        let result =
+            run(&ffmpeg, &list, &output, true).or_else(|_| run(&ffmpeg, &list, &output, false));
         let _ = std::fs::remove_file(&list);
         result.map(|_| output)
     })

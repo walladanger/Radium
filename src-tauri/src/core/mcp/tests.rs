@@ -650,3 +650,31 @@ async fn test_preview_of_an_online_service_without_an_address_says_why() {
 
     assert!(error.contains("non-empty URL"), "{error}");
 }
+
+#[test]
+fn migrates_retired_sse_endpoints_to_streamable_http() {
+    use crate::core::mcp::commands::migrate_retired_sse_endpoint;
+    use serde_json::json;
+
+    for (old, new) in [
+        ("https://mcp.linear.app/sse", "https://mcp.linear.app/mcp"),
+        ("https://mcp.webflow.com/sse", "https://mcp.webflow.com/mcp"),
+        (
+            "https://mcp.atlassian.com/v1/sse",
+            "https://mcp.atlassian.com/v1/mcp",
+        ),
+    ] {
+        let mut server = json!({ "type": "sse", "url": old, "headers": { "X": "1" } });
+        assert!(migrate_retired_sse_endpoint(&mut server));
+        assert_eq!(server["url"], new);
+        assert_eq!(server["type"], "http");
+        assert_eq!(server["headers"]["X"], "1");
+        // Idempotent.
+        assert!(!migrate_retired_sse_endpoint(&mut server));
+    }
+
+    // Custom SSE servers are left alone.
+    let mut custom = json!({ "type": "sse", "url": "https://example.com/sse" });
+    assert!(!migrate_retired_sse_endpoint(&mut custom));
+    assert_eq!(custom["type"], "sse");
+}

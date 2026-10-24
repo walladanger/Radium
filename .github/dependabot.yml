@@ -232,13 +232,6 @@ updates:
     directory: "/src-tauri"
     schedule:
       interval: "weekly"
-    # rmcp >= 2 removes the legacy SSE client transport that Radium still
-    # offers for user-configured MCP servers. Hold rmcp on 0.x until SSE is
-    # supported again or MCP connections migrate to Streamable HTTP (see
-    # closed PR #161).
-    ignore:
-      - dependency-name: "rmcp"
-        versions: [">= 2.0.0"]
     groups:
       minor-patch:
         update-types: ["minor", "patch"]
@@ -252,13 +245,6 @@ updates:
       - "/src-tauri/atomic-control"
     schedule:
       interval: "weekly"
-    # rmcp >= 2 removes the legacy SSE client transport that Radium still
-    # offers for user-configured MCP servers. Hold rmcp on 0.x until SSE is
-    # supported again or MCP connections migrate to Streamable HTTP (see
-    # closed PR #161).
-    ignore:
-      - dependency-name: "rmcp"
-        versions: [">= 2.0.0"]
     groups:
       minor-patch:
         update-types: ["minor", "patch"]

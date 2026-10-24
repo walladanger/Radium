@@ -1,4 +1,4 @@
-use rmcp::model::{CallToolRequestParam, CallToolResult};
+use rmcp::model::CallToolResult;
 use rmcp::{service::Peer, RoleClient};
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
@@ -432,10 +432,10 @@ pub async fn call_tool<R: Runtime>(
             log::warn!("MCP server {srv_name}: pre-call token refresh failed: {e}");
         }
 
-        let tool_call = service.call_tool(CallToolRequestParam {
-            name: tool_name.clone().into(),
-            arguments: arguments.clone(),
-        });
+        let tool_call = service.call_tool(crate::core::mcp::helpers::call_tool_params(
+            tool_name.clone(),
+            arguments.clone(),
+        ));
 
         // Race between timeout, tool call, and cancellation
         let result = if cancellation_token.is_some() {
@@ -511,10 +511,10 @@ pub async fn call_tool<R: Runtime>(
         };
         let retry = timeout(
             timeout_duration,
-            service.call_tool(CallToolRequestParam {
-                name: tool_name.clone().into(),
+            service.call_tool(crate::core::mcp::helpers::call_tool_params(
+                tool_name.clone(),
                 arguments,
-            }),
+            )),
         )
         .await;
         return match retry {
@@ -695,28 +695,16 @@ pub async fn get_mcp_configs<R: Runtime>(app: AppHandle<R>) -> Result<String, St
         }
     }
 
-    // Migration: Linear retired its SSE endpoint (mcp.linear.app/sse now
-    // 404s) in favour of streamable HTTP at /mcp. Rewrite only the exact
-    // retired URL — any other user-edited URL is left untouched. Idempotent:
-    // once rewritten the URL no longer matches.
+    // Migration: hosted MCP servers that moved off the deprecated SSE
+    // transport to Streamable HTTP. Rewrite only the exact retired URL — any
+    // other user-edited URL is left untouched. Idempotent: once rewritten the
+    // URL no longer matches.
     if let Some(servers) = config_object
         .get_mut("mcpServers")
         .and_then(|v| v.as_object_mut())
     {
         for server in servers.values_mut() {
-            let Some(server_obj) = server.as_object_mut() else {
-                continue;
-            };
-            if server_obj.get("url").and_then(|v| v.as_str()) == Some("https://mcp.linear.app/sse")
-            {
-                server_obj.insert(
-                    "url".to_string(),
-                    Value::String("https://mcp.linear.app/mcp".to_string()),
-                );
-                server_obj.insert("type".to_string(), Value::String("http".to_string()));
-                log::info!(
-                    "Migrating config: moved Linear MCP off the retired /sse endpoint to /mcp"
-                );
+            if migrate_retired_sse_endpoint(server) {
                 mutated = true;
             }
         }
@@ -741,6 +729,38 @@ pub async fn get_mcp_configs<R: Runtime>(app: AppHandle<R>) -> Result<String, St
 
     serde_json::to_string_pretty(&config_value)
         .map_err(|e| format!("Failed to serialize MCP config: {e}"))
+}
+
+/// Hosted servers whose SSE endpoint is retired or deprecated, mapped to
+/// their documented Streamable HTTP endpoint.
+/// - Linear: /sse now 404s.
+/// - Webflow: /sse deprecated since Jan 2026 (developers.webflow.com changelog).
+/// - Atlassian: /v1/sse deprecated in favour of /v1/mcp.
+const RETIRED_SSE_ENDPOINTS: &[(&str, &str)] = &[
+    ("https://mcp.linear.app/sse", "https://mcp.linear.app/mcp"),
+    ("https://mcp.webflow.com/sse", "https://mcp.webflow.com/mcp"),
+    (
+        "https://mcp.atlassian.com/v1/sse",
+        "https://mcp.atlassian.com/v1/mcp",
+    ),
+];
+
+/// Moves one server config off a retired SSE endpoint. Returns true when it
+/// changed anything.
+pub(crate) fn migrate_retired_sse_endpoint(server: &mut Value) -> bool {
+    let Some(server_obj) = server.as_object_mut() else {
+        return false;
+    };
+    let Some(url) = server_obj.get("url").and_then(|v| v.as_str()) else {
+        return false;
+    };
+    let Some((old, new)) = RETIRED_SSE_ENDPOINTS.iter().find(|(old, _)| *old == url) else {
+        return false;
+    };
+    log::info!("Migrating config: moved MCP server off the retired SSE endpoint {old} to {new}");
+    server_obj.insert("url".to_string(), Value::String((*new).to_string()));
+    server_obj.insert("type".to_string(), Value::String("http".to_string()));
+    true
 }
 
 /// Check if error indicates extension not connected
@@ -815,10 +835,10 @@ enum PingResult {
 async fn try_ping_tool(service: &RunningServiceEnum) -> PingResult {
     let result = timeout(
         Duration::from_secs(3),
-        service.call_tool(CallToolRequestParam {
-            name: "ping".into(),
-            arguments: Some(Map::new()),
-        }),
+        service.call_tool(crate::core::mcp::helpers::call_tool_params(
+            "ping",
+            Some(Map::new()),
+        )),
     )
     .await;
 
@@ -853,10 +873,10 @@ async fn try_browser_snapshot_tool(service: &RunningServiceEnum) -> Result<bool,
         // Snapshot tool is very time-consuming
         // Extend timeout to make sure the tool call has enough time to succeed
         Duration::from_secs(20),
-        service.call_tool(CallToolRequestParam {
-            name: "browser_snapshot".into(),
-            arguments: Some(Map::new()),
-        }),
+        service.call_tool(crate::core::mcp::helpers::call_tool_params(
+            "browser_snapshot",
+            Some(Map::new()),
+        )),
     )
     .await;
 
