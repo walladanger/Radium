@@ -1273,7 +1273,7 @@ pub fn model_ids_match(left: &str, right: &str) -> bool {
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use reqwest::StatusCode;
+    use hyper::StatusCode;
 
     use super::*;
     use crate::core::agent::test_support::{ScriptedCompletionServer, ScriptedResponse};

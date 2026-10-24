@@ -855,6 +855,21 @@ fn is_local_url(url: &str) -> bool {
         || url.contains("://[::1]")
 }
 
+/// The local server runs on hyper 0.14 (`http` 0.2) while upstream calls go
+/// through reqwest 0.12 (`http` 1.x). The two crates define distinct but
+/// byte-identical types, so convert at the boundary instead of relying on
+/// both resolving to the same `http` version.
+fn to_reqwest_method(method: &hyper::Method) -> reqwest::Method {
+    reqwest::Method::from_bytes(method.as_str().as_bytes())
+        .expect("an HTTP method valid for hyper is valid for reqwest")
+}
+
+/// See [`to_reqwest_method`]. Any status reqwest parsed is in 100..=999, the
+/// range hyper accepts, so the fallback is unreachable in practice.
+fn to_hyper_status(status: reqwest::StatusCode) -> StatusCode {
+    StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY)
+}
+
 fn is_context_limit_error(status: StatusCode, body: &str) -> bool {
     shared_is_context_limit_error(status.as_u16(), body)
 }
@@ -1171,10 +1186,10 @@ async fn retry_local_upstream(
     body: Option<Bytes>,
 ) -> Result<reqwest::Response, reqwest::Error> {
     let upstream_url = format!("http://127.0.0.1:{new_port}/v1{destination_path}");
-    let mut req = local_client.request(method.clone(), &upstream_url);
+    let mut req = local_client.request(to_reqwest_method(method), &upstream_url);
     for (name, value) in headers.iter() {
         if name != hyper::header::HOST && name != hyper::header::AUTHORIZATION {
-            req = req.header(name, value);
+            req = req.header(name.as_str(), value.as_bytes());
         }
     }
     if !new_api_key.is_empty() {
@@ -1199,11 +1214,11 @@ fn build_streaming_response(
     trusted_hosts: &[Vec<String>],
     inspector: Option<InspectorHandle>,
 ) -> Response<Body> {
-    let status = response.status();
+    let status = to_hyper_status(response.status());
     let mut builder = Response::builder().status(status);
     for (name, value) in response.headers() {
-        if !is_cors_header(name.as_str()) && name != hyper::header::CONTENT_LENGTH {
-            builder = builder.header(name, value);
+        if !is_cors_header(name.as_str()) && name != reqwest::header::CONTENT_LENGTH {
+            builder = builder.header(name.as_str(), value.as_bytes());
         }
     }
     builder =
@@ -1467,7 +1482,7 @@ async fn handle_responses_request(
                     && name != hyper::header::CONTENT_LENGTH
                     && name != hyper::header::CONTENT_TYPE
                 {
-                    req = req.header(name, value);
+                    req = req.header(name.as_str(), value.as_bytes());
                 }
             }
             if let Some(key) = api_key {
@@ -1514,7 +1529,7 @@ async fn handle_responses_request(
                 }
             };
 
-            let status = resp.status();
+            let status = to_hyper_status(resp.status());
             if !status.is_success() {
                 state.error_kind = Some(upstream_error_kind(state.backend));
                 state.upstream_status = Some(status.as_u16());
@@ -2902,17 +2917,17 @@ async fn inner_proxy_request<R: Runtime>(
             let mut upstream_req = local_client.get(&upstream);
             if !upstream_api_key.is_empty() {
                 upstream_req = upstream_req.header(
-                    hyper::header::AUTHORIZATION,
+                    reqwest::header::AUTHORIZATION,
                     format!("Bearer {upstream_api_key}"),
                 );
             }
 
             match upstream_req.send().await {
                 Ok(resp) => {
-                    let status = resp.status();
+                    let status = to_hyper_status(resp.status());
                     let content_type = resp
                         .headers()
-                        .get(hyper::header::CONTENT_TYPE)
+                        .get(reqwest::header::CONTENT_TYPE)
                         .and_then(|v| v.to_str().ok())
                         .unwrap_or("text/plain; version=0.0.4")
                         .to_string();
@@ -3120,11 +3135,11 @@ async fn inner_proxy_request<R: Runtime>(
     } else {
         &client
     };
-    let mut outbound_req = effective_client.request(method.clone(), upstream_url);
+    let mut outbound_req = effective_client.request(to_reqwest_method(&method), upstream_url);
 
     for (name, value) in headers.iter() {
         if name != hyper::header::HOST && name != hyper::header::AUTHORIZATION {
-            outbound_req = outbound_req.header(name, value);
+            outbound_req = outbound_req.header(name.as_str(), value.as_bytes());
         }
     }
 
@@ -3153,7 +3168,7 @@ async fn inner_proxy_request<R: Runtime>(
             // The client's `content-length` was forwarded verbatim in the
             // header loop above; leaving it would truncate the rewritten body.
             outbound_req =
-                outbound_req.header(hyper::header::CONTENT_LENGTH, rewritten.len().to_string());
+                outbound_req.header(reqwest::header::CONTENT_LENGTH, rewritten.len().to_string());
             buffered_body_for_req = Some(rewritten);
             injected_stream_usage = true;
         }
@@ -3188,7 +3203,7 @@ async fn inner_proxy_request<R: Runtime>(
     match outbound_req_with_body.send().await {
         Ok(response) => {
             emit_ttft_timing(&app_handle, "zetaUpstreamHeaders");
-            let status = response.status();
+            let status = to_hyper_status(response.status());
 
             let is_error = !status.is_success();
 
@@ -3260,7 +3275,7 @@ async fn inner_proxy_request<R: Runtime>(
                             && name != hyper::header::CONTENT_LENGTH
                             && name != hyper::header::ACCEPT_ENCODING
                         {
-                            fallback_req = fallback_req.header(name, value);
+                            fallback_req = fallback_req.header(name.as_str(), value.as_bytes());
                         }
                     }
                     if let Some(key) = fallback_api_key {
@@ -3273,7 +3288,7 @@ async fn inner_proxy_request<R: Runtime>(
                     let fallback_response = fallback_req.body(fallback_body_str).send().await;
 
                     if let Ok(res) = fallback_response {
-                        let fallback_status = res.status();
+                        let fallback_status = to_hyper_status(res.status());
 
                         if !fallback_status.is_success() {
                             state.error_kind = Some(upstream_error_kind(state.backend));
@@ -3301,9 +3316,9 @@ async fn inner_proxy_request<R: Runtime>(
                         let mut builder = Response::builder().status(fallback_status);
                         for (name, value) in res.headers() {
                             if !is_cors_header(name.as_str())
-                                && name != hyper::header::CONTENT_LENGTH
+                                && name != reqwest::header::CONTENT_LENGTH
                             {
-                                builder = builder.header(name, value);
+                                builder = builder.header(name.as_str(), value.as_bytes());
                             }
                         }
                         builder = add_cors_headers_with_host_and_origin(
@@ -3642,8 +3657,8 @@ async fn inner_proxy_request<R: Runtime>(
             let mut builder = Response::builder().status(status);
 
             for (name, value) in response.headers() {
-                if !is_cors_header(name.as_str()) && name != hyper::header::CONTENT_LENGTH {
-                    builder = builder.header(name, value);
+                if !is_cors_header(name.as_str()) && name != reqwest::header::CONTENT_LENGTH {
+                    builder = builder.header(name.as_str(), value.as_bytes());
                 }
             }
 
@@ -3659,7 +3674,7 @@ async fn inner_proxy_request<R: Runtime>(
             // actually sent, not on what the client asked for.
             let upstream_is_sse = response
                 .headers()
-                .get(hyper::header::CONTENT_TYPE)
+                .get(reqwest::header::CONTENT_TYPE)
                 .and_then(|v| v.to_str().ok())
                 .is_some_and(|ct| ct.starts_with("text/event-stream"));
 
