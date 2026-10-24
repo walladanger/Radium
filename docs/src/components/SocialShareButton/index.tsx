@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
+import { SITE_URL } from '@/lib/site'
 import {
   LinkedinShareButton,
   LinkedinIcon,
@@ -10,14 +10,9 @@ import {
 } from 'react-share'
 
 const SocialShareButton = () => {
-  const [url, setUrl] = useState('')
   const pathname = usePathname()
-
-  useEffect(() => {
-    if (window !== undefined) {
-      setUrl(window.location.origin + pathname)
-    }
-  }, [pathname])
+  // Share the canonical URL; it is known at build time, so no effect needed.
+  const url = SITE_URL + pathname
 
   return (
     <div className="mt-4 space-x-2">

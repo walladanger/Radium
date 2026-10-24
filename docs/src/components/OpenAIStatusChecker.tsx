@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
 
 interface StatusData {
   status:
@@ -68,116 +69,122 @@ const getStatusText = (status: string) => {
   }
 }
 
-export const OpenAIStatusChecker: React.FC = () => {
-  const [statusData, setStatusData] = useState<StatusData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+// Maps statuspage.io indicators to our status values.
+function mapOpenAIStatusClient(indicator: string): StatusData['status'] {
+  switch (indicator.toLowerCase()) {
+    case 'none':
+    case 'operational':
+      return 'operational'
+    case 'minor':
+      return 'degraded'
+    case 'major':
+      return 'partial_outage'
+    case 'critical':
+      return 'major_outage'
+    case 'maintenance':
+      return 'under_maintenance'
+    default:
+      return 'operational' as const // Default to operational
+  }
+}
 
-  const fetchStatus = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+type StatusResult = { data: StatusData; error: string | null }
 
-    try {
-      console.log('Fetching real OpenAI status...')
-
-      // Use CORS proxy to fetch real OpenAI status
-      const proxyUrl = 'https://api.allorigins.win/get?url='
-      const targetUrl = 'https://status.openai.com/api/v2/status.json'
-
-      const response = await fetch(proxyUrl + encodeURIComponent(targetUrl))
-
-      if (!response.ok) {
-        throw new Error(`Proxy returned ${response.status}`)
-      }
-
-      const proxyData = await response.json()
-      const openaiData = JSON.parse(proxyData.contents)
-
-      console.log('Real OpenAI data received:', openaiData)
-
-      // Transform real OpenAI data to our format
-      const transformedData: StatusData = {
+/**
+ * Fetches OpenAI's public status through a CORS proxy, with a second proxy
+ * and finally an "operational" fallback. Never rejects and touches no React
+ * state, so callers decide when (and whether) to apply the result.
+ */
+async function fetchOpenAIStatus(): Promise<StatusResult> {
+  try {
+    const proxyUrl = 'https://api.allorigins.win/get?url='
+    const targetUrl = 'https://status.openai.com/api/v2/status.json'
+    const response = await fetch(proxyUrl + encodeURIComponent(targetUrl))
+    if (!response.ok) {
+      throw new Error(`Proxy returned ${response.status}`)
+    }
+    const proxyData = await response.json()
+    const openaiData = JSON.parse(proxyData.contents)
+    return {
+      data: {
         status: mapOpenAIStatusClient(
           openaiData.status?.indicator || 'operational'
         ),
         lastUpdated: openaiData.page?.updated_at || new Date().toISOString(),
         incidents: (openaiData.incidents || []).slice(0, 3),
-      }
-
-      setStatusData(transformedData)
-      setLastRefresh(new Date())
-      console.log('✅ Real OpenAI status loaded successfully!')
-    } catch (err) {
-      console.error('Failed to fetch real status:', err)
-
-      // Fallback: try alternative proxy
-      try {
-        console.log('Trying alternative proxy...')
-        const altResponse = await fetch(
-          `https://cors-anywhere.herokuapp.com/https://status.openai.com/api/v2/summary.json`
-        )
-
-        if (altResponse.ok) {
-          const altData = await altResponse.json()
-          setStatusData({
-            status: mapOpenAIStatusClient(
-              altData.status?.indicator || 'operational'
-            ),
-            lastUpdated: new Date().toISOString(),
-            incidents: [],
-          })
-          setLastRefresh(new Date())
-          console.log('✅ Alternative proxy worked!')
-          return
-        }
-      } catch (altErr) {
-        console.log('Alternative proxy also failed')
-      }
-
-      // Final fallback
-      setError('Unable to fetch real-time status')
-      setStatusData({
-        status: 'operational' as const,
-        lastUpdated: new Date().toISOString(),
-        incidents: [],
-      })
-      setLastRefresh(new Date())
-      console.log('Using fallback status')
-    } finally {
-      setLoading(false)
+      },
+      error: null,
     }
-  }, [])
-
-  // Client-side status mapping function
-  const mapOpenAIStatusClient = (indicator: string): StatusData['status'] => {
-    switch (indicator.toLowerCase()) {
-      case 'none':
-      case 'operational':
-        return 'operational'
-      case 'minor':
-        return 'degraded'
-      case 'major':
-        return 'partial_outage'
-      case 'critical':
-        return 'major_outage'
-      case 'maintenance':
-        return 'under_maintenance'
-      default:
-        return 'operational' as const // Default to operational
-    }
+  } catch (err) {
+    console.error('Failed to fetch real status:', err)
   }
+
+  try {
+    const altResponse = await fetch(
+      `https://cors-anywhere.herokuapp.com/https://status.openai.com/api/v2/summary.json`
+    )
+    if (altResponse.ok) {
+      const altData = await altResponse.json()
+      return {
+        data: {
+          status: mapOpenAIStatusClient(
+            altData.status?.indicator || 'operational'
+          ),
+          lastUpdated: new Date().toISOString(),
+          incidents: [],
+        },
+        error: null,
+      }
+    }
+  } catch {
+    console.log('Alternative proxy also failed')
+  }
+
+  return {
+    data: {
+      status: 'operational' as const,
+      lastUpdated: new Date().toISOString(),
+      incidents: [],
+    },
+    error: 'Unable to fetch real-time status',
+  }
+}
+
+export const OpenAIStatusChecker: React.FC = () => {
+  const [statusData, setStatusData] = useState<StatusData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  // Bumped by the refresh button and the timer; each bump refetches.
+  const [refreshCount, setRefreshCount] = useState(0)
 
   useEffect(() => {
-    fetchStatus()
-    // Refresh every 2 minutes for more real-time updates
-    const interval = setInterval(fetchStatus, 2 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [fetchStatus])
+    let cancelled = false
+    fetchOpenAIStatus().then(({ data, error }) => {
+      if (cancelled) return
+      setStatusData(data)
+      setError(error)
+      setLastRefresh(new Date())
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [refreshCount])
 
-  const handleRefresh = () => {
-    fetchStatus()
-  }
+  const refreshStatus = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    setRefreshCount((n) => n + 1)
+  }, [])
+
+  useEffect(() => {
+    // Refresh every 2 minutes for more real-time updates
+    const interval = setInterval(refreshStatus, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [refreshStatus])
+
+  const handleRefresh = refreshStatus
 
   if (loading && !statusData) {
     return (
@@ -273,12 +280,12 @@ export const OpenAIStatusChecker: React.FC = () => {
           : '🟢 Real-time data from OpenAI • '}
         Updated: {new Date(lastRefresh).toLocaleTimeString()}
         <br />
-        <a
+        <Link
           href="/post/is-chatgpt-down-use-jan#-is-chatgpt-down"
           className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
         >
           View detailed status guide
-        </a>
+        </Link>
       </div>
     </div>
   )

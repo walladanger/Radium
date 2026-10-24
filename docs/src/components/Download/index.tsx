@@ -2,6 +2,7 @@
 
 import { useData } from '@/lib/ssg/context'
 import CardDownload from './CardDownload'
+import Link from 'next/link'
 
 const Download = () => {
   const { lastRelease } = useData()
@@ -18,18 +19,18 @@ const Download = () => {
           <CardDownload lastRelease={lastRelease} />
         </div>
         <div className="my-14">
-          <a
+          <Link
             href="/docs"
             className="text-blue-600 dark:text-blue-400 cursor-pointer pr-4 border-r border-black/40 dark:border-white/40 mr-4 inline-block rounded-none"
           >
             Installation Guide
-          </a>
-          <a
+          </Link>
+          <Link
             href="/changelog"
             className="text-blue-600 dark:text-blue-400 cursor-pointer"
           >
             Changelog
-          </a>
+          </Link>
         </div>
       </div>
     </div>

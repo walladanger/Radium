@@ -8,7 +8,6 @@ import { createContext, useContext, type ReactNode } from 'react'
  * from `nextra/data`; with the App Router the data is loaded by an async
  * server component and handed to the client tree through this context.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SSGDataContext = createContext<any>(undefined)
 
 export function SSGDataProvider({

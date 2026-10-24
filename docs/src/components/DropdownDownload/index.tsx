@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FaWindows, FaApple, FaLinux } from 'react-icons/fa'
 import { IconType } from 'react-icons/lib'
 import { IoChevronDownOutline } from 'react-icons/io5'
 import { useClickOutside } from '@/hooks/useClickOutside'
 import { twMerge } from 'tailwind-merge'
 import { formatFileSize } from '@/utils/format'
+import { usePlatform, type Platform } from '@/hooks/usePlatform'
 
 type Props = {
   lastRelease: any
@@ -18,12 +19,6 @@ type SystemType = {
   fileFormat: string
   href?: string
   size?: string
-}
-
-type GpuInfo = {
-  renderer: string
-  vendor: string
-  type: string
 }
 
 const systemsTemplate: SystemType[] = [
@@ -49,115 +44,36 @@ const systemsTemplate: SystemType[] = [
   },
 ]
 
-const DropdownDownload = ({ lastRelease }: Props) => {
-  const [systems, setSystems] = useState(systemsTemplate)
-  const [defaultSystem, setDefaultSystem] = useState(systems[0])
-  const [open, setOpen] = useState(false)
-  const [gpuInfo, setGpuInfo] = useState<GpuInfo>({
-    renderer: '',
-    vendor: '',
-    type: '',
+/** Fills in each system's download link and size from the latest release. */
+function withReleaseLinks(lastRelease: any): SystemType[] {
+  if (!lastRelease?.tag_name) return systemsTemplate
+  const tag = lastRelease.tag_name.startsWith('v')
+    ? lastRelease.tag_name.substring(1)
+    : lastRelease.tag_name
+  return systemsTemplate.map((system) => {
+    const fileName = system.fileFormat.replace('{tag}', tag)
+    const asset = lastRelease.assets?.find(
+      (asset: any) => asset.name === fileName
+    )
+    return {
+      ...system,
+      href: `https://github.com/janhq/jan/releases/download/${lastRelease.tag_name}/${fileName}`,
+      size: asset ? formatFileSize(asset.size) : undefined,
+    }
   })
+}
 
-  const changeDefaultSystem = useCallback(async (systems: SystemType[]) => {
-    const userAgent = navigator.userAgent
-    if (userAgent.includes('Windows')) {
-      // windows user
-      setDefaultSystem(systems[1])
-    } else if (userAgent.includes('Linux')) {
-      // linux user
-      setDefaultSystem(systems[3])
-    } else if (userAgent.includes('Mac OS')) {
-      setDefaultSystem(systems[0])
-    } else {
-      setDefaultSystem(systems[1])
-    }
-  }, [])
+// Index into systemsTemplate offered as the main button for each OS.
+const DEFAULT_SYSTEM_INDEX: Record<Platform, number> = {
+  mac: 0,
+  windows: 1,
+  linux: 3,
+}
 
-  function getUnmaskedInfo(gl: WebGLRenderingContext): {
-    renderer: string
-    vendor: string
-  } {
-    const unMaskedInfo = {
-      renderer: '',
-      vendor: '',
-    }
-    const dbgRenderInfo = gl.getExtension('WEBGL_debug_renderer_info')
-    if (dbgRenderInfo) {
-      unMaskedInfo.renderer = gl.getParameter(
-        dbgRenderInfo.UNMASKED_RENDERER_WEBGL
-      )
-      unMaskedInfo.vendor = gl.getParameter(dbgRenderInfo.UNMASKED_VENDOR_WEBGL)
-    }
-
-    return unMaskedInfo
-  }
-
-  function detectGPU() {
-    const canvas = document.createElement('canvas')
-    const gl =
-      canvas.getContext('webgl') ||
-      (canvas.getContext('experimental-webgl') as WebGLRenderingContext)
-    if (gl) {
-      const gpuInfo = getUnmaskedInfo(gl)
-
-      let gpuType = 'Unknown GPU vendor or renderer.'
-      if (gpuInfo.renderer.includes('Apple')) {
-        gpuType = 'Apple Silicon'
-      } else if (
-        gpuInfo.renderer.includes('Intel') ||
-        gpuInfo.vendor.includes('Intel')
-      ) {
-        gpuType = 'Intel'
-      }
-      setGpuInfo({
-        renderer: gpuInfo.renderer,
-        vendor: gpuInfo.vendor,
-        type: gpuType,
-      })
-    } else {
-      setGpuInfo({
-        renderer: 'N/A',
-        vendor: 'N/A',
-        type: 'Unable to initialize WebGL.',
-      })
-    }
-  }
-
-  useEffect(() => {
-    const updateDownloadLinks = async () => {
-      try {
-        const tag = lastRelease.tag_name.startsWith('v')
-          ? lastRelease.tag_name.substring(1)
-          : lastRelease.tag_name
-
-        const updatedSystems = systems.map((system) => {
-          const downloadUrl = system.fileFormat.replace('{tag}', tag)
-
-          // Find the corresponding asset to get the file size
-          const asset = lastRelease.assets.find(
-            (asset: any) => asset.name === downloadUrl
-          )
-
-          return {
-            ...system,
-            href: `https://github.com/janhq/jan/releases/download/${lastRelease.tag_name}/${downloadUrl}`,
-            size: asset ? formatFileSize(asset.size) : undefined,
-          }
-        })
-        setSystems(updatedSystems)
-        changeDefaultSystem(updatedSystems)
-      } catch (error) {
-        console.error('Failed to update download links:', error)
-      }
-    }
-
-    if (gpuInfo.type.length === 0) {
-      detectGPU()
-    }
-    updateDownloadLinks()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gpuInfo])
+const DropdownDownload = ({ lastRelease }: Props) => {
+  const systems = useMemo(() => withReleaseLinks(lastRelease), [lastRelease])
+  const defaultSystem = systems[DEFAULT_SYSTEM_INDEX[usePlatform()]]
+  const [open, setOpen] = useState(false)
 
   const [menu, setMenu] = useState<HTMLButtonElement | null>(null)
 

@@ -26,6 +26,5 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 #@v2.2.0
       - run: bun install --frozen-lockfile
-      # `bun run lint` is not run yet: the Next 16 ESLint rules flag 12
-      # pre-existing component issues, tracked as a follow-up.
+      - run: bun run lint
       - run: bun run build

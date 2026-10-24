@@ -19,7 +19,6 @@ export const APIReference = () => {
     } else {
       localStorage.setItem('isDark', 'false')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme, resolvedTheme])
 
   return (
