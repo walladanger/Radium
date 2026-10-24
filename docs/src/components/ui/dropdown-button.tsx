@@ -5,6 +5,7 @@ import { Button } from './button'
 import { cn } from '@/lib/utils'
 import { FaApple, FaWindows, FaLinux } from 'react-icons/fa'
 import { formatFileSize } from '@/utils/format'
+import { usePlatform, type Platform } from '@/hooks/usePlatform'
 
 interface DownloadOption {
   id: string
@@ -54,6 +55,32 @@ const fileFormatMap: { [key: string]: string } = {
   'linux-deb': 'Jan_{tag}_amd64.deb',
 }
 
+/** Fills in each option's download link and size from the latest release. */
+function withReleaseLinks(lastRelease: any): DownloadOption[] {
+  if (!lastRelease?.tag_name) return downloadOptionsTemplate
+  const tag = lastRelease.tag_name.startsWith('v')
+    ? lastRelease.tag_name.substring(1)
+    : lastRelease.tag_name
+  return downloadOptionsTemplate.map((option) => {
+    const fileName = fileFormatMap[option.id].replace('{tag}', tag)
+    const asset = lastRelease.assets?.find(
+      (asset: any) => asset.name === fileName
+    )
+    return {
+      ...option,
+      href: `https://github.com/janhq/jan/releases/download/${lastRelease.tag_name}/${fileName}`,
+      size: asset ? formatFileSize(asset.size) : 'N/A',
+    }
+  })
+}
+
+// Option offered first for each OS (Linux users get the .deb).
+const DEFAULT_OPTION_ID: Record<Platform, string> = {
+  mac: 'mac',
+  windows: 'windows',
+  linux: 'linux-deb',
+}
+
 interface DropdownButtonProps {
   size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon' | 'xxl'
   className?: string
@@ -68,72 +95,25 @@ export function DropdownButton({
   lastRelease,
 }: DropdownButtonProps) {
   const [isOpen, setIsOpen] = React.useState(false)
-  const [downloadOptions, setDownloadOptions] = React.useState(
-    downloadOptionsTemplate
+  const downloadOptions = React.useMemo(
+    () => withReleaseLinks(lastRelease),
+    [lastRelease]
   )
-  const [currentOption, setCurrentOption] = React.useState(
-    downloadOptions.find((opt) => opt.isActive) || downloadOptions[0]
-  )
+  // null until the visitor picks an option; until then follow their OS.
+  const [selectedId, setSelectedId] = React.useState<string | null>(null)
+  const platform = usePlatform()
+  const currentOption =
+    downloadOptions.find(
+      (opt) => opt.id === (selectedId ?? DEFAULT_OPTION_ID[platform])
+    ) ?? downloadOptions[0]
   const dropdownRef = React.useRef<HTMLDivElement>(null)
 
   const toggleDropdown = () => setIsOpen(!isOpen)
 
   const selectOption = (option: DownloadOption) => {
-    setCurrentOption(option)
+    setSelectedId(option.id)
     setIsOpen(false)
   }
-
-  const changeDefaultSystem = React.useCallback((systems: DownloadOption[]) => {
-    const userAgent = navigator.userAgent
-    if (userAgent.includes('Windows')) {
-      // windows user
-      const windowsOption = systems.find((opt) => opt.id === 'windows')
-      if (windowsOption) setCurrentOption(windowsOption)
-    } else if (userAgent.includes('Linux')) {
-      // linux user - prefer deb package
-      const linuxOption = systems.find((opt) => opt.id === 'linux-deb')
-      if (linuxOption) setCurrentOption(linuxOption)
-    } else if (userAgent.includes('Mac OS')) {
-      // mac user - always use universal build
-      const macOption = systems.find((opt) => opt.id === 'mac')
-      if (macOption) setCurrentOption(macOption)
-    } else {
-      // fallback to windows
-      const windowsOption = systems.find((opt) => opt.id === 'windows')
-      if (windowsOption) setCurrentOption(windowsOption)
-    }
-  }, [])
-
-  React.useEffect(() => {
-    if (lastRelease) {
-      try {
-        const tag = lastRelease.tag_name.startsWith('v')
-          ? lastRelease.tag_name.substring(1)
-          : lastRelease.tag_name
-
-        const updatedOptions = downloadOptionsTemplate.map((option) => {
-          const fileFormat = fileFormatMap[option.id]
-          const fileName = fileFormat.replace('{tag}', tag)
-
-          // Find the corresponding asset to get the file size
-          const asset = lastRelease.assets.find(
-            (asset: any) => asset.name === fileName
-          )
-
-          return {
-            ...option,
-            href: `https://github.com/janhq/jan/releases/download/${lastRelease.tag_name}/${fileName}`,
-            size: asset ? formatFileSize(asset.size) : 'N/A',
-          }
-        })
-
-        setDownloadOptions(updatedOptions)
-        changeDefaultSystem(updatedOptions)
-      } catch (error) {
-        console.error('Failed to update download links:', error)
-      }
-    }
-  }, [lastRelease, changeDefaultSystem])
 
   React.useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {

@@ -9,6 +9,7 @@ import { FiDownload } from 'react-icons/fi'
 import { FaXTwitter, FaLinkedinIn } from 'react-icons/fa6'
 import { Button } from './ui/button'
 import LogoJanSVG from '@/assets/icons/logo-jan.svg'
+import Link from 'next/link'
 
 const MENU_ITEMS = [
   { name: 'Docs', href: '/docs' },
@@ -64,14 +65,14 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
     >
       <div className="flex nextra-wrap-container w-full mx-auto h-full justify-between items-center">
         <div>
-          <a href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <img src={LogoJanSVG.src} alt="Jan" className="w-6 h-6" />
             <span
               className={cn('text-xl font-bold', !isLanding && 'text-black!')}
             >
               Jan
             </span>
-          </a>
+          </Link>
         </div>
 
         {/* Desktop Navigation */}
