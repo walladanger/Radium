@@ -140,9 +140,39 @@ describe('deleteBackendPack', () => {
     expect(fs.rm).not.toHaveBeenCalled()
   })
 
+  /**
+   * A tiny in-memory backends tree so the tests assert what is left on disk
+   * after deletion, not just which fs calls were made.
+   */
+  function fakeDisk(paths: string[]) {
+    const disk = new Set(paths)
+    vi.mocked(fs.existsSync).mockImplementation(async (p: string) =>
+      disk.has(p)
+    )
+    vi.mocked(fs.readdirSync).mockImplementation(async (dir: string) =>
+      [...disk]
+        .filter((p) => p.startsWith(`${dir}/`))
+        .map((p) => p.slice(dir.length + 1))
+        .filter((rest) => !rest.includes('/'))
+    )
+    vi.mocked(fs.rm).mockImplementation(async (target: string) => {
+      for (const p of [...disk]) {
+        if (p === target || p.startsWith(`${target}/`)) disk.delete(p)
+      }
+    })
+    return disk
+  }
+
+  const otherVersion = `${ROOT}/llamacpp/backends/b2-1.1.0`
+
   it('removes the build and the version dir it leaves empty', async () => {
-    vi.mocked(fs.existsSync).mockResolvedValue(true)
-    vi.mocked(fs.readdirSync).mockResolvedValue([])
+    const disk = fakeDisk([
+      versionDir,
+      backendDir,
+      `${backendDir}/build/bin/llama-server`,
+      otherVersion,
+      `${otherVersion}/linux-x64-cpu`,
+    ])
 
     await deleteBackendPack(
       'llamacpp',
@@ -151,26 +181,30 @@ describe('deleteBackendPack', () => {
       'linux-x64-vulkan'
     )
 
-    expect(fs.rm).toHaveBeenNthCalledWith(1, backendDir)
-    expect(fs.rm).toHaveBeenNthCalledWith(2, versionDir)
+    expect([...disk]).toEqual([otherVersion, `${otherVersion}/linux-x64-cpu`])
   })
 
   it('keeps a version dir that still holds other builds', async () => {
-    vi.mocked(fs.existsSync).mockResolvedValue(true)
-    vi.mocked(fs.readdirSync).mockResolvedValue(['linux-x64-cpu'])
+    const disk = fakeDisk([
+      versionDir,
+      backendDir,
+      `${backendDir}/build/bin/llama-server`,
+      `${versionDir}/linux-x64-cpu`,
+    ])
 
     await deleteBackendPack('llamacpp', '', 'b1-1.0.0', 'linux-x64-vulkan')
 
-    expect(fs.rm).toHaveBeenCalledTimes(1)
-    expect(fs.rm).toHaveBeenCalledWith(backendDir)
+    expect([...disk]).toEqual([versionDir, `${versionDir}/linux-x64-cpu`])
   })
 
   it('is a no-op when the build and its version dir are already gone', async () => {
-    vi.mocked(fs.existsSync).mockResolvedValue(false)
+    const disk = fakeDisk([otherVersion])
 
-    await deleteBackendPack('llamacpp', '', 'b1-1.0.0', 'linux-x64-vulkan')
+    await expect(
+      deleteBackendPack('llamacpp', '', 'b1-1.0.0', 'linux-x64-vulkan')
+    ).resolves.toBeUndefined()
 
-    expect(fs.readdirSync).not.toHaveBeenCalled()
+    expect([...disk]).toEqual([otherVersion])
     expect(fs.rm).not.toHaveBeenCalled()
   })
 })
