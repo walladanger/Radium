@@ -1,3 +1,5 @@
+'use client'
+
 import ThemeImage from '@/components/ThemeImage'
 import { useState } from 'react'
 // import { BsArrowRight } from 'react-icons/bs'
@@ -61,7 +63,7 @@ const Feature = () => {
         <div className="w-full mx-auto relative py-8 lg:pt-24">
           <div className="flex p-4 lg:px-0 lg:justify-between flex-col lg:flex-row items-center">
             <div className="w-full text-center lg:text-left">
-              <h1 className="text-5xl lg:text-7xl !font-normal leading-tight lg:leading-tight mt-2 font-serif">
+              <h1 className="text-5xl lg:text-7xl font-normal! leading-tight lg:leading-tight mt-2 font-serif">
                 Features
               </h1>
             </div>

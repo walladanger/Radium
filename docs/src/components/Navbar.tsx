@@ -1,6 +1,8 @@
+'use client'
+
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
+import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { FaDiscord, FaGithub } from 'react-icons/fa'
 import { FiDownload } from 'react-icons/fi'
@@ -16,10 +18,9 @@ const MENU_ITEMS = [
 ]
 
 const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
-  const router = useRouter()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const currentPath = router.asPath
+  const currentPath = usePathname()
 
   const isLanding = currentPath === '/'
 
@@ -54,7 +55,7 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
     <div
       className={cn(
         'h-[100px] w-full top-0 z-50 transition-all duration-300 border-b lg:px-6 left-0',
-        isLanding ? 'fixed' : 'sticky !border-opacity-100 !top-0',
+        isLanding ? 'fixed' : 'sticky !border-opacity-100 top-0!',
         isScrolled || noScroll
           ? 'bg-white text-black h-[60px] border-border'
           : 'bg-transparent text-white h-[60px] border-gray-100 border-opacity-10 top-4'
@@ -66,7 +67,7 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
           <a href="/" className="flex items-center gap-2">
             <img src={LogoJanSVG.src} alt="Jan" className="w-6 h-6" />
             <span
-              className={cn('text-xl font-bold', !isLanding && '!text-black')}
+              className={cn('text-xl font-bold', !isLanding && 'text-black!')}
             >
               Jan
             </span>
@@ -84,7 +85,7 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
                     href={item.href}
                     className={cn(
                       'hover:opacity-70 transition-opacity',
-                      !isLanding && '!text-black',
+                      !isLanding && 'text-black!',
                       isActive && 'text-blue-600 font-semibold'
                     )}
                   >
@@ -103,7 +104,7 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
                   className={cn(
                     'text-base',
                     !isLanding &&
-                      '!bg-black !text-white !hover:bg-black !hover:text-white',
+                      'bg-black! text-white! !hover:bg-black !hover:text-white',
                     isScrolled || noScroll
                       ? 'bg-black text-white hover:bg-black hover:text-white'
                       : 'bg-white text-black hover:bg-white hover:text-black'
@@ -115,7 +116,7 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
             </li>
 
             <li>
-              <div className={cn('flex gap-4', !isLanding && '!text-black')}>
+              <div className={cn('flex gap-4', !isLanding && 'text-black!')}>
                 <a
                   href="https://discord.com/invite/FTk2MvZwJH"
                   target="_blank"
@@ -164,7 +165,7 @@ const Navbar = ({ noScroll }: { noScroll?: boolean }) => {
               size="sm"
               className={cn(
                 !isLanding &&
-                  '!bg-black !text-white !hover:bg-black !hover:text-white',
+                  'bg-black! text-white! !hover:bg-black !hover:text-white',
                 isScrolled || noScroll
                   ? 'bg-black text-white hover:bg-gray-800'
                   : 'bg-white text-black hover:bg-gray-100'

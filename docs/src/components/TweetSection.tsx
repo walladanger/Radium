@@ -1,3 +1,5 @@
+'use client'
+
 import { ClientTweetCard } from '@/components/ui/tweet-card'
 import { useEffect } from 'react'
 
@@ -44,13 +46,13 @@ export default function TweetSection() {
   }, [])
 
   return (
-    <div className="space-y-4 !font-inter">
+    <div className="space-y-4 font-inter!">
       {/* Scrollable marquee container */}
       <div className="tweet-marquee-container overflow-x-auto overflow-y-hidden">
         <div className="tweet-marquee flex gap-6 items-start">
           {/* Multiple copies for infinite scroll */}
           {[...Tweets, ...Tweets, ...Tweets].map((tweet, index) => (
-            <div key={`${tweet.id}-${index}`} className="flex-shrink-0 w-80">
+            <div key={`${tweet.id}-${index}`} className="shrink-0 w-80">
               <ClientTweetCard id={tweet.id} />
             </div>
           ))}

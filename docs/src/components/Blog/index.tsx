@@ -1,4 +1,6 @@
-import { useData } from 'nextra/data'
+'use client'
+
+import { useData } from '@/lib/ssg/context'
 import { format } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -101,7 +103,7 @@ const Blog = () => {
                       className="border-l dark:nx-border-neutral-800 w-full cursor-pointer"
                     >
                       <div className="flex gap-8 items-start w-full">
-                        <div className="w-2 h-2 relative -left-1 bg-blue-500 rounded-full flex-shrink-0" />
+                        <div className="w-2 h-2 relative -left-1 bg-blue-500 rounded-full shrink-0" />
                         <div className="pb-14 w-full -mt-2">
                           <div className="w-full pb-4 px-8 rounded-lg flex flex-col lg:flex-row justify-between">
                             <div>

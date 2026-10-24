@@ -1,3 +1,5 @@
+'use client'
+
 /* eslint-disable @next/next/no-img-element */
 import { Suspense } from 'react'
 import { FaXTwitter } from 'react-icons/fa6'
@@ -18,7 +20,7 @@ interface TwitterIconProps {
   [key: string]: unknown
 }
 const Twitter = ({ className, ...props }: TwitterIconProps) => (
-  <FaXTwitter className={cn('!text-black', className)} {...props} />
+  <FaXTwitter className={cn('text-black!', className)} {...props} />
 )
 
 const Verified = ({ className, ...props }: TwitterIconProps) => (
@@ -134,7 +136,7 @@ export const TweetHeader = ({ tweet }: { tweet: EnrichedTweet }) => (
 )
 
 export const TweetBody = ({ tweet }: { tweet: EnrichedTweet }) => (
-  <div className="break-words leading-normal tracking-tighter">
+  <div className="wrap-break-word leading-normal tracking-tighter">
     {tweet.entities.map((entity, idx) => {
       switch (entity.type) {
         case 'url':
@@ -176,7 +178,7 @@ export const TweetMedia = ({ tweet }: { tweet: EnrichedTweet }) => {
           loop
           muted
           playsInline
-          className="rounded-xl border shadow-sm"
+          className="rounded-xl border shadow-xs"
         >
           <source src={tweet.video.variants[0].src} type="video/mp4" />
           Your browser does not support the video tag.
@@ -191,7 +193,7 @@ export const TweetMedia = ({ tweet }: { tweet: EnrichedTweet }) => {
               src={photo.url}
               title={'Photo by ' + tweet.user.name}
               alt={tweet.text}
-              className="h-64 w-5/6 shrink-0 snap-center snap-always rounded-xl border object-cover shadow-sm"
+              className="h-64 w-5/6 shrink-0 snap-center snap-always rounded-xl border object-cover shadow-xs"
             />
           ))}
           <div className="shrink-0 snap-center sm:w-2" />
@@ -206,7 +208,7 @@ export const TweetMedia = ({ tweet }: { tweet: EnrichedTweet }) => {
               // @ts-ignore
               tweet.card.binding_values.thumbnail_image_large.image_value.url
             }
-            className="h-64 rounded-xl border object-cover shadow-sm"
+            className="h-64 rounded-xl border object-cover shadow-xs"
             alt={tweet.text}
           />
         )}
@@ -228,7 +230,7 @@ export const MagicTweet = ({
   return (
     <div
       className={cn(
-        'relative flex w-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg border p-4 backdrop-blur-md font-inter !tracking-normal hover:bg-neutral-50',
+        'relative flex w-full max-w-lg flex-col gap-2 overflow-hidden rounded-lg border p-4 backdrop-blur-md font-inter tracking-normal! hover:bg-neutral-50',
         className
       )}
       {...props}

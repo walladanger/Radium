@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect, useCallback } from 'react'
 import { AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react'
 

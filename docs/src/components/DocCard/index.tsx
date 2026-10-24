@@ -17,7 +17,7 @@ export function DocCard({ title, href, icon, iconClassName, children }: DocCardP
     <Component
       href={href}
       {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className="group flex flex-col gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-neutral-900 p-5 hover:border-black/25 dark:hover:border-white/25 hover:shadow-sm transition-all no-underline"
+      className="group flex flex-col gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-neutral-900 p-5 hover:border-black/25 dark:hover:border-white/25 hover:shadow-xs transition-all no-underline"
     >
       {icon && (
         <div className={`mb-1 text-black/50 dark:text-white/50 ${iconClassName ?? ''}`}>{icon}</div>
