@@ -28,7 +28,7 @@
   ],
   "dependencies": {
     "@janhq/core": "../../core/package.tgz",
-    "@tauri-apps/api": "2.8.0"
+    "@tauri-apps/api": "2.12.4"
   },
   "bundleDependencies": [],
   "installConfig": {

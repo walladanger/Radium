@@ -299,7 +299,7 @@ __metadata:
   resolution: "@janhq/download-extension@workspace:download-extension"
   dependencies:
     "@janhq/core": ../../core/package.tgz
-    "@tauri-apps/api": "npm:2.8.0"
+    "@tauri-apps/api": "npm:2.12.4"
     cpx2: "npm:9.0.3"
     rimraf: "npm:6.0.1"
     rolldown: "npm:1.0.0-beta.1"
@@ -316,9 +316,9 @@ __metadata:
   dependencies:
     "@janhq/core": ../../core/package.tgz
     "@janhq/tauri-plugin-foundation-models-api": "link:../../src-tauri/plugins/tauri-plugin-foundation-models"
-    "@tauri-apps/api": "npm:2.8.0"
-    "@tauri-apps/plugin-http": "npm:2.5.0"
-    "@tauri-apps/plugin-log": "npm:^2.6.0"
+    "@tauri-apps/api": "npm:2.12.4"
+    "@tauri-apps/plugin-http": "npm:2.8.3"
+    "@tauri-apps/plugin-log": "npm:^2.10.1"
     cpx2: "npm:9.0.3"
     rimraf: "npm:3.0.2"
     rolldown: "npm:1.0.0-beta.1"
@@ -333,9 +333,9 @@ __metadata:
     "@janhq/core": ../../core/package.tgz
     "@janhq/tauri-plugin-hardware-api": "link:../../src-tauri/plugins/tauri-plugin-hardware"
     "@janhq/tauri-plugin-llamacpp-api": "link:../../src-tauri/plugins/tauri-plugin-llamacpp"
-    "@tauri-apps/api": "npm:2.8.0"
-    "@tauri-apps/plugin-http": "npm:2.5.0"
-    "@tauri-apps/plugin-log": "npm:^2.6.0"
+    "@tauri-apps/api": "npm:2.12.4"
+    "@tauri-apps/plugin-http": "npm:2.8.3"
+    "@tauri-apps/plugin-log": "npm:^2.10.1"
     "@vitest/coverage-v8": "npm:5.0.5"
     "@vitest/ui": "npm:5.0.5"
     cpx2: "npm:9.0.3"
@@ -358,9 +358,9 @@ __metadata:
     "@janhq/core": ../../core/package.tgz
     "@janhq/tauri-plugin-hardware-api": "link:../../src-tauri/plugins/tauri-plugin-hardware"
     "@janhq/tauri-plugin-llamacpp-upstream-api": "link:../../src-tauri/plugins/tauri-plugin-llamacpp-upstream"
-    "@tauri-apps/api": "npm:2.8.0"
-    "@tauri-apps/plugin-http": "npm:2.5.0"
-    "@tauri-apps/plugin-log": "npm:^2.6.0"
+    "@tauri-apps/api": "npm:2.12.4"
+    "@tauri-apps/plugin-http": "npm:2.8.3"
+    "@tauri-apps/plugin-log": "npm:^2.10.1"
     "@vitest/coverage-v8": "npm:5.0.5"
     "@vitest/ui": "npm:5.0.5"
     cpx2: "npm:9.0.3"
@@ -383,9 +383,9 @@ __metadata:
     "@janhq/core": ../../core/package.tgz
     "@janhq/tauri-plugin-llamacpp-api": "link:../../src-tauri/plugins/tauri-plugin-llamacpp"
     "@janhq/tauri-plugin-mlx-api": "link:../../src-tauri/plugins/tauri-plugin-mlx"
-    "@tauri-apps/api": "npm:2.8.0"
-    "@tauri-apps/plugin-http": "npm:2.5.0"
-    "@tauri-apps/plugin-log": "npm:^2.6.0"
+    "@tauri-apps/api": "npm:2.12.4"
+    "@tauri-apps/plugin-http": "npm:2.8.3"
+    "@tauri-apps/plugin-log": "npm:^2.10.1"
     cpx2: "npm:9.0.3"
     jsdom: "npm:26.1.0"
     rimraf: "npm:3.0.2"
@@ -737,28 +737,28 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tauri-apps/api@npm:2.8.0, @tauri-apps/api@npm:^2.6.0, @tauri-apps/api@npm:^2.8.0":
-  version: 2.8.0
-  resolution: "@tauri-apps/api@npm:2.8.0"
-  checksum: 10c0/fb111e4d7572372997b440ebe6879543fa8c4765151878e3fddfbfe809b18da29eed142ce83061d14a9ca6d896b3266dc8a4927c642d71cdc0b4277dc7e3aabf
+"@tauri-apps/api@npm:2.12.4, @tauri-apps/api@npm:^2.12.0":
+  version: 2.12.4
+  resolution: "@tauri-apps/api@npm:2.12.4"
+  checksum: 10c0/4a5c492d17999dc393be617978aed52c133d999575e251f0166cd9f6838941a207b9302c153104dfe83b0f97a8bdc5fda8574dfee40eed457e551b1c6ca4f061
   languageName: node
   linkType: hard
 
-"@tauri-apps/plugin-http@npm:2.5.0":
-  version: 2.5.0
-  resolution: "@tauri-apps/plugin-http@npm:2.5.0"
+"@tauri-apps/plugin-http@npm:2.8.3":
+  version: 2.8.3
+  resolution: "@tauri-apps/plugin-http@npm:2.8.3"
   dependencies:
-    "@tauri-apps/api": "npm:^2.6.0"
-  checksum: 10c0/eed47bb2adf012cde4409c4decae30e6b759f5828cb959cf43fc34c5fdfe68e6670f14f1134c8c4c941bc3fdb00e312772ebd72ec94e15c56ed1b7fbd47dd91c
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/306401227844daf21f16c550becb939f962aba0d69081e528a4b8523afb78551b9c18704a5ff1e10baf5ca18b46a1a2c0a6b4c0306c3cee130cf4e016219f1b2
   languageName: node
   linkType: hard
 
-"@tauri-apps/plugin-log@npm:^2.6.0":
-  version: 2.7.0
-  resolution: "@tauri-apps/plugin-log@npm:2.7.0"
+"@tauri-apps/plugin-log@npm:^2.10.1":
+  version: 2.10.1
+  resolution: "@tauri-apps/plugin-log@npm:2.10.1"
   dependencies:
-    "@tauri-apps/api": "npm:^2.8.0"
-  checksum: 10c0/c699710898a666ebc888ec8b2a3f36d5887e5cc06f8c69e9b404438407f6a0df19840e00732a3651aa83ba5f056cba403a5a14c556d3097368e143bfe995b1a8
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/23fc665cf7b5839d21265a7c2cbf6505a119e5078d9abafdd5e138604cd8d4881f3b2035b1dc01c43cc7dcc9e4cd0f8c43cfd80fdaf9443585d716ebb5580ff8
   languageName: node
   linkType: hard
 

@@ -47,21 +47,24 @@ impl IpcTestHarness {
         command: &str,
         args: Value,
     ) -> Result<T, Value> {
-        get_ipc_response(&self.webview, invoke_request(command, args)).and_then(|body| {
+        // Invoke from the webview's own app URL so the request is treated as a
+        // local origin on every platform (`tauri://localhost` on macOS/Linux,
+        // `http://tauri.localhost` on Windows). Tauri >= 2.12 rejects custom
+        // commands from remote origins, which a hard-coded URL would be.
+        let origin = self.webview.url().expect("IPC test webview has no URL");
+        get_ipc_response(&self.webview, invoke_request(command, args, origin)).and_then(|body| {
             body.deserialize::<T>()
                 .map_err(|error| Value::String(error.to_string()))
         })
     }
 }
 
-fn invoke_request(command: &str, args: Value) -> InvokeRequest {
+fn invoke_request(command: &str, args: Value, url: tauri::Url) -> InvokeRequest {
     InvokeRequest {
         cmd: command.to_string(),
         callback: CallbackFn(0),
         error: CallbackFn(1),
-        url: "http://tauri.localhost"
-            .parse()
-            .expect("invalid IPC test URL"),
+        url,
         body: InvokeBody::Json(args),
         headers: Default::default(),
         invoke_key: INVOKE_KEY.to_string(),

@@ -14,7 +14,7 @@ links = "tauri-plugin-atomic-audio"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tauri = { version = "2.5.0", default-features = false, features = [] }
+tauri = { version = "2.12.5", default-features = false, features = [] }
 thiserror = "2.0.12"
 tokio = { version = "1", features = ["full"] }
 
@@ -31,7 +31,7 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 
 [build-dependencies]
-tauri-plugin = { version = "2.3.1", features = ["build"] }
+tauri-plugin = { version = "2.7.2", features = ["build"] }
 
 # macOS microphone permission is queried through AVFoundation. CoreAudio hands
 # back *silence* rather than an error when access is denied, so a probe-by-
