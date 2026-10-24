@@ -384,4 +384,9 @@ library on disk, and how the frozen surface is allowed to change.
 - **2026-10-16** — [Continuous sessions, timeline planner and schedules](2026-10-16-continuous-sessions-timeline-planner-and-schedules.md)
 
 - [Preserve workspace pages under the annotation overlay](2026-10-18-preserve-workspace-pages-under-the-annotation-overlay.md)
+<<<<<<< HEAD
 - [Dispatch ready tasks through trusted local profiles](2026-10-20-dispatch-ready-tasks-through-trusted-local-profiles.md)
+=======
+
+- **2026-10-24** — [Keep plain-HTTP scope for user-configured AI servers](2026-10-24-keep-plain-http-scope-for-user-configured-ai-servers.md)
+>>>>>>> origin/main
