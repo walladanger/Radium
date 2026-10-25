@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#* Local cache cleanup before yarn dev (Vite + Rust artifacts).
+#* Локальная очистка кэшей перед yarn dev (Vite + артефакты Rust).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

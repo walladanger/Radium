@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-#* If `yarn build` failed on signing the main binary (often Desktop/iCloud → FinderInfo on .app):
-#* clear xattr from the whole .app and re-sign all executables in MacOS, then the bundle itself.
-#? Usage: from `jan/` root: APPLE_SIGNING_IDENTITY="…" bash scripts/finish-macos-codesign.sh
+#* Если `yarn build` упал на подписи главного бинарника (часто Desktop/iCloud → FinderInfo на .app):
+#* снимаем xattr со всего .app и подписываем заново все исполняемые файлы в MacOS, затем сам бандл.
+#? Использование: из корня `jan/`: APPLE_SIGNING_IDENTITY="…" bash scripts/finish-macos-codesign.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-IDENTITY="${APPLE_SIGNING_IDENTITY:?Please set APPLE_SIGNING_IDENTITY}"
+IDENTITY="${APPLE_SIGNING_IDENTITY:?Задайте APPLE_SIGNING_IDENTITY}"
 ENT="$ROOT/src-tauri/Entitlements.plist"
 APP=""
 for d in \
@@ -15,19 +15,19 @@ for d in \
     [[ -n "$APP" ]] && break
   fi
 done
-[[ -n "${APP:-}" && -d "$APP" ]] || { echo "No .app found in bundle/macos"; exit 1; }
+[[ -n "${APP:-}" && -d "$APP" ]] || { echo "Не найден .app в bundle/macos"; exit 1; }
 
 echo "xattr -cr $APP"
 xattr -cr "$APP"
 
-echo "Signing Contents/MacOS/* …"
+echo "Подпись Contents/MacOS/* …"
 find "$APP/Contents/MacOS" -type f -perm -111 2>/dev/null | while read -r f; do
   codesign --force --sign "$IDENTITY" --options runtime --timestamp --entitlements "$ENT" "$f"
 done
 
-echo "Signing bundle $APP"
+echo "Подпись бандла $APP"
 codesign --force --sign "$IDENTITY" --options runtime --timestamp --entitlements "$ENT" "$APP"
 
-echo "Verification:"
+echo "Проверка:"
 codesign -dv --verbose=2 "$APP" 2>&1 | grep -E "Authority|Timestamp|runtime" || true
 spctl --assess --verbose --type execute "$APP" 2>&1 || true
