@@ -1,13 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { route } from '@/constants/routes'
 import HeaderPage from '@/containers/HeaderPage'
 import SettingsMenu from '@/containers/SettingsMenu'
 import { useTranslation } from '@/i18n/react-i18next-compat'
 import { cn } from '@/lib/utils'
 import { VoiceSettingsPanel } from '@/containers/VoiceSettingsPanel'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.voice as any)({
+export const Route = createFileRoute('/settings/voice')({
   component: VoiceSettingsContent,
 })
 

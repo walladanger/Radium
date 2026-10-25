@@ -69,8 +69,7 @@ import {
   type AgentSkillDetail,
 } from '@/services/agent/skills'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.skills.index as any)({
+export const Route = createFileRoute('/skills/')({
   component: SkillsPage,
 })
 

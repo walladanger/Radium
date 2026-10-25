@@ -20,8 +20,7 @@ import { computeApiServerStats } from '@/utils/apiServerStats'
  * The page lives at Settings > API (`/settings/api` renders `ApiPage`). This
  * address stays so older links and bookmarks still land there.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.api.index as any)({
+export const Route = createFileRoute('/api/')({
   beforeLoad: () => {
     throw redirect({ to: route.settings.api })
   },

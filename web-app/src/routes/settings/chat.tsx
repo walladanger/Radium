@@ -1,11 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { route } from '@/constants/routes'
 import { RunSettingsPanel } from '@/containers/RunSettingsPanel'
 import { SettingsPageLayout } from '@/containers/SettingsPageLayout'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.chat as any)({
+export const Route = createFileRoute('/settings/chat')({
   component: ChatSettings,
 })
 

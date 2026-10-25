@@ -13,7 +13,6 @@ import {
   IconLoader2,
   IconTerminal2,
 } from '@tabler/icons-react'
-import { route } from '@/constants/routes'
 import {
   INTEGRATION_AGENTS,
   type IntegrationAgent,
@@ -35,8 +34,7 @@ import { useLaunchSettings } from '@/stores/launch-settings-store'
 import { cn } from '@/lib/utils'
 import { createSafeUnlisten } from '@/lib/tauriEvent'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.launch.index as any)({
+export const Route = createFileRoute('/launch/')({
   component: LaunchPage,
 })
 

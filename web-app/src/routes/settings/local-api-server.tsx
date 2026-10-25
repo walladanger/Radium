@@ -6,8 +6,7 @@ import { route } from '@/constants/routes'
  * still reachable by URL and from older links, so it forwards rather than
  * 404s.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.local_api_server as any)({
+export const Route = createFileRoute('/settings/local-api-server')({
   beforeLoad: () => {
     throw redirect({ to: route.settings.api })
   },

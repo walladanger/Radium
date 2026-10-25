@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { route } from '@/constants/routes'
 import HeaderPage from '@/containers/HeaderPage'
 import SettingsMenu from '@/containers/SettingsMenu'
 import { Card, CardItem } from '@/containers/Card'
@@ -27,8 +26,7 @@ import { getModelDisplayName, isLocalProvider } from '@/lib/utils'
 import { syncActiveModelsFromEngines } from '@/utils/activeModelsSync'
 import { copyToClipboard } from '@/lib/clipboard'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.hermes_agent as any)({
+export const Route = createFileRoute('/settings/hermes-agent')({
   component: HermesAgentIntegration,
 })
 

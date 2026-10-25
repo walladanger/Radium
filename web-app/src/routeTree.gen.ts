@@ -9,59 +9,49 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TasksRouteImport } from './routes/tasks'
-import { Route as SystemMonitorRouteImport } from './routes/system-monitor'
-import { Route as MediaRouteImport } from './routes/media'
-import { Route as LogsRouteImport } from './routes/logs'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WorkspaceIndexRouteImport } from './routes/workspace/index'
-import { Route as SkillsIndexRouteImport } from './routes/skills/index'
-import { Route as LaunchIndexRouteImport } from './routes/launch/index'
-import { Route as HubIndexRouteImport } from './routes/hub/index'
-import { Route as ConnectorsIndexRouteImport } from './routes/connectors/index'
-import { Route as CloudIndexRouteImport } from './routes/cloud/index'
+import { Route as LogsRouteImport } from './routes/logs'
+import { Route as MediaRouteImport } from './routes/media'
+import { Route as SystemMonitorRouteImport } from './routes/system-monitor'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
-import { Route as ThreadsThreadIdRouteImport } from './routes/threads/$threadId'
-import { Route as SettingsVoiceRouteImport } from './routes/settings/voice'
-import { Route as SettingsShortcutsRouteImport } from './routes/settings/shortcuts'
-import { Route as SettingsRuntimesRouteImport } from './routes/settings/runtimes'
-import { Route as SettingsPromptsRouteImport } from './routes/settings/prompts'
-import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
-import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
-import { Route as SettingsLocalApiServerRouteImport } from './routes/settings/local-api-server'
-import { Route as SettingsInterfaceRouteImport } from './routes/settings/interface'
-import { Route as SettingsHttpsProxyRouteImport } from './routes/settings/https-proxy'
-import { Route as SettingsHermesAgentRouteImport } from './routes/settings/hermes-agent'
-import { Route as SettingsHardwareRouteImport } from './routes/settings/hardware'
-import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
-import { Route as SettingsExtensionsRouteImport } from './routes/settings/extensions'
-import { Route as SettingsCloudRouteImport } from './routes/settings/cloud'
-import { Route as SettingsClaudeCodeRouteImport } from './routes/settings/claude-code'
-import { Route as SettingsChatRouteImport } from './routes/settings/chat'
-import { Route as SettingsAttachmentsRouteImport } from './routes/settings/attachments'
-import { Route as SettingsAssistantRouteImport } from './routes/settings/assistant'
-import { Route as SettingsApiRouteImport } from './routes/settings/api'
-import { Route as ProjectProjectIdRouteImport } from './routes/project/$projectId'
-import { Route as MediaLibraryRouteImport } from './routes/media_.library'
-import { Route as LocalApiServerLogsRouteImport } from './routes/local-api-server/logs'
+import { Route as CloudIndexRouteImport } from './routes/cloud/index'
+import { Route as ConnectorsIndexRouteImport } from './routes/connectors/index'
+import { Route as HubIndexRouteImport } from './routes/hub/index'
 import { Route as HubModelIdRouteImport } from './routes/hub/$modelId'
-import { Route as SettingsProvidersIndexRouteImport } from './routes/settings/providers/index'
+import { Route as LaunchIndexRouteImport } from './routes/launch/index'
+import { Route as LocalApiServerLogsRouteImport } from './routes/local-api-server/logs'
+import { Route as MediaLibraryRouteImport } from './routes/media_.library'
+import { Route as ProjectProjectIdRouteImport } from './routes/project/$projectId'
+import { Route as SettingsApiRouteImport } from './routes/settings/api'
+import { Route as SettingsAssistantRouteImport } from './routes/settings/assistant'
+import { Route as SettingsAttachmentsRouteImport } from './routes/settings/attachments'
+import { Route as SettingsChatRouteImport } from './routes/settings/chat'
+import { Route as SettingsClaudeCodeRouteImport } from './routes/settings/claude-code'
+import { Route as SettingsCloudRouteImport } from './routes/settings/cloud'
+import { Route as SettingsExtensionsRouteImport } from './routes/settings/extensions'
+import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
+import { Route as SettingsHardwareRouteImport } from './routes/settings/hardware'
+import { Route as SettingsHermesAgentRouteImport } from './routes/settings/hermes-agent'
+import { Route as SettingsHttpsProxyRouteImport } from './routes/settings/https-proxy'
+import { Route as SettingsInterfaceRouteImport } from './routes/settings/interface'
+import { Route as SettingsLocalApiServerRouteImport } from './routes/settings/local-api-server'
+import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
+import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
+import { Route as SettingsPromptsRouteImport } from './routes/settings/prompts'
+import { Route as SettingsRuntimesRouteImport } from './routes/settings/runtimes'
+import { Route as SettingsShortcutsRouteImport } from './routes/settings/shortcuts'
+import { Route as SettingsVoiceRouteImport } from './routes/settings/voice'
+import { Route as SkillsIndexRouteImport } from './routes/skills/index'
+import { Route as ThreadsThreadIdRouteImport } from './routes/threads/$threadId'
+import { Route as WorkspaceIndexRouteImport } from './routes/workspace/index'
 import { Route as SettingsMediaIndexRouteImport } from './routes/settings/media/index'
+import { Route as SettingsProvidersIndexRouteImport } from './routes/settings/providers/index'
 import { Route as SettingsProvidersProviderNameRouteImport } from './routes/settings/providers/$providerName'
 
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SystemMonitorRoute = SystemMonitorRouteImport.update({
-  id: '/system-monitor',
-  path: '/system-monitor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MediaRoute = MediaRouteImport.update({
-  id: '/media',
-  path: '/media',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogsRoute = LogsRouteImport.update({
@@ -69,39 +59,19 @@ const LogsRoute = LogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkspaceIndexRoute = WorkspaceIndexRouteImport.update({
-  id: '/workspace/',
-  path: '/workspace/',
+const SystemMonitorRoute = SystemMonitorRouteImport.update({
+  id: '/system-monitor',
+  path: '/system-monitor',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SkillsIndexRoute = SkillsIndexRouteImport.update({
-  id: '/skills/',
-  path: '/skills/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LaunchIndexRoute = LaunchIndexRouteImport.update({
-  id: '/launch/',
-  path: '/launch/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HubIndexRoute = HubIndexRouteImport.update({
-  id: '/hub/',
-  path: '/hub/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConnectorsIndexRoute = ConnectorsIndexRouteImport.update({
-  id: '/connectors/',
-  path: '/connectors/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CloudIndexRoute = CloudIndexRouteImport.update({
-  id: '/cloud/',
-  path: '/cloud/',
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIndexRoute = ApiIndexRouteImport.update({
@@ -109,119 +79,19 @@ const ApiIndexRoute = ApiIndexRouteImport.update({
   path: '/api/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ThreadsThreadIdRoute = ThreadsThreadIdRouteImport.update({
-  id: '/threads/$threadId',
-  path: '/threads/$threadId',
+const CloudIndexRoute = CloudIndexRouteImport.update({
+  id: '/cloud/',
+  path: '/cloud/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
-  id: '/settings/voice',
-  path: '/settings/voice',
+const ConnectorsIndexRoute = ConnectorsIndexRouteImport.update({
+  id: '/connectors/',
+  path: '/connectors/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsShortcutsRoute = SettingsShortcutsRouteImport.update({
-  id: '/settings/shortcuts',
-  path: '/settings/shortcuts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRuntimesRoute = SettingsRuntimesRouteImport.update({
-  id: '/settings/runtimes',
-  path: '/settings/runtimes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsPromptsRoute = SettingsPromptsRouteImport.update({
-  id: '/settings/prompts',
-  path: '/settings/prompts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
-  id: '/settings/privacy',
-  path: '/settings/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsMcpServersRoute = SettingsMcpServersRouteImport.update({
-  id: '/settings/mcp-servers',
-  path: '/settings/mcp-servers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsLocalApiServerRoute = SettingsLocalApiServerRouteImport.update({
-  id: '/settings/local-api-server',
-  path: '/settings/local-api-server',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsInterfaceRoute = SettingsInterfaceRouteImport.update({
-  id: '/settings/interface',
-  path: '/settings/interface',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsHttpsProxyRoute = SettingsHttpsProxyRouteImport.update({
-  id: '/settings/https-proxy',
-  path: '/settings/https-proxy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsHermesAgentRoute = SettingsHermesAgentRouteImport.update({
-  id: '/settings/hermes-agent',
-  path: '/settings/hermes-agent',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsHardwareRoute = SettingsHardwareRouteImport.update({
-  id: '/settings/hardware',
-  path: '/settings/hardware',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
-  id: '/settings/general',
-  path: '/settings/general',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsExtensionsRoute = SettingsExtensionsRouteImport.update({
-  id: '/settings/extensions',
-  path: '/settings/extensions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsCloudRoute = SettingsCloudRouteImport.update({
-  id: '/settings/cloud',
-  path: '/settings/cloud',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsClaudeCodeRoute = SettingsClaudeCodeRouteImport.update({
-  id: '/settings/claude-code',
-  path: '/settings/claude-code',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsChatRoute = SettingsChatRouteImport.update({
-  id: '/settings/chat',
-  path: '/settings/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsAttachmentsRoute = SettingsAttachmentsRouteImport.update({
-  id: '/settings/attachments',
-  path: '/settings/attachments',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsAssistantRoute = SettingsAssistantRouteImport.update({
-  id: '/settings/assistant',
-  path: '/settings/assistant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsApiRoute = SettingsApiRouteImport.update({
-  id: '/settings/api',
-  path: '/settings/api',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectProjectIdRoute = ProjectProjectIdRouteImport.update({
-  id: '/project/$projectId',
-  path: '/project/$projectId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MediaLibraryRoute = MediaLibraryRouteImport.update({
-  id: '/media_/library',
-  path: '/media/library',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LocalApiServerLogsRoute = LocalApiServerLogsRouteImport.update({
-  id: '/local-api-server/logs',
-  path: '/local-api-server/logs',
+const HubIndexRoute = HubIndexRouteImport.update({
+  id: '/hub/',
+  path: '/hub/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HubModelIdRoute = HubModelIdRouteImport.update({
@@ -229,14 +99,144 @@ const HubModelIdRoute = HubModelIdRouteImport.update({
   path: '/hub/$modelId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsProvidersIndexRoute = SettingsProvidersIndexRouteImport.update({
-  id: '/settings/providers/',
-  path: '/settings/providers/',
+const LaunchIndexRoute = LaunchIndexRouteImport.update({
+  id: '/launch/',
+  path: '/launch/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocalApiServerLogsRoute = LocalApiServerLogsRouteImport.update({
+  id: '/local-api-server/logs',
+  path: '/local-api-server/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaLibraryRoute = MediaLibraryRouteImport.update({
+  id: '/media_/library',
+  path: '/media/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectProjectIdRoute = ProjectProjectIdRouteImport.update({
+  id: '/project/$projectId',
+  path: '/project/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsApiRoute = SettingsApiRouteImport.update({
+  id: '/settings/api',
+  path: '/settings/api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsAssistantRoute = SettingsAssistantRouteImport.update({
+  id: '/settings/assistant',
+  path: '/settings/assistant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsAttachmentsRoute = SettingsAttachmentsRouteImport.update({
+  id: '/settings/attachments',
+  path: '/settings/attachments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsChatRoute = SettingsChatRouteImport.update({
+  id: '/settings/chat',
+  path: '/settings/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsClaudeCodeRoute = SettingsClaudeCodeRouteImport.update({
+  id: '/settings/claude-code',
+  path: '/settings/claude-code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsCloudRoute = SettingsCloudRouteImport.update({
+  id: '/settings/cloud',
+  path: '/settings/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsExtensionsRoute = SettingsExtensionsRouteImport.update({
+  id: '/settings/extensions',
+  path: '/settings/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
+  id: '/settings/general',
+  path: '/settings/general',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsHardwareRoute = SettingsHardwareRouteImport.update({
+  id: '/settings/hardware',
+  path: '/settings/hardware',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsHermesAgentRoute = SettingsHermesAgentRouteImport.update({
+  id: '/settings/hermes-agent',
+  path: '/settings/hermes-agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsHttpsProxyRoute = SettingsHttpsProxyRouteImport.update({
+  id: '/settings/https-proxy',
+  path: '/settings/https-proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsInterfaceRoute = SettingsInterfaceRouteImport.update({
+  id: '/settings/interface',
+  path: '/settings/interface',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsLocalApiServerRoute = SettingsLocalApiServerRouteImport.update({
+  id: '/settings/local-api-server',
+  path: '/settings/local-api-server',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsMcpServersRoute = SettingsMcpServersRouteImport.update({
+  id: '/settings/mcp-servers',
+  path: '/settings/mcp-servers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
+  id: '/settings/privacy',
+  path: '/settings/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsPromptsRoute = SettingsPromptsRouteImport.update({
+  id: '/settings/prompts',
+  path: '/settings/prompts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRuntimesRoute = SettingsRuntimesRouteImport.update({
+  id: '/settings/runtimes',
+  path: '/settings/runtimes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsShortcutsRoute = SettingsShortcutsRouteImport.update({
+  id: '/settings/shortcuts',
+  path: '/settings/shortcuts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsVoiceRoute = SettingsVoiceRouteImport.update({
+  id: '/settings/voice',
+  path: '/settings/voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkillsIndexRoute = SkillsIndexRouteImport.update({
+  id: '/skills/',
+  path: '/skills/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThreadsThreadIdRoute = ThreadsThreadIdRouteImport.update({
+  id: '/threads/$threadId',
+  path: '/threads/$threadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceIndexRoute = WorkspaceIndexRouteImport.update({
+  id: '/workspace/',
+  path: '/workspace/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsMediaIndexRoute = SettingsMediaIndexRouteImport.update({
   id: '/settings/media/',
   path: '/settings/media/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsProvidersIndexRoute = SettingsProvidersIndexRouteImport.update({
+  id: '/settings/providers/',
+  path: '/settings/providers/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsProvidersProviderNameRoute =
@@ -540,25 +540,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/system-monitor': {
-      id: '/system-monitor'
-      path: '/system-monitor'
-      fullPath: '/system-monitor'
-      preLoaderRoute: typeof SystemMonitorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/media': {
-      id: '/media'
-      path: '/media'
-      fullPath: '/media'
-      preLoaderRoute: typeof MediaRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logs': {
@@ -568,53 +554,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/workspace/': {
-      id: '/workspace/'
-      path: '/workspace'
-      fullPath: '/workspace/'
-      preLoaderRoute: typeof WorkspaceIndexRouteImport
+    '/system-monitor': {
+      id: '/system-monitor'
+      path: '/system-monitor'
+      fullPath: '/system-monitor'
+      preLoaderRoute: typeof SystemMonitorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/skills/': {
-      id: '/skills/'
-      path: '/skills'
-      fullPath: '/skills/'
-      preLoaderRoute: typeof SkillsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/launch/': {
-      id: '/launch/'
-      path: '/launch'
-      fullPath: '/launch/'
-      preLoaderRoute: typeof LaunchIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hub/': {
-      id: '/hub/'
-      path: '/hub'
-      fullPath: '/hub/'
-      preLoaderRoute: typeof HubIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/connectors/': {
-      id: '/connectors/'
-      path: '/connectors'
-      fullPath: '/connectors/'
-      preLoaderRoute: typeof ConnectorsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cloud/': {
-      id: '/cloud/'
-      path: '/cloud'
-      fullPath: '/cloud/'
-      preLoaderRoute: typeof CloudIndexRouteImport
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/': {
@@ -624,165 +582,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/threads/$threadId': {
-      id: '/threads/$threadId'
-      path: '/threads/$threadId'
-      fullPath: '/threads/$threadId'
-      preLoaderRoute: typeof ThreadsThreadIdRouteImport
+    '/cloud/': {
+      id: '/cloud/'
+      path: '/cloud'
+      fullPath: '/cloud/'
+      preLoaderRoute: typeof CloudIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/voice': {
-      id: '/settings/voice'
-      path: '/settings/voice'
-      fullPath: '/settings/voice'
-      preLoaderRoute: typeof SettingsVoiceRouteImport
+    '/connectors/': {
+      id: '/connectors/'
+      path: '/connectors'
+      fullPath: '/connectors/'
+      preLoaderRoute: typeof ConnectorsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/shortcuts': {
-      id: '/settings/shortcuts'
-      path: '/settings/shortcuts'
-      fullPath: '/settings/shortcuts'
-      preLoaderRoute: typeof SettingsShortcutsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/runtimes': {
-      id: '/settings/runtimes'
-      path: '/settings/runtimes'
-      fullPath: '/settings/runtimes'
-      preLoaderRoute: typeof SettingsRuntimesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/prompts': {
-      id: '/settings/prompts'
-      path: '/settings/prompts'
-      fullPath: '/settings/prompts'
-      preLoaderRoute: typeof SettingsPromptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/privacy': {
-      id: '/settings/privacy'
-      path: '/settings/privacy'
-      fullPath: '/settings/privacy'
-      preLoaderRoute: typeof SettingsPrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/mcp-servers': {
-      id: '/settings/mcp-servers'
-      path: '/settings/mcp-servers'
-      fullPath: '/settings/mcp-servers'
-      preLoaderRoute: typeof SettingsMcpServersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/local-api-server': {
-      id: '/settings/local-api-server'
-      path: '/settings/local-api-server'
-      fullPath: '/settings/local-api-server'
-      preLoaderRoute: typeof SettingsLocalApiServerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/interface': {
-      id: '/settings/interface'
-      path: '/settings/interface'
-      fullPath: '/settings/interface'
-      preLoaderRoute: typeof SettingsInterfaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/https-proxy': {
-      id: '/settings/https-proxy'
-      path: '/settings/https-proxy'
-      fullPath: '/settings/https-proxy'
-      preLoaderRoute: typeof SettingsHttpsProxyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/hermes-agent': {
-      id: '/settings/hermes-agent'
-      path: '/settings/hermes-agent'
-      fullPath: '/settings/hermes-agent'
-      preLoaderRoute: typeof SettingsHermesAgentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/hardware': {
-      id: '/settings/hardware'
-      path: '/settings/hardware'
-      fullPath: '/settings/hardware'
-      preLoaderRoute: typeof SettingsHardwareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/general': {
-      id: '/settings/general'
-      path: '/settings/general'
-      fullPath: '/settings/general'
-      preLoaderRoute: typeof SettingsGeneralRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/extensions': {
-      id: '/settings/extensions'
-      path: '/settings/extensions'
-      fullPath: '/settings/extensions'
-      preLoaderRoute: typeof SettingsExtensionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/cloud': {
-      id: '/settings/cloud'
-      path: '/settings/cloud'
-      fullPath: '/settings/cloud'
-      preLoaderRoute: typeof SettingsCloudRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/claude-code': {
-      id: '/settings/claude-code'
-      path: '/settings/claude-code'
-      fullPath: '/settings/claude-code'
-      preLoaderRoute: typeof SettingsClaudeCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/chat': {
-      id: '/settings/chat'
-      path: '/settings/chat'
-      fullPath: '/settings/chat'
-      preLoaderRoute: typeof SettingsChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/attachments': {
-      id: '/settings/attachments'
-      path: '/settings/attachments'
-      fullPath: '/settings/attachments'
-      preLoaderRoute: typeof SettingsAttachmentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/assistant': {
-      id: '/settings/assistant'
-      path: '/settings/assistant'
-      fullPath: '/settings/assistant'
-      preLoaderRoute: typeof SettingsAssistantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/api': {
-      id: '/settings/api'
-      path: '/settings/api'
-      fullPath: '/settings/api'
-      preLoaderRoute: typeof SettingsApiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/project/$projectId': {
-      id: '/project/$projectId'
-      path: '/project/$projectId'
-      fullPath: '/project/$projectId'
-      preLoaderRoute: typeof ProjectProjectIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/media_/library': {
-      id: '/media_/library'
-      path: '/media/library'
-      fullPath: '/media/library'
-      preLoaderRoute: typeof MediaLibraryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/local-api-server/logs': {
-      id: '/local-api-server/logs'
-      path: '/local-api-server/logs'
-      fullPath: '/local-api-server/logs'
-      preLoaderRoute: typeof LocalApiServerLogsRouteImport
+    '/hub/': {
+      id: '/hub/'
+      path: '/hub'
+      fullPath: '/hub/'
+      preLoaderRoute: typeof HubIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hub/$modelId': {
@@ -792,11 +610,186 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubModelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/providers/': {
-      id: '/settings/providers/'
-      path: '/settings/providers'
-      fullPath: '/settings/providers/'
-      preLoaderRoute: typeof SettingsProvidersIndexRouteImport
+    '/launch/': {
+      id: '/launch/'
+      path: '/launch'
+      fullPath: '/launch/'
+      preLoaderRoute: typeof LaunchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/local-api-server/logs': {
+      id: '/local-api-server/logs'
+      path: '/local-api-server/logs'
+      fullPath: '/local-api-server/logs'
+      preLoaderRoute: typeof LocalApiServerLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media_/library': {
+      id: '/media_/library'
+      path: '/media/library'
+      fullPath: '/media/library'
+      preLoaderRoute: typeof MediaLibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project/$projectId': {
+      id: '/project/$projectId'
+      path: '/project/$projectId'
+      fullPath: '/project/$projectId'
+      preLoaderRoute: typeof ProjectProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/api': {
+      id: '/settings/api'
+      path: '/settings/api'
+      fullPath: '/settings/api'
+      preLoaderRoute: typeof SettingsApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/assistant': {
+      id: '/settings/assistant'
+      path: '/settings/assistant'
+      fullPath: '/settings/assistant'
+      preLoaderRoute: typeof SettingsAssistantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/attachments': {
+      id: '/settings/attachments'
+      path: '/settings/attachments'
+      fullPath: '/settings/attachments'
+      preLoaderRoute: typeof SettingsAttachmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/chat': {
+      id: '/settings/chat'
+      path: '/settings/chat'
+      fullPath: '/settings/chat'
+      preLoaderRoute: typeof SettingsChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/claude-code': {
+      id: '/settings/claude-code'
+      path: '/settings/claude-code'
+      fullPath: '/settings/claude-code'
+      preLoaderRoute: typeof SettingsClaudeCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/cloud': {
+      id: '/settings/cloud'
+      path: '/settings/cloud'
+      fullPath: '/settings/cloud'
+      preLoaderRoute: typeof SettingsCloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/extensions': {
+      id: '/settings/extensions'
+      path: '/settings/extensions'
+      fullPath: '/settings/extensions'
+      preLoaderRoute: typeof SettingsExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/general': {
+      id: '/settings/general'
+      path: '/settings/general'
+      fullPath: '/settings/general'
+      preLoaderRoute: typeof SettingsGeneralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/hardware': {
+      id: '/settings/hardware'
+      path: '/settings/hardware'
+      fullPath: '/settings/hardware'
+      preLoaderRoute: typeof SettingsHardwareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/hermes-agent': {
+      id: '/settings/hermes-agent'
+      path: '/settings/hermes-agent'
+      fullPath: '/settings/hermes-agent'
+      preLoaderRoute: typeof SettingsHermesAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/https-proxy': {
+      id: '/settings/https-proxy'
+      path: '/settings/https-proxy'
+      fullPath: '/settings/https-proxy'
+      preLoaderRoute: typeof SettingsHttpsProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/interface': {
+      id: '/settings/interface'
+      path: '/settings/interface'
+      fullPath: '/settings/interface'
+      preLoaderRoute: typeof SettingsInterfaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/local-api-server': {
+      id: '/settings/local-api-server'
+      path: '/settings/local-api-server'
+      fullPath: '/settings/local-api-server'
+      preLoaderRoute: typeof SettingsLocalApiServerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/mcp-servers': {
+      id: '/settings/mcp-servers'
+      path: '/settings/mcp-servers'
+      fullPath: '/settings/mcp-servers'
+      preLoaderRoute: typeof SettingsMcpServersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/privacy': {
+      id: '/settings/privacy'
+      path: '/settings/privacy'
+      fullPath: '/settings/privacy'
+      preLoaderRoute: typeof SettingsPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/prompts': {
+      id: '/settings/prompts'
+      path: '/settings/prompts'
+      fullPath: '/settings/prompts'
+      preLoaderRoute: typeof SettingsPromptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/runtimes': {
+      id: '/settings/runtimes'
+      path: '/settings/runtimes'
+      fullPath: '/settings/runtimes'
+      preLoaderRoute: typeof SettingsRuntimesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/shortcuts': {
+      id: '/settings/shortcuts'
+      path: '/settings/shortcuts'
+      fullPath: '/settings/shortcuts'
+      preLoaderRoute: typeof SettingsShortcutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/voice': {
+      id: '/settings/voice'
+      path: '/settings/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof SettingsVoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skills/': {
+      id: '/skills/'
+      path: '/skills'
+      fullPath: '/skills/'
+      preLoaderRoute: typeof SkillsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threads/$threadId': {
+      id: '/threads/$threadId'
+      path: '/threads/$threadId'
+      fullPath: '/threads/$threadId'
+      preLoaderRoute: typeof ThreadsThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace/': {
+      id: '/workspace/'
+      path: '/workspace'
+      fullPath: '/workspace/'
+      preLoaderRoute: typeof WorkspaceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/media/': {
@@ -804,6 +797,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/media'
       fullPath: '/settings/media/'
       preLoaderRoute: typeof SettingsMediaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/providers/': {
+      id: '/settings/providers/'
+      path: '/settings/providers'
+      fullPath: '/settings/providers/'
+      preLoaderRoute: typeof SettingsProvidersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/providers/$providerName': {

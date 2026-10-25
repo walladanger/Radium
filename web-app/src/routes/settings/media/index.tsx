@@ -17,8 +17,7 @@ import { ProviderList } from '@/containers/media/ProviderList'
 import { route } from '@/constants/routes'
 import { useMediaProviderStore } from '@/stores/media-provider-store'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.media as any)({
+export const Route = createFileRoute('/settings/media/')({
   component: MediaSettings,
 })
 

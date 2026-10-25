@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { invoke } from '@tauri-apps/api/core'
 import { isEnabled as isAutostartEnabled } from '@tauri-apps/plugin-autostart'
-import { route } from '@/constants/routes'
 import { RADIUM_GITHUB_REPO, RADIUM_GITHUB_URL } from '@/constants/project'
 import SettingsMenu from '@/containers/SettingsMenu'
 import HeaderPage from '@/containers/HeaderPage'
@@ -39,8 +38,7 @@ import { ProductionLogFolder } from '@/containers/ProductionLog'
 const TOKEN_VALIDATION_TIMEOUT_MS = 10_000
 const ATOMIC_CLI_COMMAND = 'atomic-chat-cli'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.general as any)({
+export const Route = createFileRoute('/settings/general')({
   component: General,
 })
 

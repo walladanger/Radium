@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { route } from '@/constants/routes'
 import HeaderPage from '@/containers/HeaderPage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,8 +8,7 @@ import { taskColumns } from '@/lib/atomic-control'
 import { useAtomicTasks } from '@/stores/atomic-tasks-store'
 
 // Generated route typing is refreshed by the existing Vite router plugin.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.tasks as any)({ component: TasksPage })
+export const Route = createFileRoute('/tasks')({ component: TasksPage })
 
 type DraftTask = { id: string; title: string; description: string; role: string; dependencies: string[]; scope: string }
 const newTask = (): DraftTask => ({ id: crypto.randomUUID(), title: '', description: '', role: 'edit', dependencies: [], scope: '' })

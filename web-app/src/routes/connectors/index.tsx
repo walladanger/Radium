@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { IconChevronRight, IconCodeCircle, IconPlus } from '@tabler/icons-react'
-import { route } from '@/constants/routes'
 import {
   HIDDEN_SERVER_KEYS,
   MCP_CONNECTORS,
@@ -37,8 +36,7 @@ import { useTranslation } from '@/i18n/react-i18next-compat'
 import { MCPLogViewer } from '@/components/MCPLogViewer'
 import { cn } from '@/lib/utils'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.connectors.index as any)({
+export const Route = createFileRoute('/connectors/')({
   component: ConnectorsPage,
 })
 

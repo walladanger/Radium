@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { route } from '@/constants/routes'
 import HeaderPage from '@/containers/HeaderPage'
 import SettingsMenu from '@/containers/SettingsMenu'
 import { useTranslation } from '@/i18n/react-i18next-compat'
@@ -18,8 +17,7 @@ import {
   type SavedPrompt,
 } from '@/stores/saved-prompts-store'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.prompts as any)({
+export const Route = createFileRoute('/settings/prompts')({
   component: PromptsSettings,
 })
 
