@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
@@ -91,7 +90,7 @@ function isUnsupportedBaseGemmaMlx(model: CatalogModel) {
   return !isInstruct && !isDrafterArtifact
 }
 
-export const Route = createFileRoute(route.hub.index as any)({
+export const Route = createFileRoute('/hub/')({
   component: HubContent,
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     repo: typeof search.repo === 'string' ? search.repo : undefined,

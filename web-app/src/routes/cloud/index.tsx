@@ -36,8 +36,7 @@ import { useProviderRegistryStore } from '@/stores/provider-registry-store'
  * This address stays so older links and bookmarks still land there, with the
  * selected provider carried across.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.cloud.index as any)({
+export const Route = createFileRoute('/cloud/')({
   validateSearch: validateCloudSearch,
   beforeLoad: ({ search }: { search: { provider?: string } }) => {
     throw redirect({ to: route.settings.cloud, search })

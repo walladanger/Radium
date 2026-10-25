@@ -28,7 +28,7 @@ type SearchParams = {
   agentSkill?: string
 }
 
-export const Route = createFileRoute(route.home as any)({
+export const Route = createFileRoute('/')({
   component: Index,
   validateSearch: (search: Record<string, unknown>): SearchParams => {
     const result: SearchParams = {

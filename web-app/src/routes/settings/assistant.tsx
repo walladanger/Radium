@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { route } from '@/constants/routes'
 import { useState } from 'react'
 
 import { useAssistant } from '@/hooks/useAssistant'
@@ -22,8 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ChevronsUpDown } from 'lucide-react'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.assistant as any)({
+export const Route = createFileRoute('/settings/assistant')({
   component: AssistantContent,
 })
 

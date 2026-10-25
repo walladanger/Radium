@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { route } from '@/constants/routes'
 import SettingsMenu from '@/containers/SettingsMenu'
 import HeaderPage from '@/containers/HeaderPage'
 import { Switch } from '@/components/ui/switch'
@@ -15,8 +14,7 @@ import {
 } from '@/lib/privacy-gate'
 import { buildDsn, useCrashReporting } from '@/lib/crash-reporting'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createFileRoute(route.settings.privacy as any)({
+export const Route = createFileRoute('/settings/privacy')({
   component: Privacy,
 })
 

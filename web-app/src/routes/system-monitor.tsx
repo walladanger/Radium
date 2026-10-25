@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useHardware } from '@/hooks/useHardware'
 import { Progress } from '@/components/ui/progress'
-import { route } from '@/constants/routes'
 import { formatMegaBytes } from '@/lib/utils'
 import { IconDeviceDesktopAnalytics } from '@tabler/icons-react'
 import { useTranslation } from '@/i18n/react-i18next-compat'
@@ -14,7 +12,7 @@ import { DriverOutdatedBanner } from '@/containers/DriverOutdatedBanner'
 import { buildFallbackDevices } from '@/lib/gpuFallback'
 import PerformanceBenchmarkPanel from '@/containers/PerformanceBenchmarkPanel'
 
-export const Route = createFileRoute(route.systemMonitor as any)({
+export const Route = createFileRoute('/system-monitor')({
   component: SystemMonitorContent,
 })
 
