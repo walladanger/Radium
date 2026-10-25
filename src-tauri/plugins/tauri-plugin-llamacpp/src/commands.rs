@@ -290,9 +290,12 @@ pub async fn load_llama_model_impl(
             let stdout_output = stdout_task.await.unwrap_or_default();
             log::warn!("llama.cpp failed early with code {:?}", status);
             log::warn!("{}", stderr_output);
-            return Err(
-                LlamacppError::from_process_output(&status, &stderr_output, &stdout_output).into(),
-            );
+            return Err(LlamacppError::from_process_output(
+                &status,
+                &stderr_output,
+                &stdout_output,
+            )
+            .into());
         }
     }
 

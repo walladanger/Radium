@@ -236,9 +236,18 @@ mod tests {
             ("general.architecture".to_string(), "llama".to_string()),
             ("llama.block_count".to_string(), layers.to_string()),
             ("llama.attention.head_count".to_string(), heads.to_string()),
-            ("llama.attention.head_count_kv".to_string(), heads.to_string()),
-            ("llama.attention.key_length".to_string(), head_dim.to_string()),
-            ("llama.attention.value_length".to_string(), head_dim.to_string()),
+            (
+                "llama.attention.head_count_kv".to_string(),
+                heads.to_string(),
+            ),
+            (
+                "llama.attention.key_length".to_string(),
+                head_dim.to_string(),
+            ),
+            (
+                "llama.attention.value_length".to_string(),
+                head_dim.to_string(),
+            ),
             ("llama.context_length".to_string(), ctx.to_string()),
         ])
     }
@@ -287,14 +296,10 @@ mod tests {
 
     #[tokio::test]
     async fn keys_and_values_may_differ() {
-        let est = estimate_kv_cache_internal(
-            meta(1, 1, 128, 1),
-            Some(1),
-            Some("f16"),
-            Some("q8_0"),
-        )
-        .await
-        .unwrap();
+        let est =
+            estimate_kv_cache_internal(meta(1, 1, 128, 1), Some(1), Some("f16"), Some("q8_0"))
+                .await
+                .unwrap();
         // 128 × 16 bits + 128 × 8.5 bits = 3136 bits = 392 bytes.
         assert_eq!(est.per_token_size, 392);
     }

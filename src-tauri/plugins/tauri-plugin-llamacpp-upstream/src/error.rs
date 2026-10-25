@@ -73,7 +73,6 @@ impl LlamacppError {
             );
         }
 
-
         // A library path was invalid or a required dynamic library is missing.
         if lower_stderr.contains("cannot load library")
             || lower_stderr.contains("library not found")

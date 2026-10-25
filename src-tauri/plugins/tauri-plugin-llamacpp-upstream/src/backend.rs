@@ -2589,7 +2589,10 @@ mod tests {
             Some(10405)
         );
         assert_eq!(parse_binary_version("unknown version"), None);
-        assert_eq!(parse_binary_version("version: 0.1.0-dev (commit abc)"), None);
+        assert_eq!(
+            parse_binary_version("version: 0.1.0-dev (commit abc)"),
+            None
+        );
     }
 
     #[test]
