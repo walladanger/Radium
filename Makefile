@@ -70,14 +70,14 @@ dev-fast: install-and-build
 	make build-cli-dev
 	yarn dev
 
-# Запуск глазами НОВОГО пользователя (как dev-fast по скорости). FRESH_INSTALL
-# очищает localStorage webview на каждом старте приложения: срабатывает вся
-# fresh-install ветка — онбординг с нуля, turboquant выключен по умолчанию,
-# дефолтный движок llamacpp-upstream. Настоящий dev-профиль (провайдеры,
-# API-ключи, флаги) бэкапится и автоматически восстанавливается при следующем
-# обычном `make dev` / `make dev-fast`; всё, что сделано во fresh-запусках,
-# отбрасывается. Модели на диске не удаляются (общий каталог data), поэтому
-# после онбординга они снова видны в списке.
+# Launch from the perspective of a NEW user (as fast as dev-fast). FRESH_INSTALL
+# clears webview localStorage on every app start: the entire fresh-install branch is triggered —
+# onboarding from scratch, turboquant disabled by default,
+# default engine is llamacpp-upstream. The real dev profile (providers,
+# API keys, flags) is backed up and automatically restored on the next
+# regular `make dev` / `make dev-fast`; everything done in fresh launches
+# is discarded. Models on disk are not deleted (shared data catalog), so
+# they are visible in the list again after onboarding.
 dev-fresh: install-and-build
 	yarn download:bin
 	make download-llamacpp-backend-if-exists
@@ -87,8 +87,8 @@ dev-fresh: install-and-build
 	make build-cli-dev
 	FRESH_INSTALL=true FORCE_ONBOARDING=true yarn dev
 
-# Dev-режим с форсированным SetupScreen (онбординг) без удаления моделей.
-# Флаг FORCE_ONBOARDING прокидывается в vite как compile-time константа.
+# Dev mode with forced SetupScreen (onboarding) without deleting models.
+# The FORCE_ONBOARDING flag is passed to vite as a compile-time constant.
 dev-onboarding: install-and-build
 	yarn download:bin
 	make download-llamacpp-backend
@@ -98,22 +98,22 @@ dev-onboarding: install-and-build
 	make build-cli-dev
 	FORCE_ONBOARDING=true yarn dev
 
-# Ступень лестницы, под которую смотрим онбординг. Переопределяется:
+# The hardware tier level under which we view the onboarding. Can be overridden:
 #   make dev-onboarding-low-spec FORCE_HARDWARE_TIER=unified_8
 FORCE_HARDWARE_TIER ?= vram_2
 
-# Онбординг глазами пользователя со слабой машиной: FORCE_HARDWARE_TIER
-# минует определение железа, и первый экран показывает рекомендацию заданной
-# ступени лестницы на любом компьютере.
+# Onboarding from the perspective of a user with a low-end machine: FORCE_HARDWARE_TIER
+# bypasses hardware detection, and the first screen shows the recommendation of the specified
+# tier level on any computer.
 #
-# Значение — любой id из `HardwareTier` (`web-app/src/lib/hardware-tier.ts`):
+# Value — any id from `HardwareTier` (`web-app/src/lib/hardware-tier.ts`):
 # cpu_only, vram_2, vram_4, vram_8, vram_12, vram_16, vram_24, vram_32,
 # vram_48, vram_64, vram_64_plus, unified_8, unified_16, unified_24,
-# unified_32, unified_48, unified_64, unified_64_plus. Прежние `low` и
-# `standard` тоже принимаются и мапятся на ближайшую ступень.
+# unified_32, unified_48, unified_64, unified_64_plus. The previous `low` and
+# `standard` are also accepted and mapped to the nearest tier.
 #
-# Манифест — встроенный `web-app/src/registries/recommended-models.json`;
-# чтобы проверить другой, задайте VITE_RECOMMENDED_MODELS_REGISTRY_URL.
+# Manifest — built-in `web-app/src/registries/recommended-models.json`;
+# to test a different one, set VITE_RECOMMENDED_MODELS_REGISTRY_URL.
 dev-onboarding-low-spec: install-and-build
 	yarn download:bin
 	make download-llamacpp-backend
@@ -1338,19 +1338,19 @@ build: install-and-build install-rust-targets
 	yarn build
 
 # ──────────────────────────────────────────────────────────────
-# macOS release build: universal .app + .dmg с версией в VOLNAME
+# macOS release build: universal .app + .dmg with version in VOLNAME
 # ──────────────────────────────────────────────────────────────
-# Шаги:
-#   1. yarn tauri build (universal-apple-darwin, macos-конфиг)
-#      — Tauri подписывает и нотаризует .app, создаёт и подписывает .dmg
+# Steps:
+#   1. yarn tauri build (universal-apple-darwin, macos config)
+#      — Tauri signs and notarizes the .app, creates and signs the .dmg
 #   2. scripts/rename-dmg-volume.sh
-#      — переименовывает том DMG в "Radium v<version>"
-#      — ломает только подпись DMG-контейнера; .app внутри остаётся нотаризованным
+#      — renames the DMG volume to "Radium v<version>"
+#      — breaks only the DMG container signature; the .app inside remains notarized
 #   3. scripts/notarize-dmg-macos.sh
-#      — восстанавливает подпись DMG + нотаризует + стейплит (если заданы APPLE_ID/PASSWORD/TEAM_ID)
+#      — restores the DMG signature + notarizes + staples (if APPLE_ID/PASSWORD/TEAM_ID are set)
 #
-# Для локальной сборки достаточно `make build-mac`; нотаризация автоматически
-# пропустится при отсутствии Apple credentials в окружении.
+# For local building `make build-mac` is enough; notarization is automatically
+# skipped if Apple credentials are not present in the environment.
 build-mac:
 ifeq ($(shell uname -s),Darwin)
 	yarn tauri build --target universal-apple-darwin --config src-tauri/tauri.macos.conf.json
