@@ -209,6 +209,7 @@ pub async fn is_model_supported(
     let usable_vram = budget.usable_vram;
     let usable_total_memory = budget.usable_total;
 
+
     // Check if model fits in total memory at all (this is the hard limit)
     if total_required > usable_total_memory {
         return Ok(ModelSupportStatus::Red); // Truly impossible to run

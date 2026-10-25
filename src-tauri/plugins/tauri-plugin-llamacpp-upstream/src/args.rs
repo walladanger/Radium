@@ -727,7 +727,10 @@ impl ArgumentBuilder {
     fn add_extra_args(&mut self) {
         match Self::parse_extra_args(&self.config.extra_args) {
             Ok(args) => self.args.extend(args),
-            Err(error) => log::warn!("Ignoring invalid extra llama-server arguments: {}", error),
+            Err(error) => log::warn!(
+                "Ignoring invalid extra llama-server arguments: {}",
+                error
+            ),
         }
     }
 

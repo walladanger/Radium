@@ -564,7 +564,10 @@ fn host_has_rocm_runtime() -> bool {
         return false;
     };
     entries.flatten().any(|entry| {
-        entry.file_name().to_string_lossy().starts_with("rocm-")
+        entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("rocm-")
             && (entry.path().join("lib/libamdhip64.so").exists()
                 || entry.path().join("lib64/libamdhip64.so").exists())
     })
