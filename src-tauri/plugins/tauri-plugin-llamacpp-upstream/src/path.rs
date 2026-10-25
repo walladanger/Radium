@@ -197,7 +197,7 @@ mod tests {
         ));
         assert!(!needs_short_path(r"\\?\C:\models\model.gguf"));
         // Non-ASCII paths are unreachable for the backend without 8.3.
-        assert!(needs_short_path(r"C:\Users\Олег\models\model.gguf"));
+        assert!(needs_short_path(r"C:\Users\Jürgen\models\model.gguf"));
     }
 
     #[test]

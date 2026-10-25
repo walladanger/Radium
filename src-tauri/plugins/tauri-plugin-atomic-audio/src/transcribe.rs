@@ -409,7 +409,7 @@ mod tests {
     fn a_real_phrase_is_plausible_for_its_duration() {
         // ~2.5 s of speech, pre-roll and hangover included.
         assert!(is_plausible_transcript(
-            "Привет, давай посмотрим что там с этим билдом",
+            "Hello, let's check what is up with this build",
             2_500
         ));
         assert!(is_plausible_transcript("Yes.", 900));
