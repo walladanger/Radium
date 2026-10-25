@@ -197,7 +197,10 @@ impl GpuLedger {
                     })
                 } else {
                     Err(PlacementError {
-                        message: format!("Needs {need_mib} MiB but GPU {} has {free} MiB free", gpu_label(uuid)),
+                        message: format!(
+                            "Needs {need_mib} MiB but GPU {} has {free} MiB free",
+                            gpu_label(uuid)
+                        ),
                         suggestion: if need_mib <= best_single.1 {
                             Some(Profile::Pinned {
                                 uuid: best_single.0.clone(),

@@ -41,7 +41,7 @@ function InterfaceSettings() {
                 description={t('settings:interface.fontSizeDesc')}
                 actions={<FontSizeSwitcher />}
               />
-              {/* Accent color — скрыто */}
+              {/* Accent color — hidden */}
               {false && (
                 <CardItem
                   title="Accent color"
