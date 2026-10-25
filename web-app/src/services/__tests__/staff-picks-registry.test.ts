@@ -126,7 +126,8 @@ describe('staff-picks-registry loader', () => {
     expect(result.picks).toHaveLength(2)
     expect(getCachedManifest()).toBeNull()
     expect(warn).toHaveBeenCalledWith(
-      '[staff-picks-registry] Failed to write cache:', expect.any(Error)
+      '[staff-picks-registry] Failed to write cache:',
+      expect.any(Error)
     )
   })
 
@@ -158,7 +159,8 @@ describe('staff-picks-registry loader', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(() => clearStaffPicksCache()).not.toThrow()
     expect(warn).toHaveBeenCalledWith(
-      '[staff-picks-registry] Failed to clear cache:', expect.any(Error)
+      '[staff-picks-registry] Failed to clear cache:',
+      expect.any(Error)
     )
   })
 
@@ -329,9 +331,9 @@ describe('staff-picks-registry loader', () => {
     await getStaffPicksOrFallback({ url: REMOTE_URL })
     clearStaffPicksCache()
 
-    expect(
-      window.localStorage.getItem('jan_recommended_models_cache_v1')
-    ).toBe(recommendedPayload)
+    expect(window.localStorage.getItem('jan_recommended_models_cache_v1')).toBe(
+      recommendedPayload
+    )
     expect(
       window.localStorage.getItem('jan_recommended_models_cache_ts_v1')
     ).toBe('123')
@@ -364,8 +366,8 @@ describe('bundled staff picks', () => {
     expect(new Set(orders).size).toBe(orders.length)
   })
 
-  //* Категории Recommended — источник capability-байджей, поэтому конверсии
-  //* одной модели не должны обещать разные возможности.
+  //* Recommended categories are the source of capability badges, so conversions
+  //* of the same model shouldn't promise different capabilities.
   it('declares the same capabilities on a GGUF pick and its MLX twin', () => {
     const CAPABILITIES = ['vision', 'audio', 'reasoning', 'tools'] as const
     const capsOf = (pick: StaffPick) =>
@@ -393,7 +395,7 @@ describe('bundled staff picks', () => {
     }
   })
 
-  //* Порядок групп курируется вручную и легко ломается при правке манифеста.
+  //* Group order is manually curated and easily breaks when editing the manifest.
   describe('family grouping', () => {
     const TIERS = ['qwen', 'gemma', 'lfm']
 
@@ -409,7 +411,11 @@ describe('bundled staff picks', () => {
     // Both format lists are curated as one sequence, so each is checked in the
     // order the Hub renders it.
     const listed = (format: 'gguf' | 'mlx') =>
-      filterStaffPicksForPlatform(BUNDLED_MANIFEST.picks, 'macos', format).filter(
+      filterStaffPicksForPlatform(
+        BUNDLED_MANIFEST.picks,
+        'macos',
+        format
+      ).filter(
         (pick) =>
           (pick.order ?? Number.POSITIVE_INFINITY) >= FAMILY_SEQUENCE_START
       )
@@ -418,7 +424,9 @@ describe('bundled staff picks', () => {
       'opens the %s list with Qwen, then Gemma, then LFM',
       (format) => {
         const tiers = listed(format).map((pick) => tierOf(pick.icon))
-        expect(tiers.slice(0, 13)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2])
+        expect(tiers.slice(0, 13)).toEqual([
+          0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2,
+        ])
       }
     )
 
@@ -435,7 +443,9 @@ describe('bundled staff picks', () => {
     // what "top of the recommendations" means.
     it('walks the MLX list in the same model order as the GGUF one', () => {
       const ggufTitles = listed('gguf').map((p) => p.title)
-      const mlxTitles = listed('mlx').map((p) => p.title?.replace(/ \(MLX\)$/, ''))
+      const mlxTitles = listed('mlx').map((p) =>
+        p.title?.replace(/ \(MLX\)$/, '')
+      )
 
       expect(mlxTitles.length).toBeGreaterThan(0)
       for (const title of mlxTitles) expect(ggufTitles).toContain(title)
@@ -511,7 +521,11 @@ describe('filterStaffPicksForPlatform', () => {
   const picks: StaffPick[] = [
     { model_name: 'universal/one', order: 20 },
     { model_name: 'mac/only', platforms: ['macos'], order: 10 },
-    { model_name: 'win-linux/only', platforms: ['windows', 'linux'], order: 30 },
+    {
+      model_name: 'win-linux/only',
+      platforms: ['windows', 'linux'],
+      order: 30,
+    },
     { model_name: 'disabled/everywhere', active: false, order: 1 },
     { model_name: 'unordered/tail' },
   ]
