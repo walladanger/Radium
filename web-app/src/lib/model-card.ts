@@ -209,9 +209,9 @@ export type Capability = {
   className: string
 }
 
-//* Outlined-tinted палитра с light + dark вариантами — тот же канон, что у
-//* FIT_BADGE_CLASS: светлый pill в light-теме и приглушённый тёмный с светлым
-//* текстом в dark. Цвет каждой способности сохранён (amber/blue/fuchsia/teal).
+//* Outlined-tinted palette with light + dark variants — same canon as
+//* FIT_BADGE_CLASS: a light pill in light theme and a muted dark one with light
+//* text in dark theme. The color of each capability is preserved (amber/blue/fuchsia/teal).
 const CAP_COLORS = {
   vision:
     'border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/45 dark:text-amber-200',
