@@ -35,6 +35,7 @@ Requires Node.js 22.12+, Yarn 4.5.3, Rust, GNU Make, and native build prerequisi
 6. `make verify`
 
 ## Configuration
+
 | Environment Variable | Purpose | Default |
 | --- | --- | --- |
 | `RADIUM_API_KEY` | Provides an API key for the local API server and authenticates requests | None |
