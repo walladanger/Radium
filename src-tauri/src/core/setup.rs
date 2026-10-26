@@ -517,7 +517,7 @@ pub fn setup_tray(app: &App) -> tauri::Result<TrayIcon> {
         };
     }
 
-    //* Иконка в строке меню macOS: отдельный asset; icon_as_template(false) — показывать PNG как есть
+    //* macOS menu bar icon: separate asset; icon_as_template(false) — show PNG as is
     //  Single-click opens the status menu (Pico-style). The right-click menu is the same.
     let mut tray_builder = TrayIconBuilder::with_id("tray")
         .menu(&menu)
@@ -525,7 +525,7 @@ pub fn setup_tray(app: &App) -> tauri::Result<TrayIcon> {
 
     #[cfg(target_os = "macos")]
     {
-        //* Template: система красит чёрный контур как батарею; PNG со скруглением и «пустой» звездой
+        //* Template: system paints black outline like battery; PNG with rounding and "empty" star
         let menu_bar_icon = tauri::image::Image::from_bytes(include_bytes!(
             "../../../web-app/public/images/tray-macos-template.png"
         ))?;
