@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-#* Переименование VOLNAME готового .dmg после tauri build.
-#* Вклеивает версию в системный заголовок окна DMG (то, что Finder
-#* показывает в шапке при монтировании образа).
+#* Rename VOLNAME of a completed .dmg after tauri build.
+#* Injects the version into the system DMG window title (what Finder
+#* shows in the header when mounting the image).
 #?
-#? Порядок ритуала:
+#? Ritual order:
 #?   1. hdiutil convert DMG → UDRW (rewritable)
 #?   2. hdiutil attach (mount)
 #?   3. diskutil rename <mount> "<NEW_VOLNAME>"
 #?   4. hdiutil detach
-#?   5. hdiutil convert UDRW → UDZO (финальный сжатый образ)
+#?   5. hdiutil convert UDRW → UDZO (final compressed image)
 #?
-#? Внутренний .app остаётся нотаризованным — мы не трогаем его содержимое.
-#? После переименования подпись DMG-контейнера ломается и должна быть
-#? восстановлена через scripts/notarize-dmg-macos.sh.
+#? The internal .app remains notarized — we do not touch its contents.
+#? After renaming, the DMG container signature breaks and must be
+#? restored via scripts/notarize-dmg-macos.sh.
 #?
 #? Usage:
 #?   bash scripts/rename-dmg-volume.sh path/to/App.dmg [version]
 #?
-#? Если version не передан — читается из src-tauri/tauri.conf.json.
+#? If version is not provided, it is read from src-tauri/tauri.conf.json.
 
 set -euo pipefail
 
