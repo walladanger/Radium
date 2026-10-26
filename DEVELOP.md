@@ -1,63 +1,63 @@
-# Стабильный запуск и доработка Radium
+# Stable Launch and Development of Radium
 
-## Что произошло в логе
+## What happened in the log
 
-1. **Ошибки Vite/esbuild** (`The service was stopped` / `The service is no longer running`) появились **после того, как ты закрыл окно Radium**. При закрытии приложения завершается процесс `cargo run` → завершается весь `yarn dev` → останавливается дочерний Vite. В момент остановки Vite ещё успевает попытаться обработать запросы (HMR и т.д.) и пишет, что сервис уже не запущен. Это не баг кода, а следствие остановки dev-процесса.
+1. **Vite/esbuild errors** (`The service was stopped` / `The service is no longer running`) appeared **after you closed the Radium window**. When the app is closed, the `cargo run` process terminates → the entire `yarn dev` terminates → the child Vite stops. At the moment of stopping, Vite still manages to try to process requests (HMR, etc.) and writes that the service is no longer running. This is not a code bug, but a consequence of stopping the dev process.
 
-2. **Иконки генерируются при каждом запуске** — скрипт `dev:tauri` каждый раз вызывает `yarn build:icon`. Так задумано в проекте, добавляет несколько секунд к старту.
+2. **Icons are generated on every launch** — the `dev:tauri` script calls `yarn build:icon` every time. This is intended in the project, it adds a few seconds to the startup.
 
-3. **Rust пересобирается** — при первом после изменений запуске cargo делает инкрементальную сборку (~13–40 с). Без изменений в Rust сборка почти мгновенная.
+3. **Rust is rebuilt** — on the first launch after changes, cargo does an incremental build (~13–40 s). Without changes in Rust, the build is almost instantaneous.
 
 ---
 
-## Как запускать стабильно
+## How to launch stably
 
-### Один терминал, один процесс
+### One terminal, one process
 
 ```bash
 cd /Users/max/Desktop/desc-app/jan
 yarn dev
 ```
 
-- Дождись в логе: `Running target/debug/Atomic Chat` и появления окна Radium.
-- **Не закрывай этот терминал** и по возможности **не закрывай окно Radium** во время разработки.
-- Редактируй код в `web-app/` — Vite подхватит изменения (hot reload), перезапуск не нужен.
-- Редактируешь Rust в `src-tauri/` — после сохранения Tauri сам пересоберёт и перезапустит приложение.
+- Wait in the log for: `Running target/debug/Atomic Chat` and the appearance of the Radium window.
+- **Do not close this terminal** and, if possible, **do not close the Radium window** during development.
+- Edit code in `web-app/` — Vite will pick up changes (hot reload), no restart is needed.
+- If editing Rust in `src-tauri/` — after saving, Tauri will automatically rebuild and restart the application.
 
-**Когда закончил работу:** закрой окно Radium, затем в терминале нажми **Ctrl+C** один раз. Так и Vite, и Tauri завершатся предсказуемо, без лишних сообщений об остановленном сервисе.
+**When you finish working:** close the Radium window, then in the terminal press **Ctrl+C** once. This way both Vite and Tauri will exit predictably, without extra messages about the stopped service.
 
 ---
 
-## Порядок при каждом «приходе за компьютер»
+## Routine for each "session at the computer"
 
-1. Открыть терминал.
+1. Open terminal.
 2. `cd /Users/max/Desktop/desc-app/jan`
 3. `yarn dev`
-4. Дождаться открытия окна Radium.
-5. Дорабатывать фронт в `web-app/` или бэкенд в `src-tauri/`.
-6. В конце: закрыть окно Radium → в терминале **Ctrl+C**.
+4. Wait for the Radium window to open.
+5. Work on the frontend in `web-app/` or backend in `src-tauri/`.
+6. At the end: close the Radium window → in the terminal **Ctrl+C**.
 
-Повторный запуск — снова только `yarn dev` (без `make dev`), если не менял зависимости и не делал `make clean`.
+Relaunch — again just `yarn dev` (without `make dev`), if dependencies were not changed and `make clean` was not run.
 
 ---
 
-## Что где править
+## What to edit where
 
-| Задача | Где код |
+| Task | Where is the code |
 |--------|--------|
-| UI, экраны, компоненты | `web-app/src/` |
-| Логика расширений, ядро (TypeScript) | `core/`, `extensions/` |
-| Нативное API, плагины, CLI | `src-tauri/` (Rust) |
+| UI, screens, components | `web-app/src/` |
+| Extension logic, core (TypeScript) | `core/`, `extensions/` |
+| Native API, plugins, CLI | `src-tauri/` (Rust) |
 
-После правок в **web-app** перезапуск не нужен — сработает hot reload. После правок в **Rust** Tauri сам пересоберёт и перезапустит приложение.
+After edits in **web-app**, no restart is needed — hot reload will work. After edits in **Rust**, Tauri will rebuild and restart the app by itself.
 
 ---
 
-## Если что-то пошло не так
+## If something goes wrong
 
-- **«The service is no longer running»** — обычно значит, что процесс уже завершён (закрыли окно или нажали Ctrl+C). Просто заново запусти `yarn dev`.
-- **Окно не открывается / зависает** — убедись, что порт 1420 свободен (`lsof -i :1420`), заверши старые процессы и снова `yarn dev`.
-- **После смены ветки или pull** — при необходимости выполни `make dev` один раз (полная установка и сборка), дальше снова только `yarn dev`.
+- **"The service is no longer running"** — usually means the process has already terminated (window closed or Ctrl+C pressed). Just run `yarn dev` again.
+- **Window does not open / freezes** — make sure port 1420 is free (`lsof -i :1420`), kill old processes, and run `yarn dev` again.
+- **After switching branches or pull** — if necessary, run `make dev` once (full install and build), then again just `yarn dev`.
 
 ---
 

@@ -325,7 +325,7 @@ export function getTotalDownloadFileSize(
   return formatCatalogFileSize(modelBytes + (mmprojBytes ?? 0))
 }
 
-//* MLX: суммируем размер всех safetensors-шардов (HF часто режет на 00001-of-0000N)
+//* MLX: sum the size of all safetensors shards (HF often cuts into 00001-of-0000N)
 export function getMlxTotalFileSize(
   model: Pick<CatalogModel, 'safetensors_files'>
 ): string | undefined {
@@ -349,10 +349,10 @@ export function getMlxTotalFileSize(
   return formatCatalogFileSize(totalBytes)
 }
 
-//* Hub / setup: рекомендованный repo id ↔ запись каталога.
-//* Совпадение строго по полному `org/repo` (case-insensitive). Без fallback
-//* по «хвосту» — иначе при коллизии (`unsloth/X` vs `lmstudio-community/X`)
-//* recommended из одной орги молча резолвится в чужую модель.
+//* Hub / setup: recommended repo id ↔ catalog entry.
+//* Exact match on full `org/repo` (case-insensitive). No fallback
+//* on "tail" — otherwise in a collision (`unsloth/X` vs `lmstudio-community/X`)
+//* a recommended from one org silently resolves to another model.
 export function findCatalogModelForRecommendedRepo(
   sources: readonly CatalogModel[],
   recommendedRepoId: string

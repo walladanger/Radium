@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn preview_budget_holds_for_unbroken_unicode_text() {
         let dir = workspace();
-        let body = "щ".repeat(20_000);
+        let body = "ω".repeat(20_000);
         let outcomes = spill_outcomes(
             &dir,
             "thread-a",

@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn enforces_a_unicode_safe_character_budget() {
-        let output = "Ж".repeat(600);
+        let output = "Ω".repeat(600);
         let result =
             compress_tool_result_with_limits("os.fs.read", ToolStatus::Ok, &output, 80, 12);
 

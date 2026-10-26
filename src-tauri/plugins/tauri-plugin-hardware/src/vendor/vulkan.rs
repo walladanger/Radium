@@ -85,8 +85,8 @@ pub fn get_vulkan_gpus() -> Vec<GpuInfo> {
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn get_vulkan_gpus_internal() -> Result<Vec<GpuInfo>, Box<dyn std::error::Error>> {
-    //* На macOS инференс идёт через Metal; MoltenVK тянется через относительный dlopen и ломается под Hardened Runtime.
-    //? Пустой список GPU — ожидаемый путь: дальше используется unified memory / RAM.
+    //* On macOS, inference runs via Metal; MoltenVK is loaded via relative dlopen and breaks under Hardened Runtime.
+    //? An empty GPU list is the expected path: unified memory / RAM is used further down.
     #[cfg(target_os = "macos")]
     {
         // Logged once per process — this path is hit on every poll (~5s),

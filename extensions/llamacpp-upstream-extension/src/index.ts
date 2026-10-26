@@ -857,10 +857,10 @@ export default class llamacpp_upstream_extension extends AIEngine {
       void this.handleSessionDied(event.payload)
     })
 
-    //* configureBackends может долго качать движок — не await, иначе весь UI ждёт завершения.
+    //* configureBackends can take a long time to download the engine — do not await, otherwise the whole UI waits for completion.
     this.configureBackendsPromise = this.configureBackends()
       .catch((err) => {
-        //! Раньше отклонённый промис терялся; без лога сложно понять вечный «loading» в настройках.
+        //! Previously, a rejected promise was lost; without a log, it's hard to understand a perpetual "loading" in settings.
         logger.error('configureBackends failed:', err)
       })
       // Resolve a parked `latest/<variant>` sentinel to a concrete pair now;
@@ -2008,7 +2008,11 @@ export default class llamacpp_upstream_extension extends AIEngine {
         // fresh install without libvulkan1, or a driver still settling.
         // Not a verdict — ask again next launch instead of pinning the host
         // to CPU for the life of the profile.
-        if (!features.vulkan && archSuffix === 'x64' && sysInfo.gpus.length > 0) {
+        if (
+          !features.vulkan &&
+          archSuffix === 'x64' &&
+          sysInfo.gpus.length > 0
+        ) {
           return { kind: 'detection-failed' }
         }
         // No accelerator at all: the CPU build is the right build.
@@ -3426,9 +3430,9 @@ export default class llamacpp_upstream_extension extends AIEngine {
 
     const installed = await this.list()
     if (!installed.some((model) => model.id === TRANSCRIPTION_MODEL_ID)) {
-      const error = new Error(
-        'The voice model is not installed.'
-      ) as Error & { code?: string }
+      const error = new Error('The voice model is not installed.') as Error & {
+        code?: string
+      }
       error.code = ERR_TRANSCRIPTION_MODEL_MISSING
       throw error
     }
@@ -3467,7 +3471,7 @@ export default class llamacpp_upstream_extension extends AIEngine {
       }
       if (props?.modalities?.audio === false) {
         const error = new Error(
-          'This llama.cpp build cannot run the voice model\'s audio encoder.'
+          "This llama.cpp build cannot run the voice model's audio encoder."
         ) as Error & { code?: string }
         error.code = ERR_TRANSCRIPTION_UNSUPPORTED
         throw error
@@ -3578,7 +3582,6 @@ export default class llamacpp_upstream_extension extends AIEngine {
   /** Ids (relative folder paths) of every model.yml under the models folder. */
   private async listModelYmlIds(modelsDir: string): Promise<string[]> {
     const modelIds: string[] = []
-
 
     // DFS
     let stack = [modelsDir]
@@ -4256,9 +4259,8 @@ export default class llamacpp_upstream_extension extends AIEngine {
     // only the first shard would advertise a 150 GB model as a few megabytes.
     let size_bytes = 0
     for (const shard of ggufShardSetPaths(fullModelPath)) {
-      size_bytes += (
-        await step(`reading ${shard}`, () => fs.fileStat(shard))
-      ).size
+      size_bytes += (await step(`reading ${shard}`, () => fs.fileStat(shard)))
+        .size
     }
     if (mmprojPath) {
       const fullMmprojPath = await joinPath([janDataFolderPath, mmprojPath])
@@ -7225,11 +7227,10 @@ export default class llamacpp_upstream_extension extends AIEngine {
     }
     // set envs
     const envs: Record<string, string> = {}
-    if (this.llamacpp_env)
-      this.parseEnvFromString(envs, this.llamacpp_env)
+    if (this.llamacpp_env) this.parseEnvFromString(envs, this.llamacpp_env)
 
-      // Ensure backend is downloaded and ready before proceeding (ATO-179: fall
-      // back to an installed compatible backend if the pinned one is missing).
+    // Ensure backend is downloaded and ready before proceeding (ATO-179: fall
+    // back to an installed compatible backend if the pinned one is missing).
     ;({ version, backend } = await this.ensureBackendReady(
       backend,
       version,

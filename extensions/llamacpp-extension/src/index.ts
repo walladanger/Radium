@@ -618,10 +618,10 @@ export default class llamacpp_extension extends AIEngine {
       }
     )
 
-    //* configureBackends может долго качать движок — не await, иначе весь UI ждёт завершения.
+    //* configureBackends can take a long time to download the engine — do not await, otherwise the whole UI waits for completion.
     this.configureBackendsPromise = this.configureBackends()
       .catch((err) => {
-        //! Раньше отклонённый промис терялся; без лога сложно понять вечный «loading» в настройках.
+        //! Previously, a rejected promise was lost; without a log, it's hard to understand a perpetual "loading" in settings.
         logger.error('configureBackends failed:', err)
       })
       // Moving to a newer release tag waits for runDeferredBackendMaintenance.
@@ -650,7 +650,10 @@ export default class llamacpp_extension extends AIEngine {
       try {
         await adopt()
       } catch (err) {
-        logger.warn('runDeferredBackendMaintenance: first-run adoption failed:', err)
+        logger.warn(
+          'runDeferredBackendMaintenance: first-run adoption failed:',
+          err
+        )
       }
     }
     await this.reconcileBackendReleaseTag()
@@ -729,7 +732,6 @@ export default class llamacpp_extension extends AIEngine {
 
     localStorage.setItem(MIGRATION_KEY, '1')
   }
-
 
   /**
    * Fit is on by default (ATO-465). A one-shot migration used to force it
@@ -3288,9 +3290,8 @@ export default class llamacpp_extension extends AIEngine {
     // only the first shard would advertise a 150 GB model as a few megabytes.
     let size_bytes = 0
     for (const shard of ggufShardSetPaths(fullModelPath)) {
-      size_bytes += (
-        await step(`reading ${shard}`, () => fs.fileStat(shard))
-      ).size
+      size_bytes += (await step(`reading ${shard}`, () => fs.fileStat(shard)))
+        .size
     }
     if (mmprojPath) {
       const fullMmprojPath = await joinPath([janDataFolderPath, mmprojPath])

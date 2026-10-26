@@ -375,12 +375,12 @@ mod tests {
     #[test]
     fn utf8_survives_chunk_boundaries() {
         let mut buffer = OutputBuffer::default();
-        let text = "привет".as_bytes();
+        let text = "αβγδεζ".as_bytes();
         let (head, tail) = text.split_at(5);
         buffer.push_bytes(head);
         buffer.push_bytes(tail);
         buffer.push_bytes(b"\n");
-        assert_eq!(drain(&buffer), "привет");
+        assert_eq!(drain(&buffer), "αβγδεζ");
     }
 
     #[test]
