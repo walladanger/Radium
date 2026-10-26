@@ -621,7 +621,7 @@ const ChatInput = memo(function ChatInput({
 
   // Jan Browser Extension hook
   const {
-    //! при возврате кнопки Browse: hasConfig: hasJanBrowserMCPConfig, isLoading: isJanBrowserMCPLoading,
+    //! when restoring Browse button: hasConfig: hasJanBrowserMCPConfig, isLoading: isJanBrowserMCPLoading,
     isActive: janBrowserMCPActive,
     dialogOpen: extensionDialogOpen,
     dialogState: extensionDialogState,
@@ -3218,7 +3218,7 @@ const ChatInput = memo(function ChatInput({
                     skipLabel={t('chat:agentApprovals.skip')}
                     skipDescription={t('chat:agentApprovals.skipDescription')}
                   />
-                  {/* //! Кнопка Browse (Chrome) — временно скрыта
+                  {/* //! Browse button (Chrome) — temporarily hidden
                 {!agentRouteActive && hasJanBrowserMCPConfig && modelSupportsBrowser && (
                   <Tooltip>
                     <TooltipTrigger asChild>
