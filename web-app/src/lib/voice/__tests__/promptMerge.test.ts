@@ -50,7 +50,7 @@ describe('joinSegment', () => {
     expect(joinSegment('the fox', ', quickly')).toBe('the fox, quickly')
     expect(joinSegment('the fox', '. Then')).toBe('the fox. Then')
     expect(joinSegment('the fox', '?')).toBe('the fox?')
-    expect(joinSegment('стоимость', '…')).toBe('стоимость…')
+    expect(joinSegment('κόστος', '…')).toBe('κόστος…')
   })
 
   it('handles empty operands', () => {

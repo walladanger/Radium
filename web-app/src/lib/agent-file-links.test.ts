@@ -53,7 +53,7 @@ describe('agent file links', () => {
       extractAgentAttachmentReferences([
         {
           type: 'file',
-          filename: 'Техническое задание.pdf',
+          filename: 'Τεχνικές προδιαγραφές.pdf',
           url: '/thread/agent-attachments/turn/01.pdf',
         },
         {
@@ -64,7 +64,7 @@ describe('agent file links', () => {
       ])
     ).toEqual([
       {
-        name: 'Техническое задание.pdf',
+        name: 'Τεχνικές προδιαγραφές.pdf',
         path: '/thread/agent-attachments/turn/01.pdf',
       },
     ])
@@ -87,11 +87,11 @@ describe('agent file links', () => {
     const path = '/thread/agent-attachments/turn/01.pdf'
 
     expect(
-      linkAgentFileReferences('Открыть Техническое задание.pdf', [
-        { path, name: 'Техническое задание.pdf' },
+      linkAgentFileReferences('Άνοιγμα Τεχνικές προδιαγραφές.pdf', [
+        { path, name: 'Τεχνικές προδιαγραφές.pdf' },
       ])
     ).toContain(
-      `[Техническое задание.pdf](https://atomic.local/open-file?path=${encodeURIComponent(path)})`
+      `[Τεχνικές προδιαγραφές.pdf](https://atomic.local/open-file?path=${encodeURIComponent(path)})`
     )
   })
 
@@ -99,11 +99,11 @@ describe('agent file links', () => {
     const path = '/thread/agent-attachments/turn/01.pdf'
 
     expect(
-      linkAgentFileReferences(`Создано в ${path}`, [
-        { path, name: 'Техническое задание.pdf' },
+      linkAgentFileReferences(`Δημιουργήθηκε στο ${path}`, [
+        { path, name: 'Τεχνικές προδιαγραφές.pdf' },
       ])
     ).toContain(
-      `[Техническое задание.pdf](https://atomic.local/open-file?path=${encodeURIComponent(path)})`
+      `[Τεχνικές προδιαγραφές.pdf](https://atomic.local/open-file?path=${encodeURIComponent(path)})`
     )
   })
 
