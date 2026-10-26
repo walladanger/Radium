@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-#* icon.ico для Windows: full-bleed logo-app.png без macOS-полей, чтобы значок
-#* в панели задач занимал плитку как у соседних приложений. tauri icon берёт
-#* icon.ico из icon.png с ~18% полями (под Dock), отчего иконка выглядела меньше.
-#* macOS (icon.icns) и Linux (icon.png) не трогаем — это чисто Windows-ассет.
+#* icon.ico for Windows: full-bleed logo-app.png without macOS padding, so the icon
+#* in the taskbar fills the tile like neighboring apps. tauri icon takes
+#* icon.ico from icon.png with ~18% padding (for Dock), making the icon look smaller.
+#* macOS (icon.icns) and Linux (icon.png) are untouched — this is strictly a Windows asset.
 from __future__ import annotations
 
 import io
@@ -38,7 +38,7 @@ def main() -> None:
     entries = b""
     body = b""
     for n, data in blobs:
-        #? для 256 в ICONDIRENTRY ширина/высота кодируются нулём
+        #? for 256 in ICONDIRENTRY width/height are encoded as zero
         dim = 0 if n >= 256 else n
         entries += struct.pack("<BBBBHHII", dim, dim, 0, 0, 1, 32, len(data), offset)
         body += data
