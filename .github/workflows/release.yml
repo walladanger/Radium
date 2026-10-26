@@ -285,7 +285,7 @@ jobs:
           yarn download:bin
           yarn build:foundation-models-server
           yarn build:cli
-          # Универсальная macOS-сборка + переименование VOLNAME с версией + ресигн/нотаризация DMG
+          # Universal macOS build + rename VOLNAME with version + resign/notarize DMG
           make build-mac
 
       - name: Collect artifact metadata
