@@ -286,14 +286,11 @@ describe('refreshProviderModels', () => {
     expect(stubs.fetchModelsFromProviderCalls).toEqual([baseProvider])
     expect(stubs.setProvidersCalls).toEqual([registryProviders])
 
-    // newCount gets the registry new models (1) + liveNewModels length (3).
-    // The live fetch returns 'live-1', 'live-1' and 'live-2', which are all missing from afterRegistryIds
-    // so liveNewModels.length is 3. 1 + 3 = 4.
     expect(stubs.toastSuccessCalls).toEqual([
       {
         msg: 'providers:models',
         options: {
-          description: 'providers:refreshModelsSuccess:{"count":4,"provider":"my-provider"}',
+          description: 'providers:refreshModelsSuccess:{"count":3,"provider":"my-provider"}',
         },
       }
     ])
@@ -320,6 +317,38 @@ describe('refreshProviderModels', () => {
               version: '1.0'
             }
           ]
+        }
+      }
+    ])
+  })
+
+  it('does not call updateProvider when all live ids already exist', async () => {
+    const registryProviders = [
+      {
+        provider: 'my-provider',
+        models: [{ id: 'existing-1' }], // no new registry models
+      }
+    ]
+    stubs.getProvidersReturn = registryProviders
+    stubs.fetchModelsFromProviderReturn = ['existing-1'] // only duplicate models
+
+    await refreshProviderModels({
+      provider: baseProvider,
+      serviceHub,
+      setProviders,
+      updateProvider,
+      t,
+    })
+
+    expect(stubs.fetchModelsFromProviderCalls).toEqual([baseProvider])
+    expect(stubs.setProvidersCalls).toEqual([registryProviders])
+    expect(stubs.updateProviderCalls).toEqual([])
+
+    expect(stubs.toastSuccessCalls).toEqual([
+      {
+        msg: 'providers:models',
+        options: {
+          description: 'providers:noNewModels'
         }
       }
     ])
