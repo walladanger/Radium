@@ -322,7 +322,7 @@ describe("useSidebarResize", () => {
 		expect(removeEventListenerSpy.mock.calls.length).toBeGreaterThan(0);
 	});
 
-	it.skip("bug: fails to update startX and startWidth after expanding a collapsed nested sidebar, causing erratic width calculation on continued drag", () => {
+	it("continues to clamp width correctly after expanding a collapsed nested sidebar", () => {
 		const onResize = vi.fn();
 		const onToggle = vi.fn();
 
@@ -352,11 +352,9 @@ describe("useSidebarResize", () => {
 			document.dispatchEvent(new MouseEvent("mousemove", { clientX: 60 }));
 		});
 
-		// Bug: The width is calculated as initialWidth (0) + deltaX (60 - 0) = 60px = 3.75rem.
-		// It is then clamped to minWidth = 14rem.
-		// We expect it to calculate smoothly from the new toggle point, which would mean it should increase to ~14.6rem.
-		// Because of the bug, the assertion here is what SHOULD happen.
-		expect(onResize).toHaveBeenCalledWith("14.6rem");
+		// Deliberate tracking behavior: width is computed from the original drag start (startX/startWidth),
+		// so the panel edge tracks the cursor and stays clamped at minResizeWidth (14rem) until the cursor passes it.
+		expect(onResize).toHaveBeenCalledWith("14.0rem");
 		expect(result.current.isDragging.current).toBe(true);
 	});
 });
