@@ -4,10 +4,22 @@ import { useTokensCount } from '../useTokensCount'
 import { useServiceHub } from '../useServiceHub'
 import { useModelProvider } from '../useModelProvider'
 import { usePrompt } from '../usePrompt'
-import { ContentType, Model } from '@janhq/core'
+import { ContentType, Model, ThreadMessage } from '@janhq/core'
 import { ServiceHub } from '../../services'
 
 vi.mock('../useServiceHub')
+
+// Constants to prevent infinite loops (from useMemo in the hook recalculating on array change)
+const NO_MESSAGES: ThreadMessage[] = []
+const UPLOADED_FILES = [
+  {
+    name: 'test.png',
+    type: 'image/png',
+    size: 100,
+    base64: 'abc',
+    dataUrl: 'data:image/png;base64,abc',
+  },
+]
 
 describe('useTokensCount', () => {
   const mockGetTokensCount = vi.fn()
@@ -44,7 +56,7 @@ describe('useTokensCount', () => {
   })
 
   it('handles empty input by returning zero tokens and not calling backend', () => {
-    const { result } = renderHook(() => useTokensCount())
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES))
 
     act(() => {
       vi.advanceTimersByTime(500)
@@ -61,17 +73,8 @@ describe('useTokensCount', () => {
     act(() => {
       usePrompt.setState({ prompt: 'Hello world' })
     })
-    const uploadedFiles = [
-      {
-        name: 'test.png',
-        type: 'image/png',
-        size: 100,
-        base64: 'abc',
-        dataUrl: 'data:image/png;base64,abc',
-      },
-    ]
 
-    const { result } = renderHook(() => useTokensCount([], uploadedFiles))
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES, UPLOADED_FILES))
 
     act(() => {
       vi.advanceTimersByTime(500)
@@ -101,7 +104,7 @@ describe('useTokensCount', () => {
   it('debounces input calculation', async () => {
     mockGetTokensCount.mockResolvedValue(15)
 
-    const { result } = renderHook(() => useTokensCount())
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES))
 
     act(() => {
       usePrompt.setState({ prompt: 'first prompt' })
@@ -137,7 +140,7 @@ describe('useTokensCount', () => {
   it('handles backend error gracefully', async () => {
     mockGetTokensCount.mockRejectedValue(new Error('Backend failed'))
 
-    const { result } = renderHook(() => useTokensCount())
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES))
 
     act(() => {
       usePrompt.setState({ prompt: 'trigger calculation' })
@@ -165,7 +168,7 @@ describe('useTokensCount', () => {
       .mockReturnValueOnce(new Promise((res) => { resolveFirstCalculation = res }))
       .mockReturnValueOnce(new Promise((res) => { resolveSecondCalculation = res }))
 
-    const { result } = renderHook(() => useTokensCount())
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES))
 
     act(() => {
       usePrompt.setState({ prompt: 'first calculation' })
@@ -228,7 +231,7 @@ describe('useTokensCount', () => {
       usePrompt.setState({ prompt: 'Hello world' })
     })
 
-    const { result } = renderHook(() => useTokensCount())
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES))
 
     act(() => {
       vi.advanceTimersByTime(500)
@@ -245,7 +248,7 @@ describe('useTokensCount', () => {
       usePrompt.setState({ prompt: 'A very long prompt that approaches the limit' })
     })
 
-    const { result } = renderHook(() => useTokensCount())
+    const { result } = renderHook(() => useTokensCount(NO_MESSAGES))
 
     act(() => {
       vi.advanceTimersByTime(500)
