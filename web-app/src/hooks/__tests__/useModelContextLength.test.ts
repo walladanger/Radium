@@ -214,7 +214,6 @@ describe('useModelContextLength', () => {
     })
 
     expect(hookResult.current.draft).toBe(0)
-    // Validate edge values gracefully resolve according to Math.max fallbacks
     expect(hookResult.current.sliderMin).toBe(1)
     expect(hookResult.current.sliderStep).toBe(1024)
     expect(hookResult.current.sliderMax).toBe(512 * 1024)
@@ -268,6 +267,10 @@ describe('useModelContextLength', () => {
         })
       ])
     }))
+
+    // Assert that the real Zustand state was updated
+    const updatedProvider = useModelProvider.getState().providers.find(p => p.provider === 'llamacpp')
+    expect(updatedProvider?.models[0].settings?.ctx_len?.controller_props?.value).toBe(8192)
 
     await act(async () => {
       vi.runAllTimers()
@@ -329,6 +332,10 @@ describe('useModelContextLength', () => {
       ])
     }))
 
+    // Assert that the real Zustand state was updated
+    const updatedProvider = useModelProvider.getState().providers.find(p => p.provider === 'llamacpp')
+    expect(updatedProvider?.settings?.find((s: any) => s.key === 'fit')?.controller_props?.value).toBe(true)
+
     await act(async () => {
       vi.runAllTimers()
       await new Promise(process.nextTick)
@@ -380,6 +387,11 @@ describe('useModelContextLength', () => {
       vi.runAllTimers()
       await new Promise(process.nextTick)
     })
+
+    // Verify unmount properly cleaned up by ensuring store state reflects the intended value
+    // but the restart was not executed
+    const updatedProvider = useModelProvider.getState().providers.find(p => p.provider === 'llamacpp')
+    expect(updatedProvider?.models[0].settings?.ctx_len?.controller_props?.value).toBe(8192)
 
     expect(mockStopModel).not.toHaveBeenCalled()
     expect(mockStartModel).not.toHaveBeenCalled()
