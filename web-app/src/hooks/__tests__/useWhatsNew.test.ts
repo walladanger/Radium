@@ -74,7 +74,7 @@ describe('compareSemver', () => {
     ['1.2.3', '1.2.3-beta.1', 0],
     ['v1.2.3-alpha', '1.2.3', 0],
 
-    // Invalid/unparseable parts default to 0
+    // Invalid/unparsable parts default to 0
     ['a.b.c', '0.0.0', 0],
   ] as const
 
