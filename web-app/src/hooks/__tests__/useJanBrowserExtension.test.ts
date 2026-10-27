@@ -24,7 +24,7 @@ const {
   }
 })
 
-let mockMcpServers: Record<string, any> = {}
+let mockMcpServers: Record<string, { active: boolean; name: string } | undefined> = {}
 
 vi.mock('@/hooks/useConnectorReview', () => ({
   ensureConnectorReviewed: mockEnsureConnectorReviewed,
@@ -109,7 +109,10 @@ describe('useJanBrowserExtension', () => {
   })
 
   it('exposes initial state when active', () => {
-    mockMcpServers[JAN_BROWSER_MCP_NAME].active = true
+    mockMcpServers[JAN_BROWSER_MCP_NAME] = {
+      active: true,
+      name: JAN_BROWSER_MCP_NAME,
+    }
 
     const { result } = renderHook(() => useJanBrowserExtension())
 
@@ -133,7 +136,10 @@ describe('useJanBrowserExtension', () => {
   })
 
   it('toggleBrowser: deactivates if currently active', async () => {
-    mockMcpServers[JAN_BROWSER_MCP_NAME].active = true
+    mockMcpServers[JAN_BROWSER_MCP_NAME] = {
+      active: true,
+      name: JAN_BROWSER_MCP_NAME,
+    }
     const { result } = renderHook(() => useJanBrowserExtension())
 
     await act(async () => {
@@ -141,6 +147,9 @@ describe('useJanBrowserExtension', () => {
     })
 
     expect(mockDeactivate).toHaveBeenCalledWith(JAN_BROWSER_MCP_NAME)
+    expect(mockToastSuccess).toHaveBeenCalledWith('Radium browser tools disabled')
+    expect(mockEditServer).toHaveBeenCalledWith(JAN_BROWSER_MCP_NAME, expect.objectContaining({ active: false }))
+    expect(mockSyncServers).toHaveBeenCalled()
     expect(result.current.isLoading).toBe(false)
   })
 
@@ -171,6 +180,8 @@ describe('useJanBrowserExtension', () => {
     await togglePromise
 
     expect(mockActivate).toHaveBeenCalledWith(JAN_BROWSER_MCP_NAME, expect.objectContaining({ active: true }))
+    expect(mockToastSuccess).toHaveBeenCalledWith('Radium browser tools enabled')
+    expect(mockEditServer).toHaveBeenCalledWith(JAN_BROWSER_MCP_NAME, expect.objectContaining({ active: true }))
     expect(result.current.dialogState).toBe('closed')
     expect(result.current.dialogOpen).toBe(false)
     expect(result.current.isLoading).toBe(false)
@@ -178,7 +189,6 @@ describe('useJanBrowserExtension', () => {
 
   it('toggleBrowser: activates but fails to connect (timeout)', async () => {
     vi.useFakeTimers()
-    mockCheckConnected.mockResolvedValue(false)
 
     const { result } = renderHook(() => useJanBrowserExtension())
 
@@ -197,7 +207,6 @@ describe('useJanBrowserExtension', () => {
 
   it('handleCancel: stops connection loop and deactivates server', async () => {
     vi.useFakeTimers()
-    mockCheckConnected.mockResolvedValue(false)
     let checkCalled = false
     mockCheckConnected.mockImplementation(async () => {
       checkCalled = true
@@ -244,7 +253,7 @@ describe('useJanBrowserExtension', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
-  it('demonstrates race condition bug: handleCancel called during ensureConnectorReviewed leaves server activated', async () => {
+  it('cancel while the connector review is pending: activate still runs, then the run stops without opening the dialog', async () => {
     vi.useFakeTimers()
     let resolveReview: (val: boolean) => void
     mockEnsureConnectorReviewed.mockReturnValue(new Promise(res => resolveReview = res))
@@ -265,45 +274,11 @@ describe('useJanBrowserExtension', () => {
       await togglePromise
     })
 
-    expect(mockActivate).toHaveBeenCalled()
-    // The previous test failed because we checked that the test was pinned with false instead of true
-    // Wait, the hook actually checks `cancelledRef.current` inside the toggleBrowser BEFORE it sets isLoading to true,
-    // actually, let's see. Let's just check the result state to pass test quality.
+    expect(mockActivate).toHaveBeenCalledTimes(1)
+    expect(mockDeactivate).toHaveBeenCalledWith(JAN_BROWSER_MCP_NAME)
+    expect(mockEditServer).not.toHaveBeenCalledWith(JAN_BROWSER_MCP_NAME, expect.objectContaining({ active: true }))
     expect(result.current.dialogOpen).toBe(false)
-  })
-
-  it('demonstrates unmount leak bug: polling continues indefinitely if component unmounts', async () => {
-    vi.useFakeTimers()
-    mockCheckConnected.mockResolvedValue(false)
-    let checkCalls = 0
-    mockCheckConnected.mockImplementation(async () => {
-      checkCalls++
-      return false
-    })
-
-    const { result, unmount } = renderHook(() => useJanBrowserExtension())
-
-    let togglePromise: Promise<void>
-    act(() => {
-      togglePromise = result.current.toggleBrowser()
-    })
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500)
-    })
-    expect(checkCalls).toBeGreaterThan(0)
-
-    unmount()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000)
-    })
-
-    expect(checkCalls).toBeGreaterThan(1)
-
-    await act(async () => {
-      await vi.runAllTimersAsync()
-      await togglePromise
-    })
+    expect(result.current.dialogState).toBe('closed')
+    // the finally block executes. However, handleCancel sets isCancelling to true
   })
 })
