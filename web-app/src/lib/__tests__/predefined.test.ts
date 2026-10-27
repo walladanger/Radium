@@ -3,20 +3,18 @@ import * as exports from '../predefined'
 import { DEFAULT_CTX_LEN } from '@janhq/core'
 
 describe('predefined exports data invariants', () => {
-  const allExports = Object.entries(exports)
+  const allExports = Object.values(exports)
 
   it('has exports to test', () => {
     expect(allExports.length).toBeGreaterThan(0)
   })
 
   it('every export has entries with keys matching their object keys', () => {
-    for (const [exportName, exportedObj] of allExports) {
+    for (const exportedObj of allExports) {
       if (typeof exportedObj !== 'object' || exportedObj === null) continue
       const keys = Object.keys(exportedObj)
       for (const key of keys) {
-        // According to user instructions, do not change chatTemplate in source.
-        // Revert/adjust the assertion instead if needed.
-        if (key === 'chatTemplate') continue;
+        if (key === 'chatTemplate') continue
 
         const setting = (exportedObj as any)[key]
         if (setting && typeof setting === 'object' && 'key' in setting) {
@@ -26,8 +24,12 @@ describe('predefined exports data invariants', () => {
     }
   })
 
+  it('modelSettings.chatTemplate intentionally has the legacy chat_template key', () => {
+    expect(exports.modelSettings.chatTemplate.key).toStrictEqual('chat_template')
+  })
+
   it('every export has entries with non-empty title and description', () => {
-    for (const [exportName, exportedObj] of allExports) {
+    for (const exportedObj of allExports) {
       if (typeof exportedObj !== 'object' || exportedObj === null) continue
       const keys = Object.keys(exportedObj)
       for (const key of keys) {
@@ -48,7 +50,7 @@ describe('predefined exports data invariants', () => {
 
   it('every export has entries with valid controller_type', () => {
     const allowedTypes = ['checkbox', 'input', 'textarea']
-    for (const [exportName, exportedObj] of allExports) {
+    for (const exportedObj of allExports) {
       if (typeof exportedObj !== 'object' || exportedObj === null) continue
       const keys = Object.keys(exportedObj)
       for (const key of keys) {
@@ -61,7 +63,7 @@ describe('predefined exports data invariants', () => {
   })
 
   it('every export has controller_props values consistent with their controller_type', () => {
-    for (const [exportName, exportedObj] of allExports) {
+    for (const exportedObj of allExports) {
       if (typeof exportedObj !== 'object' || exportedObj === null) continue
       const keys = Object.keys(exportedObj)
       for (const key of keys) {
