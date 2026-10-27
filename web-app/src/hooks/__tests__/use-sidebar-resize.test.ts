@@ -314,6 +314,39 @@ describe("useSidebarResize", () => {
 	});
 
 	it.skip("bug: fails to update startX and startWidth after expanding a collapsed nested sidebar, causing erratic width calculation on continued drag", () => {
-		// After expanding from collapsed state, the hook calculates width using the original startX and startWidth (which is 0). On subsequent mouse moves (after re-render with isCollapsed=false), the width calculation for nested sidebars incorrectly bases the size off 0 width and the original start point instead of the new size and toggle point, causing the width to jump erratically.
+		const onResize = vi.fn();
+		const onToggle = vi.fn();
+
+		const { result, rerender } = renderHook(
+			(props) => useSidebarResize({ ...props, direction: "right", onResize, onToggle, isNested: true, minResizeWidth: "14rem", expandThreshold: 0.2 }),
+			{ initialProps: { isCollapsed: true, currentWidth: "20rem" } }
+		);
+
+		const mockButton = document.createElement("button");
+		mockButton.getBoundingClientRect = () => ({ left: 0, right: 10, top: 0, bottom: 100, width: 10, height: 100 }) as DOMRect;
+		Object.defineProperty(result.current.dragRef, "current", { value: mockButton, writable: true });
+
+		act(() => {
+			result.current.handleMouseDown(new MouseEvent("mousedown", { clientX: 0 }) as unknown as React.MouseEvent);
+		});
+
+		act(() => {
+			document.dispatchEvent(new MouseEvent("mousemove", { clientX: 50 }));
+		});
+
+		expect(onToggle).toHaveBeenCalledTimes(1);
+		expect(onResize).toHaveBeenCalledWith("14.0rem");
+
+		rerender({ isCollapsed: false, currentWidth: "14rem" });
+
+		act(() => {
+			document.dispatchEvent(new MouseEvent("mousemove", { clientX: 60 }));
+		});
+
+		// Bug: The width is calculated as initialWidth (0) + deltaX (60 - 0) = 60px = 3.75rem.
+		// It is then clamped to minWidth = 14rem.
+		// We expect it to calculate smoothly from the new toggle point, which would mean it should increase to ~14.6rem.
+		// Because of the bug, the assertion here is what SHOULD happen.
+		expect(onResize).toHaveBeenCalledWith("14.6rem");
 	});
 });
