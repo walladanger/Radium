@@ -94,10 +94,11 @@ describe('useSetupCompleted', () => {
     const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
     const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
 
-    const { unmount } = renderHook(() => useSetupCompleted())
+    const { result, unmount } = renderHook(() => useSetupCompleted())
 
     expect(addEventListenerSpy).toHaveBeenCalledWith(SETUP_COMPLETED_EVENT, expect.any(Function))
     expect(addEventListenerSpy).toHaveBeenCalledWith('storage', expect.any(Function))
+    expect(result.current).toBe(false)
 
     unmount()
 
