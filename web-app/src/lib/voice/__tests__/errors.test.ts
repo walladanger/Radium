@@ -4,15 +4,10 @@ import {
   voiceErrorMessageKey,
   isTerminalVoiceError,
   VOICE_ERROR_CODES,
-  VoiceErrorCode,
 } from '../errors'
 
 describe('voiceErrorFromNative', () => {
-  it('every known code in VOICE_ERROR_CODES maps to itself, unknown/undefined/empty codes map to the documented fallback', () => {
-    // If I map `code as string` it fails.
-
-    // We map the underlying native string for each code to the code itself where applicable!
-    // Since some map to 'internal', we explicitly cover the mappings from the source.
+  it('maps every native Rust AudioErrorCode to its camelCase code, and unknown/undefined/empty codes to internal', () => {
     expect(voiceErrorFromNative('PERMISSION_DENIED')).toBe('permission')
     expect(voiceErrorFromNative('NO_INPUT_DEVICE')).toBe('noDevice')
     expect(voiceErrorFromNative('DEVICE_UNAVAILABLE')).toBe('deviceBusy')
@@ -25,7 +20,7 @@ describe('voiceErrorFromNative', () => {
     expect(voiceErrorFromNative('TRANSCRIPTION_TIMEOUT')).toBe('transcriptionTimeout')
     expect(voiceErrorFromNative('INTERNAL')).toBe('internal')
 
-    // Test unknown/undefined/empty
+    // Unknown, undefined and empty codes fall back to 'internal'
     expect(voiceErrorFromNative('UNKNOWN_CODE')).toBe('internal')
     expect(voiceErrorFromNative(undefined)).toBe('internal')
     expect(voiceErrorFromNative('')).toBe('internal')
