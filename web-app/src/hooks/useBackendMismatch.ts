@@ -70,7 +70,7 @@ type SuppressedState = {
   suppressPair: (pair: string) => void
 }
 
-const useSuppressedPairs = create<SuppressedState>()(
+export const useSuppressedPairs = create<SuppressedState>()(
   persist(
     (set, get) => ({
       suppressedPairs: [],
@@ -96,7 +96,7 @@ type BackendMismatchState = {
   markShown: (pair: string) => void
 }
 
-const useBackendMismatchStore = create<BackendMismatchState>()((set, get) => ({
+export const useBackendMismatchStore = create<BackendMismatchState>()((set, get) => ({
   pending: null,
   shownThisSession: [],
   setPending: (event) => set({ pending: event }),
