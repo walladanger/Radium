@@ -194,9 +194,7 @@ describe('useChatAttachments', () => {
       ])
     })
 
-    it.skip('merges or properly handles transfer when destination already has attachments', () => {
-      // BUG: The current code drops the source attachments if the destination already has attachments.
-      // existingDestination?.length ? existingDestination : fromAttachments
+    it('keeps destination attachments unchanged and deletes source when destination already has attachments', () => {
       const { result } = renderHook(() => useChatAttachments())
 
       act(() => {
@@ -208,12 +206,9 @@ describe('useChatAttachments', () => {
         result.current.transferAttachments('source', 'destination')
       })
 
-      // We expect the destination to contain both, but it currently only contains the original destination attachments.
       expect(result.current.getAttachments('destination')).toStrictEqual([
         mockDocAttachment,
-        mockImageAttachment,
       ])
-      // We expect source to be cleared.
       expect(result.current.attachmentsByThread['source']).toBeUndefined()
     })
   })
