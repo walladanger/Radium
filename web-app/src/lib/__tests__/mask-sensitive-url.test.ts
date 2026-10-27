@@ -36,13 +36,13 @@ describe('maskSensitiveUrl', () => {
     ).toBe('https://example.com/search?q=hello&page=1')
   })
 
-  it('masks unparseable input with a "?" by masking everything after it', () => {
+  it('masks unparsable input with a "?" by masking everything after it', () => {
     expect(maskSensitiveUrl('not a url?key=123&other=456')).toBe(
       'not a url?******'
     )
   })
 
-  it('returns unparseable input without "?" unchanged', () => {
+  it('returns unparsable input without "?" unchanged', () => {
     expect(maskSensitiveUrl('not a url at all')).toBe('not a url at all')
   })
 })
