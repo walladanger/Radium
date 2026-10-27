@@ -209,12 +209,13 @@ describe('provider-registry-store', () => {
     })
 
     it('ensureRegistryLoaded() skips refresh if already initialized', async () => {
-      useStore.setState({ hasInitialized: true, providers: [] })
+      useStore.setState({ hasInitialized: true, providers: [{ provider: 'pre-loaded' } as any] })
       mocks.getProvidersOrFallback.mockClear()
 
-      await ensureRegistryLoaded()
+      const result = await ensureRegistryLoaded()
 
       expect(mocks.getProvidersOrFallback).not.toHaveBeenCalled()
+      expect(result).toStrictEqual([{ provider: 'pre-loaded' }])
     })
 
     it('ensureRegistryLoaded() calls refresh if not initialized', async () => {
