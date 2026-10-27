@@ -10,17 +10,23 @@ const mockGetSettingsResult = vi.hoisted(() => {
   return { value: undefined as any }
 })
 
+const mockGetExtension = vi.hoisted(() => {
+  return {
+    fn: vi.fn(() => {
+      return {
+        getSettings: vi.fn(async () => mockGetSettingsResult.value),
+        updateSettings: vi.fn(async (payload) => {
+          mockUpdateSettingsCalls.calls.push(payload)
+        }),
+      }
+    })
+  }
+})
+
 vi.mock('@/lib/extension', () => ({
   ExtensionManager: {
     getInstance: vi.fn(() => ({
-      get: vi.fn(() => {
-        return {
-          getSettings: vi.fn(async () => mockGetSettingsResult.value),
-          updateSettings: vi.fn(async (payload) => {
-            mockUpdateSettingsCalls.calls.push(payload)
-          }),
-        }
-      }),
+      get: mockGetExtension.fn
     })),
   },
 }))
@@ -30,6 +36,7 @@ describe('useAttachments', () => {
     vi.useFakeTimers()
     mockUpdateSettingsCalls.calls = []
     mockGetSettingsResult.value = undefined
+    mockGetExtension.fn.mockClear()
 
     // Reset store state
     useAttachments.setState({
@@ -77,6 +84,19 @@ describe('useAttachments', () => {
       })
 
       expect(success).toBe(false)
+    })
+
+    it('returns false and does not change state if getRagExtension throws or returns undefined', async () => {
+      mockGetExtension.fn.mockImplementationOnce(() => undefined)
+
+      let success = true
+      await act(async () => {
+        success = await useAttachments.getState().loadSettingsDefs()
+      })
+
+      expect(success).toBe(false)
+      const state = useAttachments.getState()
+      expect(state.enabled).toBe(true)
     })
 
     it('loads settings and updates store state', async () => {
@@ -140,6 +160,15 @@ describe('useAttachments', () => {
         { key: 'parse_mode', controllerProps: { value: 'auto' } },
         { key: 'auto_inline_context_ratio', controllerProps: { value: 0.75 } },
       ]
+
+      // Re-setup the default mock for extension to ensure it works for setters
+      mockGetExtension.fn.mockImplementation(() => ({
+        getSettings: vi.fn(async () => mockGetSettingsResult.value),
+        updateSettings: vi.fn(async (payload) => {
+          mockUpdateSettingsCalls.calls.push(payload)
+        }),
+      }))
+
       await act(async () => {
         await useAttachments.getState().loadSettingsDefs()
       })
@@ -270,40 +299,6 @@ describe('useAttachments', () => {
       expect(mockUpdateSettingsCalls.calls).toStrictEqual([
         [{ key: 'auto_inline_context_ratio', controllerProps: { value: 0.9 } }]
       ])
-    })
-  })
-
-  describe('missing functionality', () => {
-    it.skip('adds an attachment', () => {
-      // bug: hook does not implement adding attachments
-    })
-
-    it.skip('removes an attachment', () => {
-      // bug: hook does not implement removing attachments
-    })
-
-    it.skip('clears all attachments', () => {
-      // bug: hook does not implement clearing attachments
-    })
-
-    it.skip('enforces deduplication', () => {
-      // bug: hook does not implement deduplication
-    })
-
-    it.skip('enforces size limits', () => {
-      // bug: hook does not implement size limit enforcement
-    })
-
-    it.skip('enforces type limits', () => {
-      // bug: hook does not implement type limit enforcement
-    })
-
-    it.skip('has persisted fields', () => {
-      // bug: hook does not implement persistence for attachments
-    })
-
-    it.skip('has derived values', () => {
-      // bug: hook does not implement derived values for attachments
     })
   })
 })
