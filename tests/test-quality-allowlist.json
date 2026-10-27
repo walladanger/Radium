@@ -84,8 +84,7 @@
     "web-app/src/services/__tests__/threads.test.ts",
     "web-app/src/utils/__tests__/localApiServerControl.test.ts",
     "web-app/src/utils/ensureRemoteProviderReady.test.ts",
-    "web-app/src/utils/switchModel.test.ts",
-    "web-app/src/lib/__tests__/ttft-timing.test.ts"
+    "web-app/src/utils/switchModel.test.ts"
   ],
   "tautological-expect": [
     "core/src/types/assistant/assistantEvent.test.ts",

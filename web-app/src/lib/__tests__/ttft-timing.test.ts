@@ -183,7 +183,7 @@ describe('ttft-timing', () => {
   describe('ttftReport()', () => {
     it('does not print when explicitly disabled', async () => {
       vi.stubEnv('VITE_TTFT_TIMING', '')
-      vi.stubEnv('DEV', 'false')
+      vi.stubEnv('DEV', false)
       const { ttftBegin, ttftReport, ttftEnabled } = await importTiming()
       const consoleSpy = vi.spyOn(console, 'table').mockImplementation(() => {})
 
@@ -195,7 +195,7 @@ describe('ttft-timing', () => {
 
     it('prints at most once per session when explicitly enabled', async () => {
       vi.stubEnv('VITE_TTFT_TIMING', 'true')
-      vi.stubEnv('DEV', 'false')
+      vi.stubEnv('DEV', false)
       const {
         ttftBegin,
         ttftMark,
