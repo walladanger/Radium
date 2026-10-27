@@ -59,16 +59,13 @@ describe('registerRemoteProvider helpers', () => {
       expect(isLoopbackUrl('http://localhost:11434')).toBe(true)
       expect(isLoopbackUrl('http://127.0.0.1:8080/v1')).toBe(true)
       expect(isLoopbackUrl('http://0.0.0.0:1234')).toBe(true)
-      // Node.js URL.hostname returns '[::1]' for 'http://[::1]:8080',
-      // but the source code checks host === '::1', which means it will actually be false.
-      // So 'http://[::1]:8080' returns false.
-      expect(isLoopbackUrl('http://[::1]:8080')).toBe(false)
-
+      expect(isLoopbackUrl('http://[::1]:8080')).toBe(true)
       expect(isLoopbackUrl('http://LOCALHOST:8080')).toBe(true)
     })
 
     it('returns false for LAN IP, public host, malformed string, empty, null', () => {
       expect(isLoopbackUrl('http://192.168.1.100:8080')).toBe(false)
+      expect(isLoopbackUrl('http://[::2]:8080')).toBe(false)
       expect(isLoopbackUrl('https://api.openai.com/v1')).toBe(false)
       expect(isLoopbackUrl('not-a-url')).toBe(false)
       expect(isLoopbackUrl('')).toBe(false)
@@ -90,6 +87,7 @@ describe('registerRemoteProvider helpers', () => {
 
     it('returns true for other provider only on loopback URL', () => {
       expect(isKeylessRemoteProvider({ provider: 'lm-studio', base_url: 'http://localhost:1234/v1' })).toBe(true)
+      expect(isKeylessRemoteProvider({ provider: 'lm-studio', base_url: 'http://[::1]:1234/v1' })).toBe(true)
       expect(isKeylessRemoteProvider({ provider: 'lm-studio', base_url: 'http://192.168.1.100:1234/v1' })).toBe(false)
     })
 

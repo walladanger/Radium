@@ -44,7 +44,10 @@ export function isSelfHostedProviderName(
 export function isLoopbackUrl(baseUrl: string | undefined | null): boolean {
   if (!baseUrl) return false
   try {
-    const host = new URL(baseUrl).hostname.toLowerCase()
+    let host = new URL(baseUrl).hostname.toLowerCase()
+    if (host.startsWith('[') && host.endsWith(']')) {
+      host = host.slice(1, -1)
+    }
     return (
       host === 'localhost' ||
       host === '127.0.0.1' ||
