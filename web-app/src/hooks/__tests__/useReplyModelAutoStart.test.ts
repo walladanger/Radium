@@ -32,8 +32,13 @@ const MOCK_LOCAL_PROVIDER: ModelProvider = {
   active: true,
   models: [
     {
-      id: 'tiny-model',
-      name: 'Tiny Model',
+      id: 'large-model-70b-q8',
+      name: 'Large Model 70B',
+      state: 'ready',
+    },
+    {
+      id: 'tiny-model-2b-q4',
+      name: 'Tiny Model 2B',
       state: 'ready',
     },
   ],
@@ -42,6 +47,7 @@ const MOCK_LOCAL_PROVIDER: ModelProvider = {
 describe('useReplyModelAutoStart', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetLastUsedModel.mockReturnValue(null) // Ensure no leakage between tests
     useModelProvider.setState({
       providers: [],
       selectedProvider: null,
@@ -80,18 +86,18 @@ describe('useReplyModelAutoStart', () => {
     expect(outcome).toStrictEqual({
       outcome: 'auto_start',
       branch: 'auto_start',
-      modelLabel: 'Tiny Model',
+      modelLabel: 'Tiny Model 2B',
     })
 
     expect(mockSwitchToModel).toHaveBeenCalledWith({
-      modelId: 'tiny-model',
+      modelId: 'tiny-model-2b-q4',
       providerName: 'llamacpp-upstream',
       serviceHub: mockServiceHub,
     })
 
     const state = useModelProvider.getState()
     expect(state.selectedProvider).toBe('llamacpp-upstream')
-    expect(state.selectedModel?.id).toBe('tiny-model')
+    expect(state.selectedModel?.id).toBe('tiny-model-2b-q4')
   })
 
   it('catches and logs switchToModel errors without crashing', async () => {
@@ -130,7 +136,7 @@ describe('useReplyModelAutoStart', () => {
   it('respects last used model if available', () => {
     mockGetLastUsedModel.mockReturnValue({
       provider: 'llamacpp-upstream',
-      model: 'tiny-model',
+      model: 'large-model-70b-q8',
     })
 
     useModelProvider.setState({
@@ -144,11 +150,20 @@ describe('useReplyModelAutoStart', () => {
       outcome = result.current.tryAutoStart()
     })
 
-    expect(outcome).not.toBeNull()
+    expect(outcome).toStrictEqual({
+      outcome: 'auto_start',
+      branch: 'auto_start',
+      modelLabel: 'Large Model 70B', // Expects the last used larger model, not the compact tiny one
+    })
+
     expect(mockSwitchToModel).toHaveBeenCalledWith({
-      modelId: 'tiny-model',
+      modelId: 'large-model-70b-q8',
       providerName: 'llamacpp-upstream',
       serviceHub: mockServiceHub,
     })
+
+    const state = useModelProvider.getState()
+    expect(state.selectedProvider).toBe('llamacpp-upstream')
+    expect(state.selectedModel?.id).toBe('large-model-70b-q8')
   })
 })
