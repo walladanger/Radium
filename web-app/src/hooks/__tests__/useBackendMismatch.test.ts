@@ -228,7 +228,7 @@ describe('useBackendMismatch', () => {
     const stored = localStorage.getItem(localStorageKey.backendMismatchSuppressed)
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!)
-    expect(parsed.state.suppressedPairs).toContain('turboquant|silent-fallback|cpu|gpu')
+    expect(parsed.state.suppressedPairs).toStrictEqual(['turboquant|silent-fallback|cpu|gpu'])
 
     // Simulate new session
     act(() => {
@@ -267,17 +267,7 @@ describe('useBackendMismatch', () => {
     expect(result.current.shouldPrompt).toStrictEqual(false)
   })
 
-  it('can dispatch BACKEND_MISMATCH_PROMPT_EVENT window event successfully', () => {
-    let capturedEvent: Event | null = null
-    const handler = (e: Event) => {
-      capturedEvent = e
-    }
-
-    window.addEventListener(BACKEND_MISMATCH_PROMPT_EVENT, handler)
-    window.dispatchEvent(new CustomEvent(BACKEND_MISMATCH_PROMPT_EVENT))
-    window.removeEventListener(BACKEND_MISMATCH_PROMPT_EVENT, handler)
-
-    expect(capturedEvent).not.toBeNull()
-    expect(capturedEvent?.type).toStrictEqual('app:backend-mismatch-prompt')
+  it('BACKEND_MISMATCH_PROMPT_EVENT has correct constant value', () => {
+    expect(BACKEND_MISMATCH_PROMPT_EVENT).toStrictEqual('app:backend-mismatch-prompt')
   })
 })
