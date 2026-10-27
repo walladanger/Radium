@@ -1,5 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { act } from 'react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useChatGptAuth } from '@/hooks/useChatGptAuth'
 import { useModelProvider } from '@/hooks/useModelProvider'
@@ -105,7 +104,7 @@ describe('useChatGptAuth', () => {
       mocks.subscriptionSupported.current = false
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -127,7 +126,7 @@ describe('useChatGptAuth', () => {
       )
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -155,7 +154,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptModels.mockResolvedValue(MOCK_MODELS)
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -181,7 +180,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptStatus.mockRejectedValue(new Error('Backend offline'))
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -207,7 +206,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptModels.mockResolvedValue(MOCK_MODELS)
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -230,7 +229,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptLogin.mockRejectedValue(new Error('Port busy'))
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -260,7 +259,7 @@ describe('useChatGptAuth', () => {
       )
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -290,7 +289,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptStatus.mockResolvedValue({ connected: false })
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -311,7 +310,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptCancelLogin.mockRejectedValue(new Error('Cancel failed'))
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -344,7 +343,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptLogout.mockResolvedValue({ connected: false })
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -373,7 +372,7 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptLogout.mockRejectedValue(new Error('Logout failed'))
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -399,8 +398,14 @@ describe('useChatGptAuth', () => {
       mocks.auth.chatgptStatus.mockResolvedValue({ connected: true })
       mocks.auth.chatgptModels.mockRejectedValue(new Error('Network error'))
 
+      // Seed provider with a model to verify it gets cleared
+      useModelProvider.getState().updateProvider('chatgpt', {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        models: [{ id: 'stale-model' } as any]
+      })
+
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
@@ -420,6 +425,7 @@ describe('useChatGptAuth', () => {
     })
 
     it('avoids updating state if unmounted', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       mocks.auth.chatgptStatus.mockResolvedValue({ connected: true })
       let resolveModels: (models: ChatGptModel[]) => void
       mocks.auth.chatgptModels.mockReturnValue(
@@ -429,11 +435,11 @@ describe('useChatGptAuth', () => {
       )
 
       let hook: any
-      act(() => {
+      await act(async () => {
         hook = renderHook(() => useChatGptAuth())
       })
 
-      act(() => {
+      await act(async () => {
         hook.unmount()
       })
 
@@ -441,8 +447,13 @@ describe('useChatGptAuth', () => {
         resolveModels(MOCK_MODELS)
       })
 
-      // modelCount shouldn't update since unmounted
-      expect(hook.result.current.modelCount).toBe(0)
+      // The hook state shouldn't update, but the provider models should still update
+      // because syncSubscriptionModels handles it directly outside component state
+      const provider = useModelProvider.getState().getProviderByName('chatgpt')
+      expect(provider?.models).toHaveLength(2)
+
+      // Ensure no act/React errors occurred due to state updating post unmount
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
     })
   })
 })
