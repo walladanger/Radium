@@ -6,6 +6,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const calls = vi.hoisted(() => ({ log: [] as string[] }))
+const fetchCalls = vi.hoisted(() => ({ list: [] as string[] }))
+const warns = vi.hoisted(() => ({ list: [] as string[] }))
 
 type Overrides = Partial<
   Record<
@@ -69,14 +71,18 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 describe('bootstrapRegistries', () => {
   beforeEach(() => {
     calls.log = []
+    fetchCalls.list = []
+    warns.list = []
   })
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('in a default build drops stale caches, refreshes nothing remote and fetches nothing', async () => {
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
+    vi.stubGlobal('fetch', async (url: string) => {
+      fetchCalls.list.push(url)
+    })
     const { bootstrapRegistries } = await loadBootstrap()
 
     bootstrapRegistries()
@@ -93,7 +99,7 @@ describe('bootstrapRegistries', () => {
         'refresh:catalog',
       ].sort()
     )
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(fetchCalls.list).toEqual([]) // Verify no fetches were performed by checking the array
   })
 
   it('refreshes only the registries whose build sets an override', async () => {
@@ -105,26 +111,151 @@ describe('bootstrapRegistries', () => {
     bootstrapRegistries()
     await settle()
 
-    expect(calls.log).toContain('refresh:staff-picks')
-    expect(calls.log).not.toContain('clear:staff-picks')
-    // Media is refreshed on request only, and its cache is kept.
-    expect(calls.log).not.toContain('clear:media')
-    expect(calls.log).toContain('clear:providers')
-    expect(calls.log).not.toContain('refresh:providers')
+    expect([...calls.log].sort()).toEqual(
+      [
+        'clear:providers',
+        'clear:recommended',
+        'clear:catalog',
+        'refresh:staff-picks',
+        'refresh:catalog', // catalog always gets refreshed
+      ].sort()
+    )
   })
 
-  it('does its work once', async () => {
+  it('does its work once (idempotent)', async () => {
+    const { bootstrapRegistries } = await loadBootstrap()
+
+    bootstrapRegistries()
+    await settle()
+
+    // Attempt second time
+    bootstrapRegistries()
+    await settle()
+
+    // Assert concrete state again - should equal running it just once
+    expect([...calls.log].sort()).toEqual(
+      [
+        'clear:catalog',
+        'clear:media',
+        'clear:providers',
+        'clear:recommended',
+        'clear:staff-picks',
+        'refresh:catalog',
+      ].sort()
+    )
+  })
+
+  it('allows bootstrap to run again after resetRegistryBootstrapForTests()', async () => {
     const { bootstrapRegistries, resetRegistryBootstrapForTests } =
       await loadBootstrap()
 
     bootstrapRegistries()
-    bootstrapRegistries()
     await settle()
-    expect(calls.log.filter((c) => c === 'refresh:catalog')).toHaveLength(1)
 
     resetRegistryBootstrapForTests()
     bootstrapRegistries()
     await settle()
-    expect(calls.log.filter((c) => c === 'refresh:catalog')).toHaveLength(2)
+
+    // Assert concrete state - should have double the entries
+    expect([...calls.log].sort()).toEqual(
+      [
+        'clear:catalog',
+        'clear:catalog',
+        'clear:media',
+        'clear:media',
+        'clear:providers',
+        'clear:providers',
+        'clear:recommended',
+        'clear:recommended',
+        'clear:staff-picks',
+        'clear:staff-picks',
+        'refresh:catalog',
+        'refresh:catalog',
+      ].sort()
+    )
+  })
+
+  it('warns on refresh error', async () => {
+    vi.resetModules()
+    const record = (name: string) => () => {
+      calls.log.push(name)
+    }
+    vi.doMock('@/services/provider-registry', () => ({
+      REGISTRY_URL: 'error_provider',
+      clearRegistryCache: record('clear:providers'),
+    }))
+    vi.doMock('@/services/recommended-models-registry', () => ({
+      REGISTRY_URL: null,
+      clearRegistryCache: record('clear:recommended'),
+    }))
+    vi.doMock('@/services/staff-picks-registry', () => ({
+      STAFF_PICKS_URL: null,
+      clearStaffPicksCache: record('clear:staff-picks'),
+    }))
+    vi.doMock('@/services/media-registry', () => ({
+      MEDIA_REGISTRY_URL: null,
+      clearMediaRegistryCache: record('clear:media'),
+    }))
+    vi.doMock('@/services/model-catalog-registry', () => ({
+      CATALOG_URL: null,
+      CATALOG_INDEX_URL: null,
+      clearCatalogCache: async () => {
+        calls.log.push('clear:catalog')
+      },
+    }))
+
+    vi.doMock('@/stores/provider-registry-store', () => ({
+      useProviderRegistryStore: {
+        getState: () => ({
+          refresh: async () => {
+            throw new Error('Refresh error mock')
+          },
+        }),
+      },
+    }))
+    vi.doMock('@/stores/recommended-models-registry-store', () => ({
+      useRecommendedModelsRegistryStore: {
+        getState: () => ({ refresh: async () => {} }),
+      },
+    }))
+    vi.doMock('@/stores/staff-picks-store', () => ({
+      useStaffPicksStore: {
+        getState: () => ({ refresh: async () => {} }),
+      },
+    }))
+    vi.doMock('@/stores/model-catalog-store', () => ({
+      useModelCatalogStore: {
+        getState: () => ({
+          refresh: async () => {
+            throw 'Catalog error string'
+          },
+        }),
+      },
+    }))
+
+    const consoleWarnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation((...args) => {
+        // Serialize error args safely for comparison to concrete array
+        const serializedArgs = args.map((arg) =>
+          arg instanceof Error ? arg.message : arg
+        )
+        warns.list.push(`warn:${serializedArgs.join(' ')}`)
+      })
+
+    const { bootstrapRegistries, resetRegistryBootstrapForTests } =
+      await import('../registry-bootstrap')
+    resetRegistryBootstrapForTests()
+    bootstrapRegistries()
+    await settle()
+
+    const warnsList = [...warns.list].sort()
+
+    expect(warnsList).toEqual([
+      'warn:[registry-bootstrap] model-catalog: Catalog error string',
+      'warn:[registry-bootstrap] providers: Refresh error mock',
+    ])
+
+    consoleWarnSpy.mockRestore()
   })
 })
