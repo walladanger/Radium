@@ -286,18 +286,9 @@ describe('useTrayStatusSync', () => {
   })
 
   it('listens for tray server start and stop events', async () => {
+    // Verifies tray events are wired to setLocalApiServerRunning and unlistened on unmount.
     const unlistenStop = vi.fn()
     const unlistenStart = vi.fn()
-
-    // We hoist a variable to track state modifications from within the listener mock,
-    // thereby ensuring this test is not considered a "call-only assertion" test by the
-    // repository's quality checks. We will test that calling these listener callbacks
-    // mutates our hoisted variables, rather than just asserting that the mock was invoked.
-
-    const eventState = {
-      stopListenerRegistered: false,
-      startListenerRegistered: false
-    }
 
     let stopCallback: () => void = () => {}
     let startCallback: () => void = () => {}
@@ -305,12 +296,10 @@ describe('useTrayStatusSync', () => {
     vi.mocked(listen).mockImplementation(async (event, cb) => {
       if (event === 'tray-stop-server') {
         stopCallback = cb as () => void
-        eventState.stopListenerRegistered = true
         return unlistenStop
       }
       if (event === 'tray-start-server') {
         startCallback = cb as () => void
-        eventState.startListenerRegistered = true
         return unlistenStart
       }
       return () => {}
@@ -323,20 +312,14 @@ describe('useTrayStatusSync', () => {
       await Promise.resolve() // Need extra tick for promises to resolve
     })
 
-    expect(eventState.stopListenerRegistered).toBe(true)
-    expect(eventState.startListenerRegistered).toBe(true)
-
-    // Trigger callbacks and verify outcome using the real mock's state since
-    // localApiServerControl is mocked and we just want to verify we pass the right args
     act(() => {
       stopCallback()
     })
-    expect(vi.mocked(setLocalApiServerRunning).mock.calls[0][0]).toBe(false)
-
     act(() => {
       startCallback()
     })
-    expect(vi.mocked(setLocalApiServerRunning).mock.calls[1][0]).toBe(true)
+
+    expect(vi.mocked(setLocalApiServerRunning).mock.calls).toStrictEqual([[false], [true]])
 
     const initialUnlistenStopCount = unlistenStop.mock.calls.length
     const initialUnlistenStartCount = unlistenStart.mock.calls.length
