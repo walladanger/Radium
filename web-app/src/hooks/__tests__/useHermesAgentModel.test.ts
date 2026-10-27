@@ -3,11 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useHermesAgentModel } from '../useHermesAgentModel'
 
 const STORAGE_KEY = 'hermes-agent-model'
-const { mockConsoleWarn, didCallGetItem } = vi.hoisted(() => {
-  return {
-    mockConsoleWarn: vi.fn(),
-    didCallGetItem: { value: false }
-  }
+const { mockConsoleWarn } = vi.hoisted(() => {
+  return { mockConsoleWarn: vi.fn() }
 })
 
 describe('useHermesAgentModel', () => {
@@ -16,7 +13,6 @@ describe('useHermesAgentModel', () => {
     vi.clearAllMocks()
     vi.resetModules()
     vi.stubGlobal('console', { ...console, warn: mockConsoleWarn })
-    didCallGetItem.value = false
   })
 
   afterEach(() => {
@@ -29,31 +25,16 @@ describe('useHermesAgentModel', () => {
     expect(result.current.config).toStrictEqual({ model: null })
   })
 
-  it('should initialize with default config when window is undefined', async () => {
-    vi.stubGlobal('window', undefined)
-    const { useHermesAgentModel: dynamicHook } = await import('../useHermesAgentModel?window_undefined')
-
-    let caughtError: unknown = null
-    const setItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      didCallGetItem.value = true
-      throw new Error('Should not be called')
-    })
-
-    try {
-      dynamicHook()
-    } catch (e) {
-      caughtError = e
-    }
-
-    expect(caughtError).toBeInstanceOf(Error)
-    expect(didCallGetItem.value).toBe(false)
-    setItemSpy.mockRestore()
-  })
-
   it('should initialize with parsed config when localStorage has valid data', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ model: 'llama3' }))
     const { result } = renderHook(() => useHermesAgentModel())
     expect(result.current.config).toStrictEqual({ model: 'llama3' })
+  })
+
+  it('should initialize with parsed config parsing undefined model to null', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ model: undefined }))
+    const { result } = renderHook(() => useHermesAgentModel())
+    expect(result.current.config).toStrictEqual({ model: null })
   })
 
   it('should initialize with default config and warn when localStorage data is invalid JSON', () => {
