@@ -29,7 +29,7 @@ describe("useSidebarResize", () => {
 			useSidebarResize({ currentWidth: "20rem", onResize }),
 		);
 
-		expect(result.current.dragRef).toBeDefined();
+		expect(result.current.dragRef).toHaveProperty("current", null);
 		expect(result.current.isDragging.current).toBe(false);
 		expect(typeof result.current.handleClick).toBe("function");
 		expect(typeof result.current.handleMouseDown).toBe("function");
@@ -47,6 +47,7 @@ describe("useSidebarResize", () => {
 		});
 
 		expect(onToggle).toHaveBeenCalledTimes(1);
+		expect(result.current.isDragging.current).toBe(false);
 	});
 
 	it("does not toggle panel on click if drag interaction occurred", () => {
@@ -75,6 +76,7 @@ describe("useSidebarResize", () => {
 		});
 
 		expect(onToggle).not.toHaveBeenCalled();
+		expect(result.current.isDragging.current).toBe(false);
 	});
 
 	it("sets dragging state and calls onResize on mousemove", () => {
@@ -138,6 +140,7 @@ describe("useSidebarResize", () => {
 		});
 
 		expect(onResize).toHaveBeenCalledWith("20.6rem");
+		expect(result.current.isDragging.current).toBe(true);
 	});
 
 	it("calculates width correctly for nested sidebars", () => {
@@ -178,6 +181,7 @@ describe("useSidebarResize", () => {
 		});
 
 		expect(onResize).toHaveBeenCalledWith("20.6rem");
+		expect(result.current.isDragging.current).toBe(true);
 	});
 
 	it("clamps to maxResizeWidth when dragged too far", () => {
@@ -202,6 +206,7 @@ describe("useSidebarResize", () => {
 		});
 
 		expect(onResize).toHaveBeenCalledWith("24.0rem");
+		expect(result.current.isDragging.current).toBe(true);
 	});
 
 	it("persists width to cookie if widthCookieName is provided", () => {
@@ -226,6 +231,7 @@ describe("useSidebarResize", () => {
 		});
 
 		expect(document.cookie).toContain("sidebarWidth=20.6rem");
+		expect(onResize).toHaveBeenCalledWith("20.6rem");
 	});
 
 	it("collapses when dragged beyond autoCollapseThreshold", () => {
@@ -258,6 +264,7 @@ describe("useSidebarResize", () => {
 			document.dispatchEvent(new MouseEvent("mousemove", { clientX: 110 }));
 		});
 		expect(onToggle).toHaveBeenCalledTimes(1);
+		expect(result.current.isDragging.current).toBe(true);
 	});
 
 	it("expands when collapsed and dragged past expandThreshold", () => {
@@ -291,6 +298,7 @@ describe("useSidebarResize", () => {
 		});
 		expect(onToggle).toHaveBeenCalledTimes(1);
 		expect(onResize).toHaveBeenCalledWith("14.0rem");
+		expect(result.current.isDragging.current).toBe(true);
 	});
 
 	it("cleans up event listeners on unmount", () => {
@@ -311,6 +319,7 @@ describe("useSidebarResize", () => {
 
 		expect(mouseMoveRemoved).toBe(true);
 		expect(mouseUpRemoved).toBe(true);
+		expect(removeEventListenerSpy.mock.calls.length).toBeGreaterThan(0);
 	});
 
 	it.skip("bug: fails to update startX and startWidth after expanding a collapsed nested sidebar, causing erratic width calculation on continued drag", () => {
@@ -348,5 +357,6 @@ describe("useSidebarResize", () => {
 		// We expect it to calculate smoothly from the new toggle point, which would mean it should increase to ~14.6rem.
 		// Because of the bug, the assertion here is what SHOULD happen.
 		expect(onResize).toHaveBeenCalledWith("14.6rem");
+		expect(result.current.isDragging.current).toBe(true);
 	});
 });
