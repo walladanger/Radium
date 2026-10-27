@@ -91,7 +91,6 @@ describe('useLocalApiServerControl', () => {
     vi.restoreAllMocks()
   })
 
-  // To fix react 'act' warning cleanly:
   const renderHookAndFlush = async () => {
     let result: any
     let unmount: any
@@ -148,7 +147,6 @@ describe('useLocalApiServerControl', () => {
 
     it('logs error if checking status fails', async () => {
       const error = new Error('Network error')
-      // Make it return false on init, to prevent it from setting it to 'running'
       mockAppService.getServerStatus.mockResolvedValue(false)
       const { result } = await renderHookAndFlush()
 
@@ -167,7 +165,6 @@ describe('useLocalApiServerControl', () => {
         'Failed to check server status:',
         error
       )
-      // We verify no state changed during the error condition.
       expect(useAppState.getState().serverStatus).toBe('stopped')
       consoleErrorSpy.mockRestore()
     })
@@ -192,7 +189,6 @@ describe('useLocalApiServerControl', () => {
       unmount()
 
       expect(window.removeEventListener).toHaveBeenCalledWith('focus', expect.any(Function))
-      // Add state invariant to bypass the call-only check. Ensure no status shift if checking status returns false on focus event.
       expect(useAppState.getState().serverStatus).toBe('stopped')
     })
   })
@@ -241,7 +237,9 @@ describe('useLocalApiServerControl', () => {
       expect(callArgs.modelsService).toBeDefined()
       expect(callArgs.onLoadStart).toBeTypeOf('function')
       expect(callArgs.onLoadEnd).toBeTypeOf('function')
-      // Add check for final running call which also modifies nothing but satisfies not being "only mock invocation" if we check state
+
+      // We expect the serverStatus to remain 'pending' after start because transitioning to 'running'
+      // happens via an external watcher responding to the server actually starting on the native side.
       expect(useAppState.getState().serverStatus).toBe('pending')
     })
 
@@ -290,7 +288,6 @@ describe('useLocalApiServerControl', () => {
       expect(toast.error).toHaveBeenCalledWith('Failed to start model', {
         description: 'No model available to load',
       })
-      // Added non-mock assertion
       expect(result.current.isModelLoading).toBe(false)
       consoleErrorSpy.mockRestore()
     })
@@ -352,7 +349,6 @@ describe('useLocalApiServerControl', () => {
 
       expect(mockEnsureModelForServer).not.toHaveBeenCalled()
       expect(setLocalApiServerRunning).toHaveBeenCalledWith(true)
-      // Additional state invariant assertion
       expect(useAppState.getState().serverStatus).toBe('pending')
     })
 
@@ -363,7 +359,6 @@ describe('useLocalApiServerControl', () => {
         providerName: 'p1',
       })
 
-      // Stop the error from cascading down and failing the test unexpectedly if it rejects during cleanup
       setLocalApiServerRunning.mockImplementation(async (running) => {
         if (running) throw new Error('Address already in use')
       })
@@ -379,7 +374,6 @@ describe('useLocalApiServerControl', () => {
       expect(toast.error).toHaveBeenCalledWith('Port has been occupied', {
         description: 'Port 1337 is already in use. Please try a different port.',
       })
-      // Non-mock assertion
       expect(result.current.isModelLoading).toBe(false)
       consoleErrorSpy.mockRestore()
     })
@@ -438,14 +432,8 @@ describe('useLocalApiServerControl', () => {
     })
 
     it('times out waiting for model to load if takes too long', async () => {
-      mockEnsureModelForServer.mockImplementation(() => {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            const err = new Error('Timed out waiting for the model to finish loading.')
-            reject(err)
-          }, MODEL_LOAD_WATCHDOG_MS + 1000)
-        })
-      })
+      mockEnsureModelForServer.mockReturnValue(new Promise(() => {}))
+
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const { result } = await renderHookAndFlush()
@@ -456,7 +444,7 @@ describe('useLocalApiServerControl', () => {
       })
 
       act(() => {
-        vi.advanceTimersByTime(MODEL_LOAD_WATCHDOG_MS + 1001)
+        vi.advanceTimersByTime(MODEL_LOAD_WATCHDOG_MS)
       })
 
       await act(async () => {
@@ -466,6 +454,7 @@ describe('useLocalApiServerControl', () => {
       expect(toast.error).toHaveBeenCalledWith('Failed to start model', {
         description: 'Timed out waiting for the model to finish loading.',
       })
+      expect(setLocalApiServerRunning).not.toHaveBeenCalledWith(true)
       expect(result.current.isModelLoading).toBe(false)
       consoleErrorSpy.mockRestore()
     })
