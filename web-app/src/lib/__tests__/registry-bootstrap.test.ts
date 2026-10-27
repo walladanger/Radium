@@ -4,7 +4,6 @@
  * downloaded, and only reads the model catalog from the app's own assets.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetRegistryBootstrapForTests } from '../registry-bootstrap'
 
 const calls = vi.hoisted(() => ({ log: [] as string[] }))
 const fetchCalls = vi.hoisted(() => ({ list: [] as string[] }))
@@ -77,6 +76,7 @@ describe('bootstrapRegistries', () => {
   })
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('in a default build drops stale caches, refreshes nothing remote and fetches nothing', async () => {
