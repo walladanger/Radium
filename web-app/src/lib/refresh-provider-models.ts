@@ -86,9 +86,11 @@ export async function refreshProviderModels({
       registrySupportsListing
     ) {
       try {
-        const liveModelIds = await serviceHub
-          .providers()
-          .fetchModelsFromProvider(provider)
+        const liveModelIds = Array.from(
+          new Set(
+            await serviceHub.providers().fetchModelsFromProvider(provider)
+          )
+        )
 
         // Collect IDs already present after the registry pass so we only
         // add genuinely new entries.
