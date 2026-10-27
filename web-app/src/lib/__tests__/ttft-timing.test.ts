@@ -181,64 +181,88 @@ describe('ttft-timing', () => {
   })
 
   describe('ttftReport()', () => {
-    it('behaves according to the environment default (DEV flag)', async () => {
-      // In a normal test env, DEV might be true. We just verify the behavior
-      // matches the enabled check.
-      const consoleSpy = vi.spyOn(console, 'table').mockImplementation(() => {})
+    it('does not print when explicitly disabled', async () => {
+      vi.stubEnv('VITE_TTFT_TIMING', '')
+      vi.stubEnv('DEV', 'false')
       const { ttftBegin, ttftReport, ttftEnabled } = await importTiming()
+      const consoleSpy = vi.spyOn(console, 'table').mockImplementation(() => {})
 
+      expect(ttftEnabled()).toBe(false)
       ttftBegin()
-      ttftReport('test reason')
-      ttftReport('test reason 2') // Should not print again for the same session
-
-      if (ttftEnabled()) {
-        expect(consoleSpy).toHaveBeenCalledTimes(1)
-
-        // Next begin resets the guard
-        ttftBegin()
-        ttftReport('test reason 3')
-        expect(consoleSpy).toHaveBeenCalledTimes(2)
-      } else {
-        expect(consoleSpy).not.toHaveBeenCalled()
-      }
+      ttftReport('report')
+      expect(consoleSpy).not.toHaveBeenCalled()
     })
 
     it('prints at most once per session when explicitly enabled', async () => {
       vi.stubEnv('VITE_TTFT_TIMING', 'true')
+      vi.stubEnv('DEV', 'false')
+      const {
+        ttftBegin,
+        ttftMark,
+        ttftMarkFromRust,
+        ttftReport,
+        ttftEnabled,
+        ttftSnapshot,
+      } = await importTiming()
       const consoleSpy = vi.spyOn(console, 'table').mockImplementation(() => {})
-      const { ttftBegin, ttftReport, ttftEnabled } = await importTiming()
 
       expect(ttftEnabled()).toBe(true)
 
+      vi.setSystemTime(1000)
       ttftBegin()
+      vi.setSystemTime(1050)
+      ttftMark('beta')
+      vi.setSystemTime(1100)
+      ttftMark('gammaEnd')
+      vi.setSystemTime(1200)
+      ttftMark('deltaEnd')
+      vi.setSystemTime(1300)
+      ttftMark('epsilonFirstChunk')
+      ttftMarkFromRust('zetaUpstreamHeaders', 1350)
+      ttftMarkFromRust('etaFirstToken', 1500)
+      vi.setSystemTime(1550)
+      ttftMark('thetaFirstRender')
+
       ttftReport('first report')
+
+      expect(consoleSpy).toHaveBeenCalledOnce()
+      expect(consoleSpy).toHaveBeenCalledWith({
+        'reason': 'first report',
+        'β−α attachments': 50,
+        'γ−β refreshTools': 50,
+        'δ−γ createModel': 100,
+        'ε−δ first IPC chunk': 100,
+        'ζ−ε proxy→upstream': 50,
+        'η−ζ backend TTFT': 150,
+        'θ−α total visible': 550,
+        'θ−η UI after stream': 50,
+      })
+
+      // Calling again in the same session doesn't print
       ttftReport('second report')
+      expect(consoleSpy).toHaveBeenCalledOnce()
 
-      expect(consoleSpy).toHaveBeenCalledTimes(1)
+      // Ensure snapshot data is preserved
+      expect(ttftSnapshot()?.ttft_e2e_ms).toBe(500)
 
+      // New session resets the guard
+      vi.setSystemTime(2000)
       ttftBegin()
-      ttftReport('third report')
+
+      ttftReport('new session')
+
       expect(consoleSpy).toHaveBeenCalledTimes(2)
-    })
-
-    it('does not print when explicitly disabled', async () => {
-      // In Vitest, DEV is true by default, but it's set in import.meta.env,
-      // not process.env. VITE_TTFT_TIMING is not present by default.
-      // Since import.meta.env.DEV is hardcoded to true by Vitest at build time
-      // in some configurations, we must check if we can reliably disable it.
-      // Instead of forcing it, we just test that it respects ttftEnabled().
-      const { ttftBegin, ttftReport, ttftEnabled } = await importTiming()
-      if (ttftEnabled()) {
-        // If it's forced true by the environment (e.g. import.meta.env.DEV),
-        // we can't fully test the disabled path without mocking import.meta.env
-        // in Vite, which is complex. So we skip this assertion if it's always enabled.
-        return
-      }
-      const consoleSpy = vi.spyOn(console, 'table').mockImplementation(() => {})
-
-      ttftBegin()
-      ttftReport('report')
-      expect(consoleSpy).not.toHaveBeenCalled()
+      expect(consoleSpy).toHaveBeenLastCalledWith({
+        'reason': 'new session',
+        'β−α attachments': '—',
+        'γ−β refreshTools': '—',
+        'δ−γ createModel': '—',
+        'ε−δ first IPC chunk': '—',
+        'ζ−ε proxy→upstream': '—',
+        'η−ζ backend TTFT': '—',
+        'θ−α total visible': '—',
+        'θ−η UI after stream': '—',
+      })
     })
   })
 })
