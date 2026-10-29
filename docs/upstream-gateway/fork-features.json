@@ -633,7 +633,7 @@
   {
     "id": "coordinated-local-tasks",
     "feature": "Shared local agent workspace",
-    "forUsers": "Plan dependent tasks, inspect durable progress and review isolated local worker outputs through Radium and DeepSeek. Release acceptance remains pending.",
+    "forUsers": "Start plans whose ready and scheduled tasks run in the background through provisioned local workers, inspect durable progress and review isolated outputs. Live GPU and installed-app release acceptance remain pending.",
     "paths": [
       "src-tauri/atomic-control/**",
       "src-tauri/atomic-agent-core/**",
@@ -646,6 +646,7 @@
         "run": "cargo test --manifest-path src-tauri/atomic-control/Cargo.toml",
         "files": [
           "src-tauri/atomic-control/tests/kernel.rs",
+          "src-tauri/atomic-control/tests/dispatch.rs",
           "src-tauri/atomic-control/tests/sandbox.rs"
         ]
       },
